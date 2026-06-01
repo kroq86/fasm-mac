@@ -19,7 +19,7 @@ class FasmMac < Formula
                    PYTHON="python3"
                  fi
                EOS
-    (bin/"fasm").write_exec_script libexec/"fasm"
+    bin.install_symlink libexec/"fasm"
   end
 
   def caveats
