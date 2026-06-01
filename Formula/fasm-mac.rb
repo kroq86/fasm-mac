@@ -11,6 +11,14 @@ class FasmMac < Formula
   def install
     prefix.install "fasm"
     libexec.install "bin/fasm"
+    inreplace libexec/"fasm",
+               'PYTHON="${PYTHON:-python3}"',
+               <<~'EOS'.chomp
+                 PYTHON="${PYTHON:-python3}"
+                 if [[ ! -x "$PYTHON" ]]; then
+                   PYTHON="python3"
+                 fi
+               EOS
     (bin/"fasm").write_exec_script libexec/"fasm"
   end
 
