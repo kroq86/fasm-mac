@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+while [[ -L "$SCRIPT_PATH" ]]; do
+  LINK_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+  SCRIPT_PATH="$(readlink "$SCRIPT_PATH")"
+  [[ "$SCRIPT_PATH" == /* ]] || SCRIPT_PATH="$LINK_DIR/$SCRIPT_PATH"
+done
+
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+if [[ -d "$SCRIPT_DIR/../fasm" ]]; then
+  ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+elif [[ -n "${FASM_MAC_HOME:-}" && -d "$FASM_MAC_HOME/fasm" ]]; then
+  ROOT="$FASM_MAC_HOME"
+else
+  echo "[fasm-mac] Cannot locate fasm-mac root. Set FASM_MAC_HOME=/path/to/fasm-mac." >&2
+  exit 1
+fi
+
+FASM_HOST="$ROOT/fasm/build/out/macos-x64/fasm-macos-x64"
+CONVERTER="$ROOT/fasm/tools/elf64_to_macho64.py"
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  fasm [--emit=macho|elf|macho-obj] <file.asm> [output]
+  fasm run <file.asm> [output]
+  fasm host <args...>
+
+Defaults:
+  fasm file.asm          assembles an ELF64 executable and wraps it as Mach-O64
+  fasm --emit=elf ...    calls the upstream fasm host directly
+  fasm --emit=macho-obj  assembles ELF64 relocatable object, then converts it
+
+Notes:
+  Mach-O executables must use Darwin x86_64 syscall numbers.
+  Mach-O objects currently support simple non-relocatable fasm objects.
+USAGE
+}
+
+if [[ $# -lt 1 || "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+if [[ ! -x "$FASM_HOST" ]]; then
+  "$ROOT/fasm/build/macos-x64.sh" >/dev/null
+fi
+
+MODE="macho"
+case "${1:-}" in
+  run)
+    MODE="run"
+    shift
+    ;;
+  host)
+    shift
+    exec arch -x86_64 "$FASM_HOST" "$@"
+    ;;
+  --emit=elf)
+    MODE="elf"
+    shift
+    ;;
+  --emit=macho)
+    MODE="macho"
+    shift
+    ;;
+  --emit=macho-obj)
+    MODE="macho-obj"
+    shift
+    ;;
+esac
+
+ASM="${1:-}"
+if [[ -z "$ASM" ]]; then
+  usage
+  exit 1
+fi
+if [[ ! -f "$ASM" ]]; then
+  echo "[fasm-mac] Source file not found: $ASM" >&2
+  exit 1
+fi
+
+OUT="${2:-${ASM%.asm}}"
+
+case "$MODE" in
+  elf)
+    exec arch -x86_64 "$FASM_HOST" -d TARGET_OS=linux "$ASM" "$OUT"
+    ;;
+  macho|run)
+    TMP_ELF="$(mktemp -t fasm-mac-exec)"
+    trap 'rm -f "$TMP_ELF"' EXIT
+    arch -x86_64 "$FASM_HOST" -d TARGET_OS=macos "$ASM" "$TMP_ELF"
+    python3 "$CONVERTER" --type exec "$TMP_ELF" "$OUT"
+    if [[ "$MODE" == "run" ]]; then
+      if [[ "$OUT" == */* ]]; then
+        exec arch -x86_64 "$OUT"
+      else
+        exec arch -x86_64 "./$OUT"
+      fi
+    fi
+    ;;
+  macho-obj)
+    TMP_ELF="$(mktemp -t fasm-mac-obj)"
+    trap 'rm -f "$TMP_ELF"' EXIT
+    arch -x86_64 "$FASM_HOST" -d TARGET_OS=macos "$ASM" "$TMP_ELF"
+    python3 "$CONVERTER" --type object "$TMP_ELF" "$OUT"
+    ;;
+esac

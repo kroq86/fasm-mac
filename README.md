@@ -1,127 +1,143 @@
-# fasm classic for macOS
+# fasm-mac
 
-Experimental macOS host port of **flat assembler classic 1.73.35**.
+Experimental macOS bridge for **flat assembler classic 1.73.35**.
 
-The practical goal is simple: run fasm on an Apple Silicon Mac, assemble a
-small x86_64 program, wrap it as Mach-O, and execute it locally through
-Rosetta.
+The goal is practical CLI compatibility for small x86_64 fasm programs on
+macOS:
 
-This repository is intentionally not a rewrite of fasm. The compiler core is
-still upstream fasm classic, written in x86/x86_64 assembly. The macOS support
-added here is a host/runtime bridge around that core.
+```sh
+fasm file.asm
+./file
+```
 
-## What Works
+On Apple Silicon this runs through Rosetta. This is not a native arm64 rewrite
+of fasm classic.
 
-- Builds a macOS x86_64 fasm host binary:
+## What This Is
 
-  ```text
-  fasm/build/out/macos-x64/fasm-macos-x64
-  ```
+fasm classic does not contain a Mach-O formatter. This project keeps the
+upstream fasm compiler core and adds a macOS pipeline around it:
 
-- Runs the fasm host on Apple Silicon through Rosetta:
+1. fasm emits ELF64 executable or ELF64 relocatable object output.
+2. `fasm/tools/elf64_to_macho64.py` converts the supported ELF layout into
+   Mach-O64.
+3. macOS runs or links the resulting x86_64 Mach-O file.
 
-  ```sh
-  arch -x86_64 fasm/build/out/macos-x64/fasm-macos-x64
-  ```
+That means this repository gives you a usable macOS command, not a new
+upstream `format Mach-O` directive inside fasm.
 
-- Assembles normal fasm outputs on macOS:
+## Install
 
-  - `format binary`
-  - `format ELF64`
-  - `format PE64`
-  - `format MS64 COFF`
+```sh
+./install.sh
+```
 
-- Wraps suitable ELF64 executable output into static Mach-O64 and runs it:
+The installer creates:
 
-  ```sh
-  ./dotfasm-mac run fasm/basic/fib.asm fib-run
-  ```
+```text
+~/.local/bin/fasm -> <repo>/bin/fasm
+```
 
-  Expected output:
+Make sure `~/.local/bin` is in your `PATH`:
 
-  ```text
-  flat assembler  version 1.73.35  (16384 kilobytes memory, x64)
-  3 passes, 295 bytes.
-  1
-  1
-  2
-  3
-  5
-  8
-  13
-  21
-  34
-  55
-  ```
+```sh
+export PATH="$HOME/.local/bin:$PATH"
+```
 
-## Important Limits
+## CLI
 
-This is a **macOS host port**, not a full Mach-O formatter inside fasm classic.
+Build a runnable Mach-O executable, using the source basename as output:
 
-That means:
+```sh
+fasm fasm/basic/fib.asm
+./fasm/basic/fib
+```
 
-- fasm itself runs on macOS.
-- fasm can still emit Linux ELF, PE, COFF, and flat binary outputs.
-- `./dotfasm-mac macho` and `./dotfasm-mac run` can wrap an ELF64 executable
-  layout into Mach-O64.
-- Your program code must use **Darwin syscall numbers** if you want it to run
-  on macOS.
+Build and run:
 
-Linux syscall examples like this will compile, but will not run correctly as
-macOS programs:
+```sh
+fasm run fasm/basic/fib.asm
+```
+
+Explicit modes:
+
+```sh
+fasm --emit=macho file.asm [output]       # Mach-O executable
+fasm --emit=elf file.asm [output]         # original ELF output
+fasm --emit=macho-obj file.asm object.o   # Mach-O object for clang/dylib
+```
+
+Directly call the bundled host fasm:
+
+```sh
+fasm host <args...>
+```
+
+## macOS Includes
+
+Runnable examples should include the platform layer instead of hardcoding Linux
+syscall numbers:
 
 ```asm
-SYS_write equ 1
-SYS_exit  equ 60
+format ELF64 executable 3
+include "fasm/core/platform.inc"
+
+segment readable executable
+entry start
+
+start:
+    write_file STDOUT, msg, msg_len
+    exit 0
+
+segment readable writeable
+msg db "hello", 10
+msg_len = $ - msg
 ```
 
-For Darwin x86_64, use:
+The shim passes:
 
-```asm
-SYS_write equ 02000004h
-SYS_exit  equ 02000001h
-```
+- `TARGET_OS=macos` for Mach-O output
+- `TARGET_OS=linux` for `--emit=elf`
 
-The included example [fasm/basic/fib.asm](fasm/basic/fib.asm) already uses
-Darwin syscall numbers.
+`platform.inc` currently provides `write_file`, `read_file`, `open_file`,
+`close_file`, `exit`, and syscall helper macros for Linux and Darwin x86_64.
 
-## Requirements
+## Shared Libraries
 
-- macOS on Apple Silicon
-- Rosetta 2
-- Docker or Colima with `linux/amd64` support
-- Python 3
-
-Check Rosetta:
+Build a Mach-O object and link it into a `.dylib`:
 
 ```sh
-arch -x86_64 /usr/bin/true
+fasm --emit=macho-obj add.asm add.o
+clang -arch x86_64 -dynamiclib wrapper.c add.o -o mylib.dylib
 ```
 
-If this fails, install Rosetta:
+On Apple Silicon, Python `ctypes` examples need an x86_64/Rosetta Python to
+load that dylib. An arm64 Python cannot load an x86_64 library.
 
-```sh
-softwareupdate --install-rosetta
-```
+## Current Limits
 
-## Build
+- Output is x86_64 only.
+- Native arm64 fasm classic is out of scope.
+- The executable converter supports simple ELF64 executable layouts.
+- The object converter supports simple allocatable `.text`, `.data`, `.bss`
+  sections and symbols.
+- ELF relocations in object files are rejected for now.
+- fasm classic still does not understand `format Mach-O`.
+- Coroutines and other callback/stack-switching examples need separate ABI
+  review before being called supported on macOS.
 
-```sh
-./fasm/build/macos-x64.sh
-```
+## Build The Host
 
-The build script:
-
-1. Runs bundled upstream `fasm.x64` inside a Linux amd64 Docker container.
-2. Assembles [fasm/source/macos/x64/fasm.asm](fasm/source/macos/x64/fasm.asm)
-   into an ELF64 bootstrap image.
-3. Converts that image into a static Mach-O64 executable with
-   [fasm/tools/elf64_to_macho64.py](fasm/tools/elf64_to_macho64.py).
-
-Output:
+The checked-in bridge expects the macOS x64 host binary at:
 
 ```text
 fasm/build/out/macos-x64/fasm-macos-x64
+```
+
+Rebuild it with:
+
+```sh
+./fasm/build/macos-x64.sh
 ```
 
 Verify:
@@ -131,108 +147,22 @@ file fasm/build/out/macos-x64/fasm-macos-x64
 arch -x86_64 fasm/build/out/macos-x64/fasm-macos-x64
 ```
 
-You should see:
-
-```text
-Mach-O 64-bit executable x86_64
-flat assembler  version 1.73.35
-usage: fasm <source> [output]
-```
-
-## Usage
-
-Compile only:
-
-```sh
-./dotfasm-mac fasm/basic/fib.asm fib-elf
-file fib-elf
-```
-
-This preserves the source output format. For `fib.asm`, that means the result
-is still ELF64:
-
-```text
-ELF 64-bit LSB executable, x86-64
-```
-
-Compile and wrap as Mach-O:
-
-```sh
-./dotfasm-mac macho fasm/basic/fib.asm fib-mac
-file fib-mac
-arch -x86_64 ./fib-mac
-```
-
-Compile, wrap, and run:
-
-```sh
-./dotfasm-mac run fasm/basic/fib.asm fib-run
-```
-
 ## Smoke Tests
 
 ```sh
-BIN=fasm/build/out/macos-x64/fasm-macos-x64
-OUT=fasm/build/out/macos-x64/smoke
-mkdir -p "$OUT"
+fasm fasm/basic/fib.asm
+arch -x86_64 ./fasm/basic/fib
 
-for src in binary elf64 coff pe64; do
-  arch -x86_64 "$BIN" "fasm/tests/macos-smoke/$src.asm" "$OUT/$src.out"
-done
+fasm --emit=elf fasm/basic/fib.asm /tmp/fib.elf
+file /tmp/fib.elf
 
-file "$OUT"/*
+fasm --emit=macho-obj /path/to/add.asm /tmp/add.o
+file /tmp/add.o
 ```
-
-Known smoke result:
-
-```text
-binary.out: ASCII text
-coff.out:   data
-elf64.out:  ELF 64-bit LSB executable, x86-64
-pe64.out:   MS-DOS executable
-```
-
-`binary` and `elf64` outputs match upstream Linux fasm byte-for-byte. PE and
-COFF outputs are valid but include timestamp fields, so byte-for-byte hashes
-can differ from Linux.
-
-## Repository Layout
-
-```text
-dotfasm-mac                         wrapper for compile/macho/run modes
-fasm/source/macos/x64/              macOS x64 host source
-fasm/tools/elf64_to_macho64.py      ELF64 load-segment to Mach-O64 wrapper
-fasm/build/macos-x64.sh             reproducible build script
-fasm/basic/fib.asm                  runnable Darwin syscall example
-fasm/tests/macos-smoke/             smoke test inputs
-```
-
-## How The Mach-O Wrapper Works
-
-fasm classic already knows how to produce ELF64 executable images. The macOS
-wrapper path uses that existing formatter as a low-level layout engine:
-
-1. Assemble source as ELF64 executable.
-2. Read ELF64 `PT_LOAD` segments.
-3. Create a static Mach-O64 executable with matching low virtual addresses.
-4. Point `LC_UNIXTHREAD` at the ELF entry point.
-5. Run it through Rosetta.
-
-This is deliberately narrow, but useful: it gets small syscall-based x86_64
-programs running on macOS without adding a full Mach-O formatter to fasm
-classic.
-
-## Current Known Issue
-
-PE/COFF smoke inputs produce valid files with exit code `0`, but the macOS host
-currently does not print the final `passes/bytes` summary line for those two
-formats. Binary and ELF64 print the full summary.
 
 ## Upstream
 
-Original flat assembler project:
+- Original project: <https://flatassembler.net/>
+- Upstream archive used here: `fasm-1.73.35.tgz`
 
-- <https://flatassembler.net/>
-- upstream archive used here: `fasm-1.73.35.tgz`
-
-This repository keeps the original license file at [fasm/license.txt](fasm/license.txt).
+The original license is kept at [fasm/license.txt](fasm/license.txt).
