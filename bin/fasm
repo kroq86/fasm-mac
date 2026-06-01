@@ -20,6 +20,13 @@ fi
 
 FASM_HOST="$ROOT/fasm/build/out/macos-x64/fasm-macos-x64"
 CONVERTER="$ROOT/fasm/tools/elf64_to_macho64.py"
+PYTHON="${PYTHON:-python3}"
+
+if [[ -n "${INCLUDE:-}" ]]; then
+  export INCLUDE="$ROOT/fasm;$INCLUDE"
+else
+  export INCLUDE="$ROOT/fasm"
+fi
 
 usage() {
   cat <<'USAGE'
@@ -39,14 +46,32 @@ Notes:
 USAGE
 }
 
+ensure_host() {
+  if [[ -x "$FASM_HOST" ]]; then
+    return 0
+  fi
+
+  if [[ -d "$ROOT/.git" ]]; then
+    if command -v docker >/dev/null 2>&1; then
+      "$ROOT/fasm/build/macos-x64.sh" >/dev/null
+      return 0
+    fi
+    echo "[fasm-mac] Host binary missing and Docker is unavailable." >&2
+    echo "[fasm-mac] Run ./fasm/build/macos-x64.sh in this checkout." >&2
+    exit 1
+  fi
+
+  echo "[fasm-mac] Host binary missing at $FASM_HOST" >&2
+  echo "[fasm-mac] Reinstall with: brew reinstall fasm-mac" >&2
+  exit 1
+}
+
 if [[ $# -lt 1 || "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   usage
   exit 0
 fi
 
-if [[ ! -x "$FASM_HOST" ]]; then
-  "$ROOT/fasm/build/macos-x64.sh" >/dev/null
-fi
+ensure_host
 
 MODE="macho"
 case "${1:-}" in
@@ -92,7 +117,7 @@ case "$MODE" in
     TMP_ELF="$(mktemp -t fasm-mac-exec)"
     trap 'rm -f "$TMP_ELF"' EXIT
     arch -x86_64 "$FASM_HOST" -d TARGET_OS=macos "$ASM" "$TMP_ELF"
-    python3 "$CONVERTER" --type exec "$TMP_ELF" "$OUT"
+    "$PYTHON" "$CONVERTER" --type exec "$TMP_ELF" "$OUT"
     if [[ "$MODE" == "run" ]]; then
       if [[ "$OUT" == */* ]]; then
         exec arch -x86_64 "$OUT"
@@ -105,6 +130,6 @@ case "$MODE" in
     TMP_ELF="$(mktemp -t fasm-mac-obj)"
     trap 'rm -f "$TMP_ELF"' EXIT
     arch -x86_64 "$FASM_HOST" -d TARGET_OS=macos "$ASM" "$TMP_ELF"
-    python3 "$CONVERTER" --type object "$TMP_ELF" "$OUT"
+    "$PYTHON" "$CONVERTER" --type object "$TMP_ELF" "$OUT"
     ;;
 esac

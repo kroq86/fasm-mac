@@ -1,5 +1,6 @@
 # Build outputs
 /fasm/build/out/
+/dist/
 
 # Local run artifacts
 /fib

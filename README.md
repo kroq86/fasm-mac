@@ -28,6 +28,31 @@ upstream `format Mach-O` directive inside fasm.
 
 ## Install
 
+### Homebrew (recommended)
+
+```sh
+brew tap kroq86/fasm-mac
+brew install fasm-mac
+```
+
+Then use `fasm` from anywhere:
+
+```sh
+fasm hello.asm
+arch -x86_64 ./hello
+```
+
+On Apple Silicon, output binaries are x86_64 Mach-O and run through Rosetta.
+
+Upgrade or remove:
+
+```sh
+brew upgrade fasm-mac
+brew uninstall fasm-mac
+```
+
+### Manual install
+
 ```sh
 ./install.sh
 ```

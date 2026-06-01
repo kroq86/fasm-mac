@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build host binary
+        run: ./fasm/build/macos-x64.sh
+
+      - name: Verify host binary
+        run: |
+          file fasm/build/out/macos-x64/fasm-macos-x64
+          python3 - <<'PY'
+          from pathlib import Path
+          data = Path("fasm/build/out/macos-x64/fasm-macos-x64").read_bytes()[:4]
+          assert data == b"\xcf\xfa\xed\xfe", f"expected Mach-O64 magic, got {data!r}"
+          print("Mach-O64 magic ok")
+          PY
+
+      - name: Build release tarball
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          ./scripts/build-release-tarball.sh "$VERSION"
+          sha256sum "dist/fasm-mac-${VERSION}.tar.gz" > "dist/fasm-mac-${VERSION}.tar.gz.sha256"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/fasm-mac-*.tar.gz
+            dist/fasm-mac-*.tar.gz.sha256
+          generate_release_notes: true
