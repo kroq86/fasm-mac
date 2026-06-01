@@ -9,6 +9,19 @@
 /fib-run
 /fib-elf
 
+# FASM Mach-O executables (built next to .asm, no extension)
+/fasm/apps/miniredis
+/fasm/apps/miniredis_server
+/fasm/basic/fib
+/fasm/examples/nested_list_demo
+/fasm/examples/oop_playlist
+/fasm/examples/leetcode/*
+!/fasm/examples/leetcode/*.asm
+/fasm/tests/macos-smoke/*
+!/fasm/tests/macos-smoke/*.asm
+/fasm/tests/macos-smoke/entry_layout
+/fasm/tests/macos-smoke/put_only
+
 # macOS metadata
 .DS_Store
 ._*
