@@ -1,0 +1,13 @@
+# Build outputs
+/fasm/build/out/
+
+# Local run artifacts
+/fib
+/fib2
+/fib-mac
+/fib-run
+/fib-elf
+
+# macOS metadata
+.DS_Store
+._*

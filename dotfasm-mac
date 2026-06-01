@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FASM="$ROOT/fasm/build/out/macos-x64/fasm-macos-x64"
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  ./dotfasm-mac <file.asm> [output]
+  ./dotfasm-mac macho <file.asm> [output]
+  ./dotfasm-mac run <file.asm> [output]
+
+This invokes the macOS x86_64/Rosetta fasm host. It assembles whatever output
+format the source requests. Linux ELF sources will compile on macOS, but the
+resulting binary still runs on Linux, not natively on macOS.
+
+The "macho" mode assembles an ELF64 executable and wraps its load segments into
+a static Mach-O64 executable. The "run" mode does the same and executes it.
+Assembly sources used with "macho" or "run" must use Darwin syscall numbers.
+USAGE
+}
+
+if [[ $# -lt 1 || "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 1
+fi
+
+MODE="compile"
+case "${1:-}" in
+  macho|run)
+    MODE="$1"
+    shift
+    ;;
+esac
+
+ASM="${1:-}"
+OUT="${2:-${ASM%.asm}}"
+
+if [[ ! -x "$FASM" ]]; then
+  echo "[dotfasm-mac] Missing $FASM. Run ./fasm/build/macos-x64.sh first." >&2
+  exit 1
+fi
+
+if [[ ! -f "$ASM" ]]; then
+  echo "[dotfasm-mac] Source file not found: $ASM" >&2
+  exit 1
+fi
+
+case "$MODE" in
+  compile)
+    exec arch -x86_64 "$FASM" "$ASM" "$OUT"
+    ;;
+  macho|run)
+    TMP_ELF="$(mktemp -t dotfasm-mac)"
+    trap 'rm -f "$TMP_ELF"' EXIT
+    arch -x86_64 "$FASM" "$ASM" "$TMP_ELF"
+    python3 "$ROOT/fasm/tools/elf64_to_macho64.py" "$TMP_ELF" "$OUT"
+    if [[ "$MODE" == "run" ]]; then
+      if [[ "$OUT" == */* ]]; then
+        exec arch -x86_64 "$OUT"
+      else
+        exec arch -x86_64 "./$OUT"
+      fi
+    fi
+    ;;
+esac
