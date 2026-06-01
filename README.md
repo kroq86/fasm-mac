@@ -31,7 +31,7 @@ upstream `format Mach-O` directive inside fasm.
 ### Homebrew (recommended)
 
 ```sh
-brew tap kroq86/fasm-mac
+brew tap kroq86/fasm-mac https://github.com/kroq86/fasm-mac
 brew install fasm-mac
 ```
 

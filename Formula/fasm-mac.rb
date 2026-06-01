@@ -2,7 +2,7 @@ class FasmMac < Formula
   desc "flat assembler classic for macOS with Mach-O bridge"
   homepage "https://github.com/kroq86/fasm-mac"
   url "https://github.com/kroq86/fasm-mac/releases/download/v0.1.0/fasm-mac-0.1.0.tar.gz"
-  sha256 "08b16c39c5bbd0efb08bd617d9bd0d96159f61dfcf71051bffca19480893f3ff"
+  sha256 "df61a26fba6e945261f3fcfb7eded81883d8ab4e36ae7c192415719ac7cbfce4"
   license "BSD-2-Clause"
   version "0.1.0"
 
