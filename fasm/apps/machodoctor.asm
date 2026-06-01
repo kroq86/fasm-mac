@@ -7,6 +7,7 @@ segment readable executable
 
 include "fasm/core/print_io.inc"
 include "fasm/core/str.inc"
+include "fasm/core/file.inc"
 include "fasm/core/macho.inc"
 
 FILE_BUF_SIZE equ 4194304
@@ -101,31 +102,21 @@ parse_args:
 ; rax = 0 success, 2 error
 read_target:
 	mov	[read_path], rdi
-	open_file rdi, O_RDONLY, 0
-	jump_if_syscall_error .rt_open_error
-	mov	[file_fd], rax
-	mov	qword [file_size], 0
-.rt_loop:
-	mov	rax, FILE_BUF_SIZE
-	sub	rax, [file_size]
-	jz	.rt_too_large
-	mov	rdi, [file_fd]
 	lea	rsi, [file_buf]
-	add	rsi, [file_size]
-	mov	rdx, rax
-	mov	rax, SYS_read
-	syscall
-	jc	.rt_read_error
+	mov	rdx, FILE_BUF_SIZE
+	lea	rcx, [file_size]
+	call	file_read_all_fixed
 	test	rax, rax
-	jz	.rt_done
-	add	[file_size], rax
-	jmp	.rt_loop
-.rt_done:
-	close_file [file_fd]
+	jz	.rt_ok
+	cmp	rax, FILE_ERR_TOO_LARGE
+	je	.rt_too_large
+	cmp	rax, FILE_ERR_OPEN
+	je	.rt_open_error
+	jmp	.rt_read_error
+.rt_ok:
 	xor	rax, rax
 	ret
 .rt_too_large:
-	close_file [file_fd]
 	lea	rdi, [too_large_msg]
 	mov	rsi, too_large_msg_len
 	call	write_stderr
@@ -142,7 +133,6 @@ read_target:
 	mov	rax, 2
 	ret
 .rt_read_error:
-	close_file [file_fd]
 	lea	rdi, [read_err_msg]
 	mov	rsi, read_err_msg_len
 	call	write_stderr
@@ -732,7 +722,6 @@ arg_index dq ?
 mode dq ?
 path_ptr dq ?
 read_path dq ?
-file_fd dq ?
 file_size dq ?
 
 cpu_type dq ?

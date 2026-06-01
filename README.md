@@ -189,7 +189,7 @@ scripts/check_leetcode_examples.sh
 | `valid_anagram.asm` | LC 242 character counts | `1` |
 | `valid_parentheses.asm` | LC 20 via `stack.inc` | `1` |
 
-Core libraries: [`dp.inc`](fasm/core/dp.inc), [`grid.inc`](fasm/core/grid.inc), [`hashmap.inc`](fasm/core/hashmap.inc), [`hashmap_str.inc`](fasm/core/hashmap_str.inc), [`listnode.inc`](fasm/core/listnode.inc), [`stack.inc`](fasm/core/stack.inc), [`tree.inc`](fasm/core/tree.inc), [`sort.inc`](fasm/core/sort.inc), [`str.inc`](fasm/core/str.inc), [`repl.inc`](fasm/core/repl.inc), [`oop.inc`](fasm/core/oop.inc) (vtable + methods).
+Core libraries: [`dp.inc`](fasm/core/dp.inc), [`file.inc`](fasm/core/file.inc), [`grid.inc`](fasm/core/grid.inc), [`hashmap.inc`](fasm/core/hashmap.inc), [`hashmap_str.inc`](fasm/core/hashmap_str.inc), [`listnode.inc`](fasm/core/listnode.inc), [`macho.inc`](fasm/core/macho.inc), [`search.inc`](fasm/core/search.inc), [`stack.inc`](fasm/core/stack.inc), [`tree.inc`](fasm/core/tree.inc), [`sort.inc`](fasm/core/sort.inc), [`str.inc`](fasm/core/str.inc), [`repl.inc`](fasm/core/repl.inc), [`oop.inc`](fasm/core/oop.inc) (vtable + methods).
 
 OOP-style demo (`Playlist` with `append` / `print` / `reverse` via vtable):
 

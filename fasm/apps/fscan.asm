@@ -10,6 +10,7 @@ segment readable executable
 
 include "fasm/core/print_io.inc"
 include "fasm/core/str.inc"
+include "fasm/core/file.inc"
 include "fasm/core/search.inc"
 
 READ_BUF_SIZE equ 65536
@@ -120,8 +121,9 @@ parse_options:
 scan_file:
 	push	rbx
 	mov	[scan_path], rdi
-	open_file rdi, O_RDONLY, 0
-	jump_if_syscall_error .sf_open_error
+	call	file_open_read
+	cmp	rax, -1
+	je	.sf_open_error
 	mov	[scan_fd], rax
 	mov	qword [line_no], 1
 	mov	qword [line_len], 0
@@ -129,8 +131,12 @@ scan_file:
 	mov	qword [file_match_count], 0
 
 .read_loop:
-	read_file [scan_fd], read_buf, READ_BUF_SIZE
-	jump_if_syscall_error .sf_read_error
+	mov	rdi, [scan_fd]
+	lea	rsi, [read_buf]
+	mov	rdx, READ_BUF_SIZE
+	call	file_read_chunk
+	cmp	rax, -1
+	je	.sf_read_error
 	test	rax, rax
 	jz	.sf_eof
 	mov	rbx, rax
@@ -170,7 +176,8 @@ scan_file:
 .scan_tail:
 	call	scan_current_line
 .sf_close_ok:
-	close_file [scan_fd]
+	mov	rdi, [scan_fd]
+	call	file_close
 	xor	rax, rax
 	pop	rbx
 	ret
@@ -186,7 +193,8 @@ scan_file:
 	pop	rbx
 	ret
 .sf_read_error:
-	close_file [scan_fd]
+	mov	rdi, [scan_fd]
+	call	file_close
 	lea	rdi, [read_err_msg]
 	mov	rsi, read_err_msg_len
 	call	write_stderr
