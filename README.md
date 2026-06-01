@@ -189,7 +189,7 @@ scripts/check_leetcode_examples.sh
 | `valid_anagram.asm` | LC 242 character counts | `1` |
 | `valid_parentheses.asm` | LC 20 via `stack.inc` | `1` |
 
-Core libraries: [`dp.inc`](fasm/core/dp.inc), [`file.inc`](fasm/core/file.inc), [`grid.inc`](fasm/core/grid.inc), [`hashmap.inc`](fasm/core/hashmap.inc), [`hashmap_str.inc`](fasm/core/hashmap_str.inc), [`listnode.inc`](fasm/core/listnode.inc), [`macho.inc`](fasm/core/macho.inc), [`search.inc`](fasm/core/search.inc), [`stack.inc`](fasm/core/stack.inc), [`tree.inc`](fasm/core/tree.inc), [`sort.inc`](fasm/core/sort.inc), [`str.inc`](fasm/core/str.inc), [`repl.inc`](fasm/core/repl.inc), [`oop.inc`](fasm/core/oop.inc) (vtable + methods).
+Core libraries: [`dp.inc`](fasm/core/dp.inc), [`file.inc`](fasm/core/file.inc), [`grid.inc`](fasm/core/grid.inc), [`hashmap.inc`](fasm/core/hashmap.inc), [`hashmap_str.inc`](fasm/core/hashmap_str.inc), [`json.inc`](fasm/core/json.inc), [`listnode.inc`](fasm/core/listnode.inc), [`macho.inc`](fasm/core/macho.inc), [`scanner.inc`](fasm/core/scanner.inc), [`search.inc`](fasm/core/search.inc), [`stack.inc`](fasm/core/stack.inc), [`tree.inc`](fasm/core/tree.inc), [`sort.inc`](fasm/core/sort.inc), [`str.inc`](fasm/core/str.inc), [`repl.inc`](fasm/core/repl.inc), [`oop.inc`](fasm/core/oop.inc) (vtable + methods).
 
 OOP-style demo (`Playlist` with `append` / `print` / `reverse` via vtable):
 
@@ -256,6 +256,31 @@ Smoke test:
 
 ```sh
 scripts/check_machodoctor.sh
+```
+
+## logknife
+
+Tiny structured log slicer for plain logs and JSONL. It is the first consumer
+of the reusable line scanner in `fasm/core/scanner.inc` and the minimal JSONL
+field matcher in `fasm/core/json.inc`.
+
+```sh
+fasm fasm/apps/logknife.asm
+arch -x86_64 ./fasm/apps/logknife --contains timeout app.log
+arch -x86_64 ./fasm/apps/logknife --jsonl --level error --count app.jsonl
+arch -x86_64 ./fasm/apps/logknife --jsonl --field status=500 app.jsonl
+```
+
+Release packaging:
+
+```sh
+scripts/build-logknife-release.sh 0.1.0
+```
+
+Smoke test:
+
+```sh
+scripts/check_logknife.sh
 ```
 
 Dump format (`# miniredis v1` header):

@@ -12,6 +12,7 @@ include "fasm/core/print_io.inc"
 include "fasm/core/str.inc"
 include "fasm/core/file.inc"
 include "fasm/core/search.inc"
+include "fasm/core/scanner.inc"
 
 READ_BUF_SIZE equ 65536
 LINE_BUF_SIZE equ 8192
@@ -119,67 +120,19 @@ parse_options:
 ; rdi = path
 ; rax = 0/1 success, 2 error
 scan_file:
-	push	rbx
 	mov	[scan_path], rdi
-	call	file_open_read
-	cmp	rax, -1
-	je	.sf_open_error
-	mov	[scan_fd], rax
-	mov	qword [line_no], 1
-	mov	qword [line_len], 0
-	mov	qword [line_overflow], 0
 	mov	qword [file_match_count], 0
-
-.read_loop:
-	mov	rdi, [scan_fd]
 	lea	rsi, [read_buf]
 	mov	rdx, READ_BUF_SIZE
-	call	file_read_chunk
-	cmp	rax, -1
+	lea	rcx, [line_buf]
+	mov	r8, LINE_BUF_SIZE
+	mov	r9, scan_current_line
+	call	scanner_scan_file
+	cmp	rax, SCANNER_ERR_OPEN
+	je	.sf_open_error
+	cmp	rax, SCANNER_ERR_READ
 	je	.sf_read_error
-	test	rax, rax
-	jz	.sf_eof
-	mov	rbx, rax
-	xor	r12, r12
-.byte_loop:
-	cmp	r12, rbx
-	jae	.read_loop
-	mov	al, [read_buf + r12]
-	cmp	al, 10
-	je	.newline
-	cmp	qword [line_overflow], 0
-	jne	.next_byte
-	mov	rcx, [line_len]
-	cmp	rcx, LINE_BUF_SIZE
-	jae	.mark_overflow
-	mov	[line_buf + rcx], al
-	inc	qword [line_len]
-	jmp	.next_byte
-.mark_overflow:
-	mov	qword [line_overflow], 1
-	jmp	.next_byte
-.newline:
-	call	scan_current_line
-	inc	qword [line_no]
-	mov	qword [line_len], 0
-	mov	qword [line_overflow], 0
-.next_byte:
-	inc	r12
-	jmp	.byte_loop
-
-.sf_eof:
-	cmp	qword [line_len], 0
-	jne	.scan_tail
-	cmp	qword [line_overflow], 0
-	jne	.scan_tail
-	jmp	.sf_close_ok
-.scan_tail:
-	call	scan_current_line
-.sf_close_ok:
-	mov	rdi, [scan_fd]
-	call	file_close
 	xor	rax, rax
-	pop	rbx
 	ret
 .sf_open_error:
 	lea	rdi, [open_err_msg]
@@ -190,11 +143,8 @@ scan_file:
 	mov	al, 10
 	call	write_char_stderr
 	mov	rax, 2
-	pop	rbx
 	ret
 .sf_read_error:
-	mov	rdi, [scan_fd]
-	call	file_close
 	lea	rdi, [read_err_msg]
 	mov	rsi, read_err_msg_len
 	call	write_stderr
@@ -203,14 +153,12 @@ scan_file:
 	mov	al, 10
 	call	write_char_stderr
 	mov	rax, 2
-	pop	rbx
 	ret
 
 scan_current_line:
-	cmp	qword [line_overflow], 0
-	jne	.scl_done
-	lea	rdi, [line_buf]
-	mov	rsi, [line_len]
+	mov	[callback_line_ptr], rdi
+	mov	[callback_line_len], rsi
+	mov	[callback_line_no], rdx
 	mov	rdx, [pattern_ptr]
 	mov	rcx, [pattern_len]
 	cmp	qword [flag_ignore_case], 0
@@ -232,12 +180,12 @@ scan_current_line:
 	call	print_cstr
 	mov	al, ':'
 	call	print_char
-	mov	rax, [line_no]
+	mov	rax, [callback_line_no]
 	call	print_int64
 	mov	al, ':'
 	call	print_char
-	lea	rdi, [line_buf]
-	mov	rsi, [line_len]
+	mov	rdi, [callback_line_ptr]
+	mov	rsi, [callback_line_len]
 	call	io_write
 	mov	al, 10
 	call	print_char
@@ -302,10 +250,9 @@ current_path dq ?
 any_found dq 0
 
 scan_path dq ?
-scan_fd dq ?
-line_no dq ?
-line_len dq ?
-line_overflow dq ?
+callback_line_ptr dq ?
+callback_line_len dq ?
+callback_line_no dq ?
 
 flag_count dq 0
 flag_files_only dq 0
@@ -325,3 +272,4 @@ line_buf rb LINE_BUF_SIZE
 include "fasm/core/runtime_bss.inc"
 runtime_print_bss
 stderr_char rb 1
+scanner_bss

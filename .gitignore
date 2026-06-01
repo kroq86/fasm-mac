@@ -14,6 +14,7 @@
 /fasm/apps/miniredis_server
 /fasm/apps/fscan
 /fasm/apps/machodoctor
+/fasm/apps/logknife
 /fasm/basic/fib
 /fasm/examples/nested_list_demo
 /fasm/examples/oop_playlist
