@@ -1,0 +1,14 @@
+---
+description: fasm-mac stdlib-first architecture — core vs apps vs examples vs brew products
+alwaysApply: true
+---
+
+# fasm-mac: core-first
+
+- **`fasm/core/*.inc`** is the repo stdlib. Reusable behavior belongs here.
+- **`fasm/apps/*`** are thin consumers of core — no app-local mini-frameworks for shared logic.
+- **`fasm/examples/*`** demonstrate core abstractions; do not hide important algorithms in example-only code.
+- **Core edits are high-risk** — prefer additive APIs; audit all callers before changing semantics; run `scripts/check_*.sh`, affected `fasm/tests/macos-smoke/*`, and `git diff --check`; not done until every known consumer builds and output matches expectations.
+- **Prioritize brew-worthy products** (`Formula/`, release tarballs, `scripts/check_*.sh`) over toy demos.
+
+Full policy: `AGENTS.md`.

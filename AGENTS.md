@@ -1,5 +1,13 @@
 # Repository Working Rules
 
+## Rule (summary)
+
+- **`fasm/core/*.inc` is the growing stdlib** — reusable behavior lives here, not in apps.
+- **`fasm/apps/*` are thin consumers** — products wire core helpers; no private mini-frameworks per app.
+- **`fasm/examples/*` demonstrate core** — important algorithms and infrastructure must not hide in example-local code.
+- **Core changes are high blast radius** — small diffs, caller audit before semantic edits, then broad checks (`scripts/check_*.sh`, macOS smoke, `git diff --check`); not done until every known consumer still builds and matches expected output.
+- **Brew-worthy products beat toy examples** — finished binaries, real macOS/developer workflows, check scripts, and a release path (`Formula/`, `scripts/build-*-release.sh`).
+
 ## Core-First Product Strategy
 
 This repository is not just a collection of standalone FASM demos. Treat it as
@@ -29,6 +37,7 @@ Core changes can break every product, so make them small and verified.
 - After touching `fasm/core/*`, run the relevant product checks plus the broad
   smoke set:
   - `scripts/check_machodoctor.sh`
+  - `scripts/check_logknife.sh`
   - `scripts/check_fscan.sh`
   - `scripts/check_leetcode_examples.sh`
   - affected macOS smoke tests under `fasm/tests/macos-smoke`
