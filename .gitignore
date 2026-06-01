@@ -17,6 +17,7 @@
 /fasm/examples/oop_playlist
 /fasm/examples/leetcode/*
 !/fasm/examples/leetcode/*.asm
+!/fasm/examples/leetcode/*.inc
 /fasm/tests/macos-smoke/*
 !/fasm/tests/macos-smoke/*.asm
 /fasm/tests/macos-smoke/entry_layout

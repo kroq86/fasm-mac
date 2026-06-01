@@ -148,17 +148,48 @@ fasm fasm/tests/macos-smoke/nested_list.asm
 arch -x86_64 ./fasm/tests/macos-smoke/nested_list
 ```
 
-LeetCode-style examples using the same Vec/Value heap:
+LeetCode-style examples covering arrays, hash maps, linked lists, trees,
+graphs, stacks, and dynamic programming. Several examples are intentionally
+thin wrappers around reusable helpers in `fasm/core`.
 
-| Command | Problem | Output |
-|---------|---------|--------|
+```sh
+scripts/check_leetcode_examples.sh
+```
+
+| Command | Problem / approach | Output |
+|---------|--------------------|--------|
+| `best_time_to_buy_sell_stock.asm` | LC 121 via `dp.inc` | `5` |
+| `binary_search.asm` | LC 704 binary search | `4` |
+| `climbing_stairs.asm` | LC 70 via `dp.inc` | `8` |
+| `contains_duplicate.asm` | LC 217 int hash map | `1` |
+| `first_unique_character.asm` | LC 387 character counts | `0` |
+| `house_robber.asm` | LC 198 via `dp.inc` | `4` |
+| `implement_queue_using_stacks.asm` | LC 232 via `stack.inc` | `1 1 0` |
+| `intersection_of_two_arrays.asm` | LC 349 int hash map | `2` |
+| `invert_binary_tree.asm` | LC 226 via `tree.inc` | `4 7 9 6 2 3 1` |
+| `linked_list_cycle.asm` | LC 141 via `listnode.inc` | `1` |
+| `majority_element.asm` | LC 169 Boyer-Moore vote | `2` |
+| `maximum_depth_binary_tree.asm` | LC 104 via `tree.inc` | `3` |
+| `maximum_subarray.asm` | LC 53 via `dp.inc` | `6` |
+| `merge_sorted_array.asm` | LC 88 two pointers from end | `1 2 2 3 5 6` |
+| `merge_two_sorted_lists.asm` | LC 21 via `listnode.inc` | `1 1 2 3 4 4` |
+| `middle_of_linked_list.asm` | LC 876 via `listnode.inc` | `3` |
+| `missing_number.asm` | LC 268 xor | `2` |
+| `move_zeroes.asm` | LC 283 in-place compaction | `1 3 12 0 0` |
+| `nested_list_weight_sum.asm` | [LC 339](https://leetcode.com/problems/nested-list-weight-sum/) | `10` |
+| `number_of_islands.asm` | LC 200 via `grid.inc` | `1` |
+| `palindrome_linked_list.asm` | LC 234 via `listnode.inc` | `1` |
+| `remove_duplicates_sorted_array.asm` | LC 26 in-place unique prefix | `5 0 1 2 3 4` |
+| `reverse_linked_list.asm` | [LC 206](https://leetcode.com/problems/reverse-linked-list/) | `5 4 3 2 1` |
+| `search_insert_position.asm` | LC 35 lower bound | `2` |
+| `single_number.asm` | LC 136 xor | `4` |
+| `sort_array.asm` | [LC 912](https://leetcode.com/problems/sort-an-array/) | `-1 0 1 2 3` |
 | `two_sum.asm` | [LC 1](https://leetcode.com/problems/two-sum/) brute O(n²) | `0 1` |
 | `two_sum_hashmap.asm` | LC 1 hash map O(n) | `0 1` |
-| `nested_list_weight_sum.asm` | [LC 339](https://leetcode.com/problems/nested-list-weight-sum/) | `10` |
-| `reverse_linked_list.asm` | [LC 206](https://leetcode.com/problems/reverse-linked-list/) | `5 4 3 2 1` |
-| `sort_array.asm` | [LC 912](https://leetcode.com/problems/sort-an-array/) | `-1 0 1 2 3` |
+| `valid_anagram.asm` | LC 242 character counts | `1` |
+| `valid_parentheses.asm` | LC 20 via `stack.inc` | `1` |
 
-Core libraries: [`hashmap.inc`](fasm/core/hashmap.inc), [`hashmap_str.inc`](fasm/core/hashmap_str.inc), [`listnode.inc`](fasm/core/listnode.inc), [`sort.inc`](fasm/core/sort.inc), [`str.inc`](fasm/core/str.inc), [`repl.inc`](fasm/core/repl.inc), [`oop.inc`](fasm/core/oop.inc) (vtable + methods).
+Core libraries: [`dp.inc`](fasm/core/dp.inc), [`grid.inc`](fasm/core/grid.inc), [`hashmap.inc`](fasm/core/hashmap.inc), [`hashmap_str.inc`](fasm/core/hashmap_str.inc), [`listnode.inc`](fasm/core/listnode.inc), [`stack.inc`](fasm/core/stack.inc), [`tree.inc`](fasm/core/tree.inc), [`sort.inc`](fasm/core/sort.inc), [`str.inc`](fasm/core/str.inc), [`repl.inc`](fasm/core/repl.inc), [`oop.inc`](fasm/core/oop.inc) (vtable + methods).
 
 OOP-style demo (`Playlist` with `append` / `print` / `reverse` via vtable):
 
@@ -262,14 +293,7 @@ printf 'hi' | nc localhost 9999
 ```
 
 ```sh
-fasm fasm/examples/leetcode/two_sum_hashmap.asm
-arch -x86_64 ./fasm/examples/leetcode/two_sum_hashmap
-
-fasm fasm/examples/leetcode/reverse_linked_list.asm
-arch -x86_64 ./fasm/examples/leetcode/reverse_linked_list
-
-fasm fasm/examples/leetcode/sort_array.asm
-arch -x86_64 ./fasm/examples/leetcode/sort_array
+scripts/check_leetcode_examples.sh
 ```
 
 ## Shared Libraries
