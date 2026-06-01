@@ -215,6 +215,22 @@ Commands (v1.1): `PING`, `SET key value`, `GET key`, `EXISTS key`, `DEL key`, `D
 
 Limits: 256-byte lines, ASCII keys/values without spaces in v1, up to 16 tokens per REPL line.
 
+## fscan
+
+Tiny literal-search CLI inspired by grep/ripgrep. It searches one or more files
+for a byte-exact literal and prints matching lines as `path:line:text`.
+
+```sh
+fasm fasm/apps/fscan.asm
+arch -x86_64 ./fasm/apps/fscan needle file.txt other.txt
+```
+
+Smoke test:
+
+```sh
+scripts/check_fscan.sh
+```
+
 Dump format (`# miniredis v1` header):
 
 ```text

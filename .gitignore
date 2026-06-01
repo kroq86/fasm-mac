@@ -12,6 +12,7 @@
 # FASM Mach-O executables (built next to .asm, no extension)
 /fasm/apps/miniredis
 /fasm/apps/miniredis_server
+/fasm/apps/fscan
 /fasm/basic/fib
 /fasm/examples/nested_list_demo
 /fasm/examples/oop_playlist
