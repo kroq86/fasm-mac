@@ -231,6 +231,33 @@ Smoke test:
 scripts/check_fscan.sh
 ```
 
+## machodoctor
+
+Standalone macOS Mach-O inspector intended to ship as its own Homebrew formula
+and ready-to-run binary. It is separate from `fasm-mac`; FASM is only used to
+build release artifacts. Universal/fat Mach-O files are supported by inspecting
+their x86_64 slice in v1.
+
+```sh
+fasm fasm/apps/machodoctor.asm
+arch -x86_64 ./fasm/apps/machodoctor ./fasm/apps/machodoctor
+arch -x86_64 ./fasm/apps/machodoctor --json ./fasm/apps/machodoctor
+arch -x86_64 ./fasm/apps/machodoctor --deps ./fasm/apps/machodoctor
+arch -x86_64 ./fasm/apps/machodoctor --check ./fasm/apps/machodoctor
+```
+
+Release packaging:
+
+```sh
+scripts/build-machodoctor-release.sh 0.1.0
+```
+
+Smoke test:
+
+```sh
+scripts/check_machodoctor.sh
+```
+
 Dump format (`# miniredis v1` header):
 
 ```text
