@@ -222,7 +222,7 @@ for a byte-exact literal and prints matching lines as `path:line:text`.
 
 ```sh
 fasm fasm/apps/fscan.asm
-arch -x86_64 ./fasm/apps/fscan needle file.txt other.txt
+arch -x86_64 ./fasm/apps/fscan [-c] [-l] [-i] needle file.txt other.txt
 ```
 
 Smoke test:

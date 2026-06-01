@@ -22,6 +22,30 @@ if [[ "$actual" != "$expected" ]]; then
   exit 1
 fi
 
+actual="$(arch -x86_64 "$BIN" -c needle "$FILE_A" "$FILE_B")"
+expected="$FILE_A:1
+$FILE_B:1"
+if [[ "$actual" != "$expected" ]]; then
+  printf 'FAIL fscan count\nexpected:\n%s\nactual:\n%s\n' "$expected" "$actual" >&2
+  exit 1
+fi
+
+actual="$(arch -x86_64 "$BIN" -l needle "$FILE_A" "$FILE_B")"
+expected="$FILE_A
+$FILE_B"
+if [[ "$actual" != "$expected" ]]; then
+  printf 'FAIL fscan files-only\nexpected:\n%s\nactual:\n%s\n' "$expected" "$actual" >&2
+  exit 1
+fi
+
+actual="$(arch -x86_64 "$BIN" -i NEEDLE "$FILE_A" "$FILE_B")"
+expected="$FILE_A:2:needle one
+$FILE_B:1:needle two"
+if [[ "$actual" != "$expected" ]]; then
+  printf 'FAIL fscan ignore-case\nexpected:\n%s\nactual:\n%s\n' "$expected" "$actual" >&2
+  exit 1
+fi
+
 if arch -x86_64 "$BIN" absent "$FILE_A" >/dev/null; then
   echo 'FAIL fscan absent should exit 1' >&2
   exit 1

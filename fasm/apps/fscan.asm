@@ -1,7 +1,7 @@
 ; fscan: tiny literal-search CLI.
 ;
-; Usage: fscan <literal> <file> [file...]
-; Prints: path:line:text
+; Usage: fscan [-c] [-l] [-i] <literal> <file> [file...]
+; Default prints: path:line:text
 
 format ELF64 executable 3
 include "fasm/core/platform.inc"
@@ -23,14 +23,22 @@ start:
 	cmp	rax, 3
 	jb	usage
 	mov	[argc], rax
-	mov	rax, [rbx + 16]
+	mov	qword [arg_index], 1
+	call	parse_options
+	mov	rax, [arg_index]
+	cmp	rax, [argc]
+	jae	usage
+	mov	rax, [rbx + 8 + rax * 8]
 	mov	[pattern_ptr], rax
 	mov	rdi, rax
 	call	str_len
 	test	rax, rax
 	jz	usage
 	mov	[pattern_len], rax
-	mov	qword [arg_index], 2
+	inc	qword [arg_index]
+	mov	rax, [arg_index]
+	cmp	rax, [argc]
+	jae	usage
 
 .file_loop:
 	mov	rax, [arg_index]
@@ -42,6 +50,7 @@ start:
 	call	scan_file
 	cmp	rax, 2
 	je	.exit_error
+	call	print_file_summary
 	inc	qword [arg_index]
 	jmp	.file_loop
 
@@ -60,6 +69,52 @@ usage:
 	call	write_stderr
 	exit 2
 
+parse_options:
+.po_loop:
+	mov	rax, [arg_index]
+	cmp	rax, [argc]
+	jae	usage
+	mov	rdi, [rbx + 8 + rax * 8]
+	cmp	byte [rdi], '-'
+	jne	.po_done
+	cmp	byte [rdi + 1], 0
+	je	.po_done
+	cmp	byte [rdi + 1], '-'
+	jne	.po_flags
+	cmp	byte [rdi + 2], 0
+	jne	usage
+	inc	qword [arg_index]
+	jmp	.po_done
+.po_flags:
+	inc	rdi
+.po_flag_loop:
+	mov	al, [rdi]
+	test	al, al
+	jz	.po_next_arg
+	cmp	al, 'c'
+	je	.po_count
+	cmp	al, 'l'
+	je	.po_files
+	cmp	al, 'i'
+	je	.po_ci
+	jmp	usage
+.po_count:
+	mov	qword [flag_count], 1
+	jmp	.po_flag_next
+.po_files:
+	mov	qword [flag_files_only], 1
+	jmp	.po_flag_next
+.po_ci:
+	mov	qword [flag_ignore_case], 1
+.po_flag_next:
+	inc	rdi
+	jmp	.po_flag_loop
+.po_next_arg:
+	inc	qword [arg_index]
+	jmp	.po_loop
+.po_done:
+	ret
+
 ; rdi = path
 ; rax = 0/1 success, 2 error
 scan_file:
@@ -71,6 +126,7 @@ scan_file:
 	mov	qword [line_no], 1
 	mov	qword [line_len], 0
 	mov	qword [line_overflow], 0
+	mov	qword [file_match_count], 0
 
 .read_loop:
 	read_file [scan_fd], read_buf, READ_BUF_SIZE
@@ -149,10 +205,21 @@ scan_current_line:
 	mov	rsi, [line_len]
 	mov	rdx, [pattern_ptr]
 	mov	rcx, [pattern_len]
+	cmp	qword [flag_ignore_case], 0
+	jne	.scl_ci
 	call	search_contains
+	jmp	.scl_after_search
+.scl_ci:
+	call	search_contains_ascii_ci
+.scl_after_search:
 	test	rax, rax
 	jz	.scl_done
 	mov	qword [any_found], 1
+	inc	qword [file_match_count]
+	cmp	qword [flag_count], 0
+	jne	.scl_done
+	cmp	qword [flag_files_only], 0
+	jne	.scl_done
 	mov	rdi, [scan_path]
 	call	print_cstr
 	mov	al, ':'
@@ -167,6 +234,30 @@ scan_current_line:
 	mov	al, 10
 	call	print_char
 .scl_done:
+	ret
+
+print_file_summary:
+	cmp	qword [flag_files_only], 0
+	jne	.pfs_files_only
+	cmp	qword [flag_count], 0
+	jne	.pfs_count
+	ret
+.pfs_files_only:
+	cmp	qword [file_match_count], 0
+	je	.pfs_done
+	mov	rdi, [scan_path]
+	call	print_cstr
+	mov	al, 10
+	call	print_char
+	jmp	.pfs_done
+.pfs_count:
+	mov	rdi, [scan_path]
+	call	print_cstr
+	mov	al, ':'
+	call	print_char
+	mov	rax, [file_match_count]
+	call	print_int_nl
+.pfs_done:
 	ret
 
 ; rdi = ptr, rsi = len
@@ -208,7 +299,12 @@ line_no dq ?
 line_len dq ?
 line_overflow dq ?
 
-usage_msg db 'usage: fscan <literal> <file> [file...]', 10
+flag_count dq 0
+flag_files_only dq 0
+flag_ignore_case dq 0
+file_match_count dq ?
+
+usage_msg db 'usage: fscan [-c] [-l] [-i] <literal> <file> [file...]', 10
 usage_msg_len = $ - usage_msg
 open_err_msg db 'fscan: cannot open: '
 open_err_msg_len = $ - open_err_msg
