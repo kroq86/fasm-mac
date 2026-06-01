@@ -10,7 +10,7 @@ class FasmMac < Formula
 
   def install
     prefix.install "fasm"
-    bin.install "bin/fasm" => libexec/"fasm"
+    libexec.install "bin/fasm"
     (bin/"fasm").write_env_script libexec/"fasm",
                                   PYTHON: Formula["python@3.13"].opt_bin/"python3"
   end
