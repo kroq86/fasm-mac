@@ -13,8 +13,10 @@
 /fasm/apps/miniredis
 /fasm/apps/miniredis_server
 /fasm/apps/fscan
+/fasm/apps/hexpeek
 /fasm/apps/machodoctor
 /fasm/apps/logknife
+/fasm/apps/pathsum
 /fasm/basic/fib
 /fasm/examples/nested_list_demo
 /fasm/examples/oop_playlist

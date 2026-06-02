@@ -125,7 +125,8 @@ The shim passes:
 - `TARGET_OS=linux` for `--emit=elf`
 
 `platform.inc` currently provides `write_file`, `read_file`, `open_file`,
-`close_file`, `exit`, and syscall helper macros for Linux and Darwin x86_64.
+`close_file`, `exit`, syscall helper macros, and the Darwin constants needed by
+the reusable file, socket, stat, and directory-walk helpers.
 
 ## Structures and nested dynamic lists
 
@@ -189,7 +190,7 @@ scripts/check_leetcode_examples.sh
 | `valid_anagram.asm` | LC 242 character counts | `1` |
 | `valid_parentheses.asm` | LC 20 via `stack.inc` | `1` |
 
-Core libraries: [`dp.inc`](fasm/core/dp.inc), [`file.inc`](fasm/core/file.inc), [`grid.inc`](fasm/core/grid.inc), [`hashmap.inc`](fasm/core/hashmap.inc), [`hashmap_str.inc`](fasm/core/hashmap_str.inc), [`json.inc`](fasm/core/json.inc), [`listnode.inc`](fasm/core/listnode.inc), [`macho.inc`](fasm/core/macho.inc), [`scanner.inc`](fasm/core/scanner.inc), [`search.inc`](fasm/core/search.inc), [`stack.inc`](fasm/core/stack.inc), [`tree.inc`](fasm/core/tree.inc), [`sort.inc`](fasm/core/sort.inc), [`str.inc`](fasm/core/str.inc), [`repl.inc`](fasm/core/repl.inc), [`oop.inc`](fasm/core/oop.inc) (vtable + methods).
+Core libraries: [`dirwalk.inc`](fasm/core/dirwalk.inc), [`dp.inc`](fasm/core/dp.inc), [`file.inc`](fasm/core/file.inc), [`grid.inc`](fasm/core/grid.inc), [`hashmap.inc`](fasm/core/hashmap.inc), [`hashmap_str.inc`](fasm/core/hashmap_str.inc), [`hex.inc`](fasm/core/hex.inc), [`json.inc`](fasm/core/json.inc), [`listnode.inc`](fasm/core/listnode.inc), [`macho.inc`](fasm/core/macho.inc), [`scanner.inc`](fasm/core/scanner.inc), [`search.inc`](fasm/core/search.inc), [`stack.inc`](fasm/core/stack.inc), [`tree.inc`](fasm/core/tree.inc), [`sort.inc`](fasm/core/sort.inc), [`str.inc`](fasm/core/str.inc), [`repl.inc`](fasm/core/repl.inc), [`oop.inc`](fasm/core/oop.inc) (vtable + methods).
 
 OOP-style demo (`Playlist` with `append` / `print` / `reverse` via vtable):
 
@@ -225,10 +226,84 @@ fasm fasm/apps/fscan.asm
 arch -x86_64 ./fasm/apps/fscan [-c] [-l] [-i] needle file.txt other.txt
 ```
 
+Homebrew:
+
+```sh
+brew install kroq86/fasm-mac/fscan
+fscan needle file.txt
+```
+
 Smoke test:
 
 ```sh
 scripts/check_fscan.sh
+```
+
+## hexpeek
+
+Tiny native hex dump CLI for peeking at file bytes. It demonstrates the
+reusable [`hex.inc`](fasm/core/hex.inc) formatter plus chunked file reads.
+
+```sh
+fasm fasm/apps/hexpeek.asm
+arch -x86_64 ./fasm/apps/hexpeek [-n bytes] [-s skip] file.bin
+```
+
+Homebrew:
+
+```sh
+brew install kroq86/fasm-mac/hexpeek
+hexpeek -n 64 file.bin
+```
+
+Release packaging:
+
+```sh
+scripts/build-hexpeek-release.sh 0.1.0
+```
+
+Smoke test:
+
+```sh
+scripts/check_hexpeek.sh
+```
+
+## pathsum
+
+Tiny native recursive directory counter. It demonstrates the reusable
+[`dirwalk.inc`](fasm/core/dirwalk.inc) API for directory traversal, file type
+detection, and `stat64` size reads.
+
+```sh
+fasm fasm/apps/pathsum.asm
+arch -x86_64 ./fasm/apps/pathsum [dir]
+```
+
+Output:
+
+```text
+files 2
+dirs 1
+bytes 1234
+```
+
+Homebrew:
+
+```sh
+brew install kroq86/fasm-mac/pathsum
+pathsum .
+```
+
+Release packaging:
+
+```sh
+scripts/build-pathsum-release.sh 0.1.0
+```
+
+Smoke test:
+
+```sh
+scripts/check_pathsum.sh
 ```
 
 ## machodoctor
