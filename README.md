@@ -333,6 +333,40 @@ Smoke test:
 scripts/check_machodoctor.sh
 ```
 
+## shipcheck
+
+Standalone local release QA checker for Homebrew-style binary products. It
+validates one formula, one release tarball, and one built Mach-O binary before
+uploading release assets.
+
+```sh
+fasm fasm/apps/shipcheck.asm
+arch -x86_64 ./fasm/apps/shipcheck Formula/hexpeek.rb dist/hexpeek-0.1.0-macos-x86_64.tar.gz ./hexpeek
+```
+
+Checks include formula `url` basename, `version`, `sha256`, `bin.install`, the
+tarball filename shape, and whether the binary is an x86_64 Mach-O executable.
+Tar archive contents remain a shell-script smoke check in v1.
+
+Homebrew:
+
+```sh
+brew install kroq86/fasm-mac/shipcheck
+shipcheck Formula/hexpeek.rb dist/hexpeek-0.1.0-macos-x86_64.tar.gz ./hexpeek
+```
+
+Release packaging:
+
+```sh
+scripts/build-shipcheck-release.sh 0.1.0
+```
+
+Smoke test:
+
+```sh
+scripts/check_shipcheck.sh
+```
+
 ## logknife
 
 Tiny structured log slicer for plain logs and JSONL. It is the first consumer
