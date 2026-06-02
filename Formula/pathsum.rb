@@ -2,7 +2,7 @@ class Pathsum < Formula
   desc "Tiny native recursive directory file and byte counter"
   homepage "https://github.com/kroq86/fasm-mac"
   url "https://github.com/kroq86/fasm-mac/releases/download/v0.1.0/pathsum-0.1.0-macos-x86_64.tar.gz"
-  sha256 "bcc0f773b4e6a6b8d9bff0717fa7874d69f1f32cfdf7819e265f9c38682304ba"
+  sha256 "ded7b4c5709557196fbea4bed3b0008461893d228a69f57610b20ebd097aa812"
   license "BSD-2-Clause"
   version "0.1.0"
 

@@ -2,7 +2,7 @@ class Machodoctor < Formula
   desc "Tiny native macOS Mach-O binary inspector"
   homepage "https://github.com/kroq86/fasm-mac"
   url "https://github.com/kroq86/fasm-mac/releases/download/v0.1.0/machodoctor-0.1.0-macos-x86_64.tar.gz"
-  sha256 "89e0502f632e20fd7f6ff98c4e8404a9f05667f82448e5cfc76ad91203a1c10d"
+  sha256 "98695b3dc751025be81ad3a951804e471fab7783b3ae07bdaebbc61ce1dea025"
   license "BSD-2-Clause"
   version "0.1.0"
 
