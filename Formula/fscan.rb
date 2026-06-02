@@ -12,6 +12,6 @@ class Fscan < Formula
 
   test do
     (testpath/"a.txt").write("needle one\nplain\n")
-    assert_equal "1", shell_output("#{bin}/fscan -c needle #{testpath}/a.txt").strip
+    assert_equal "#{testpath}/a.txt:1", shell_output("#{bin}/fscan -c needle #{testpath}/a.txt").strip
   end
 end
