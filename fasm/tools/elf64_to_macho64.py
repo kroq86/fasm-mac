@@ -36,11 +36,14 @@ ET_EXEC = 2
 SHT_PROGBITS = 1
 SHT_SYMTAB = 2
 SHT_STRTAB = 3
+SHT_RELA = 4
 SHT_NOBITS = 8
+SHT_REL = 9
 SHF_WRITE = 1
 SHF_ALLOC = 2
 SHF_EXECINSTR = 4
 N_EXT = 0x01
+N_UNDF = 0x00
 N_SECT = 0x0E
 NO_SECT = 0
 S_REGULAR = 0x0
@@ -49,6 +52,12 @@ S_ATTR_PURE_INSTRUCTIONS = 0x80000000
 S_ATTR_SOME_INSTRUCTIONS = 0x00000400
 PLATFORM_MACOS = 1
 MACOS_11_0_0 = 0x000B0000
+R_X86_64_64 = 1
+R_X86_64_PC32 = 2
+R_X86_64_PLT32 = 4
+X86_64_RELOC_UNSIGNED = 0
+X86_64_RELOC_SIGNED = 1
+X86_64_RELOC_BRANCH = 2
 
 
 def align(value: int, boundary: int = PAGE) -> int:
@@ -293,20 +302,14 @@ def parse_elf64_object(path: Path) -> tuple[list[dict], list[dict], bytes]:
                 "content": content,
                 "addr": 0,
                 "offset": 0,
+                "local_reloc_patches": [],
             }
         )
 
     if not sections:
         raise ValueError("ELF object contains no allocatable sections")
 
-    for section in raw_sections:
-        shtype = section[1]
-        if shtype in {4, 9}:  # SHT_RELA or SHT_REL
-            size = section[5]
-            if size:
-                raise ValueError("ELF relocations are not supported by the Mach-O object converter yet")
-
-    symbols: list[dict] = []
+    elf_symbols: list[dict] = []
     for section in raw_sections:
         if section[1] != SHT_SYMTAB:
             continue
@@ -320,28 +323,130 @@ def parse_elf64_object(path: Path) -> tuple[list[dict], list[dict], bytes]:
             st_name, st_info, st_other, st_shndx, st_value, st_size = struct.unpack_from(
                 "<IBBHQQ", data, offset + i * entsize
             )
-            if st_name == 0 or st_shndx == 0 or st_shndx not in elf_to_macho:
-                continue
             bind = st_info >> 4
             typ = st_info & 0xF
             name = read_c_string(strdata, st_name)
-            if not name or name.startswith("."):
-                continue
-            external = bind != 0
-            # clang expects C ABI symbols with a leading underscore on Mach-O.
-            macho_name = "_" + name
-            symbols.append(
+            elf_symbols.append(
                 {
-                    "name": macho_name,
-                    "type": N_SECT | (N_EXT if external else 0),
-                    "sect": elf_to_macho[st_shndx],
-                    "desc": 0,
+                    "name": name,
+                    "bind": bind,
+                    "typ": typ,
+                    "shndx": st_shndx,
                     "value": st_value,
-                    "external": external,
+                    "size": st_size,
                 }
             )
 
-    symbols.sort(key=lambda item: (0 if not item["external"] else 1, item["name"]))
+    symbols: list[dict] = []
+    elf_sym_to_macho: dict[int, int] = {}
+    for index, symbol in enumerate(elf_symbols):
+        name = symbol["name"]
+        shndx = symbol["shndx"]
+        bind = symbol["bind"]
+        if shndx == 0:
+            if not name:
+                continue
+            symbols.append(
+                {
+                    "name": "_" + name,
+                    "type": N_UNDF | N_EXT,
+                    "sect": NO_SECT,
+                    "desc": 0,
+                    "value": 0,
+                    "external": True,
+                    "undefined": True,
+                    "elf_index": index,
+                }
+            )
+            elf_sym_to_macho[index] = len(symbols) - 1
+            continue
+        if shndx not in elf_to_macho or not name or name.startswith("."):
+            continue
+        external = bind != 0
+        # clang expects C ABI symbols with a leading underscore on Mach-O.
+        macho_name = "_" + name
+        symbols.append(
+            {
+                "name": macho_name,
+                "type": N_SECT | (N_EXT if external else 0),
+                "sect": elf_to_macho[shndx],
+                "desc": 0,
+                "value": symbol["value"],
+                "external": external,
+                "undefined": False,
+                "elf_index": index,
+            }
+        )
+        elf_sym_to_macho[index] = len(symbols) - 1
+
+    symbols.sort(key=lambda item: (0 if not item["external"] else 1, 1 if item.get("undefined") else 0, item["name"]))
+    old_to_new_symbol_index = {id(symbol): index for index, symbol in enumerate(symbols)}
+    elf_sym_to_macho = {elf_index: old_to_new_symbol_index[id(symbol)] for elf_index, symbol in ((s["elf_index"], s) for s in symbols)}
+
+    section_by_elf = {section["elf_index"]: section for section in sections}
+    for section in sections:
+        section["relocs"] = []
+
+    for section in raw_sections:
+        shtype = section[1]
+        if shtype not in {SHT_RELA, SHT_REL}:
+            continue
+        offset, size, link, info, entsize = section[4], section[5], section[6], section[7], section[9]
+        if info not in section_by_elf:
+            if size:
+                raise ValueError("relocation targets a non-converted section")
+            continue
+        target = section_by_elf[info]
+        if shtype == SHT_RELA and entsize != 24:
+            raise ValueError(f"unexpected ELF64 RELA entry size: {entsize}")
+        if shtype == SHT_REL and entsize != 16:
+            raise ValueError(f"unexpected ELF64 REL entry size: {entsize}")
+        count = size // entsize
+        content = bytearray(target["content"])
+        for i in range(count):
+            if shtype == SHT_RELA:
+                r_offset, r_info, r_addend = struct.unpack_from("<QQq", data, offset + i * entsize)
+            else:
+                r_offset, r_info = struct.unpack_from("<QQ", data, offset + i * entsize)
+                r_addend = 0
+            r_type = r_info & 0xFFFFFFFF
+            r_sym = r_info >> 32
+            if r_sym >= len(elf_symbols):
+                raise ValueError("relocation references an invalid symbol")
+            symbol = elf_symbols[r_sym]
+            shndx = symbol["shndx"]
+            if r_type == R_X86_64_64:
+                if r_offset + 8 > len(content):
+                    raise ValueError("64-bit relocation extends past section")
+                if shndx == 0:
+                    struct.pack_into("<q", content, r_offset, r_addend)
+                    if r_sym not in elf_sym_to_macho:
+                        raise ValueError("external relocation references a missing symbol")
+                    target["relocs"].append((r_offset, elf_sym_to_macho[r_sym], 0, 3, 1, X86_64_RELOC_UNSIGNED))
+                else:
+                    target["local_reloc_patches"].append(("abs64", r_offset, shndx, r_addend))
+                    target["relocs"].append((r_offset, elf_to_macho[shndx], 0, 3, 0, X86_64_RELOC_UNSIGNED))
+                continue
+            if r_type in {R_X86_64_PC32, R_X86_64_PLT32}:
+                if r_offset + 4 > len(content):
+                    raise ValueError("32-bit relocation extends past section")
+                reloc_type = X86_64_RELOC_SIGNED
+                if r_type == R_X86_64_PLT32 or (r_offset > 0 and content[r_offset - 1] == 0xE8):
+                    reloc_type = X86_64_RELOC_BRANCH
+                if shndx == 0:
+                    # ELF x86_64 PC-relative addends are based at the
+                    # relocation field; Mach-O x86_64 PC-relative relocations
+                    # are based at the next instruction after the displacement.
+                    struct.pack_into("<i", content, r_offset, r_addend + 4)
+                    if r_sym not in elf_sym_to_macho:
+                        raise ValueError("external relocation references a missing symbol")
+                    target["relocs"].append((r_offset, elf_sym_to_macho[r_sym], 1, 2, 1, reloc_type))
+                else:
+                    target["local_reloc_patches"].append(("pc32", r_offset, shndx, r_addend))
+                    target["relocs"].append((r_offset, elf_to_macho[shndx], 1, 2, 0, reloc_type))
+                continue
+            raise ValueError(f"unsupported ELF x86_64 relocation type: {r_type}")
+        target["content"] = bytes(content)
     return sections, symbols, data
 
 
@@ -354,7 +459,6 @@ def build_macho_object(sections: list[dict], symbols: list[dict]) -> bytes:
     content_start = align(header_size + sizeofcmds, 8)
 
     cursor = content_start
-    section_payloads: list[tuple[int, bytes]] = []
     addr_cursor = 0
     for section in sections:
         alignment = 1 << section["align"]
@@ -364,9 +468,55 @@ def build_macho_object(sections: list[dict], symbols: list[dict]) -> bytes:
         section["offset"] = 0 if section["flags"] & S_ZEROFILL else cursor
         section["addr"] = addr_cursor
         if not section["flags"] & S_ZEROFILL:
-            section_payloads.append((cursor, section["content"]))
             cursor += len(section["content"])
         addr_cursor += section["size"]
+
+    section_by_elf = {section["elf_index"]: section for section in sections}
+    for section in sections:
+        if not section.get("local_reloc_patches"):
+            continue
+        content = bytearray(section["content"])
+        for kind, r_offset, shndx, r_addend in section["local_reloc_patches"]:
+            target_section = section_by_elf[shndx]
+            if kind == "abs64":
+                struct.pack_into("<q", content, r_offset, target_section["addr"] + r_addend)
+            elif kind == "pc32":
+                source_next = section["addr"] + r_offset + 4
+                value = target_section["addr"] + r_addend + 4 - source_next
+                struct.pack_into("<i", content, r_offset, value)
+            else:
+                raise ValueError(f"unknown local relocation patch kind: {kind}")
+        section["content"] = bytes(content)
+
+    section_payloads: list[tuple[int, bytes]] = []
+    for section in sections:
+        if not section["flags"] & S_ZEROFILL:
+            section_payloads.append((section["offset"], section["content"]))
+
+    segment_filesize = cursor
+    segment_vmsize = max(addr_cursor, segment_filesize)
+    reloc_payloads: list[tuple[int, bytes]] = []
+    for section in sections:
+        relocs = section.get("relocs", [])
+        if not relocs:
+            section["reloff"] = 0
+            section["nreloc"] = 0
+            continue
+        cursor = align(cursor, 8)
+        section["reloff"] = cursor
+        section["nreloc"] = len(relocs)
+        payload = bytearray()
+        for r_address, r_symbolnum, r_pcrel, r_length, r_extern, r_type in relocs:
+            word = (
+                (r_symbolnum & 0x00FFFFFF)
+                | ((r_pcrel & 1) << 24)
+                | ((r_length & 3) << 25)
+                | ((r_extern & 1) << 27)
+                | ((r_type & 0xF) << 28)
+            )
+            payload.extend(struct.pack("<iI", r_address, word))
+        reloc_payloads.append((cursor, bytes(payload)))
+        cursor += len(payload)
 
     symoff = align(cursor, 8)
     stroff = symoff + 16 * len(symbols)
@@ -394,9 +544,9 @@ def build_macho_object(sections: list[dict], symbols: list[dict]) -> bytes:
             segment_size,
             cstr16(""),
             0,
-            addr_cursor,
+            segment_vmsize,
             0,
-            cursor,
+            segment_filesize,
             VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE,
             VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE,
             len(sections),
@@ -413,8 +563,8 @@ def build_macho_object(sections: list[dict], symbols: list[dict]) -> bytes:
                 section["size"],
                 section["offset"],
                 section["align"],
-                0,
-                0,
+                section.get("reloff", 0),
+                section.get("nreloc", 0),
                 section["flags"],
                 0,
                 0,
@@ -442,6 +592,10 @@ def build_macho_object(sections: list[dict], symbols: list[dict]) -> bytes:
     if len(output) < content_start:
         output.extend(b"\0" * (content_start - len(output)))
     for offset, content in section_payloads:
+        if len(output) < offset:
+            output.extend(b"\0" * (offset - len(output)))
+        output[offset : offset + len(content)] = content
+    for offset, content in reloc_payloads:
         if len(output) < offset:
             output.extend(b"\0" * (offset - len(output)))
         output[offset : offset + len(content)] = content
