@@ -268,6 +268,43 @@ Smoke test:
 scripts/check_hexpeek.sh
 ```
 
+## raymaze
+
+Tiny native raylib raycaster maze game. It is an original Doom-inspired mini
+game, not a Doom port: it does not ship Doom code, WADs, maps, sprites, sounds,
+names, or trademarks. It demonstrates the reusable fixed-point
+[`raycast.inc`](fasm/core/raycast.inc) helpers plus the
+[`ccall64.inc`](fasm/core/ccall64.inc) C ABI bridge for Mach-O objects.
+
+```sh
+brew install raylib
+fasm --emit=macho-obj fasm/apps/raymaze.asm /tmp/raymaze.o
+clang -arch x86_64 /tmp/raymaze.o $(pkg-config --cflags --libs raylib) -o raymaze
+arch -x86_64 ./raymaze
+```
+
+Because current fasm-mac output is x86_64-only, the linked raylib must also be
+x86_64. On Apple Silicon, the default `/opt/homebrew` raylib bottle is arm64;
+use an Intel/Rosetta Homebrew raylib install for a real windowed build.
+
+Snapshot mode for deterministic checks:
+
+```sh
+arch -x86_64 ./raymaze --snapshot snapshot.ppm
+```
+
+Release packaging:
+
+```sh
+scripts/build-raymaze-release.sh 0.1.0
+```
+
+Smoke test:
+
+```sh
+scripts/check_raymaze.sh
+```
+
 ## pathsum
 
 Tiny native recursive directory counter. It demonstrates the reusable
