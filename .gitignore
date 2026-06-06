@@ -8,6 +8,7 @@
 /fib-mac
 /fib-run
 /fib-elf
+/macdbg
 
 # FASM Mach-O executables (built next to .asm, no extension)
 /fasm/apps/miniredis

@@ -305,6 +305,61 @@ Smoke test:
 scripts/check_raymaze.sh
 ```
 
+## macdbg
+
+AI-native LLDB snapshot debugger for macOS binaries. Its useful surface is the
+CLI report mode: run a target once under LLDB batch mode and write a structured
+JSON file with status, exit code, crash signal, registers, backtrace,
+disassembly near the program counter, stack memory, Mach-O summary, and an
+escaped LLDB output tail.
+
+```sh
+fasm --emit=macho-obj fasm/apps/macdbg.asm /tmp/macdbg.o
+clang -arch x86_64 /tmp/macdbg.o $(pkg-config --cflags --libs raylib) -o macdbg
+arch -x86_64 ./macdbg --snapshot ./program report.json
+arch -x86_64 ./macdbg --snapshot --args ./program arg1 arg2 -- report.json
+```
+
+The report is intended to be consumed by tools and agents:
+
+```json
+{
+  "tool": "macdbg",
+  "mode": "snapshot",
+  "status": "exited",
+  "exit_code": 0,
+  "signal": null,
+  "registers": {"rip": "0x..."},
+  "backtrace": [],
+  "disasm": [],
+  "stack_memory": []
+}
+```
+
+There is also an experimental raylib snapshot viewer:
+
+```sh
+arch -x86_64 ./macdbg --ui ./program
+arch -x86_64 ./macdbg --ui --args ./program arg1 arg2
+```
+
+The UI is not a live step debugger yet. Press `R` to rerun the LLDB snapshot,
+`J` to toggle the raw JSON/LLDB tail view, and `Esc` to quit. Because current
+fasm-mac output is x86_64-only, the linked raylib must also be x86_64, just
+like `raymaze`.
+
+Release packaging:
+
+```sh
+scripts/build-macdbg-release.sh 0.1.0
+```
+
+Smoke test:
+
+```sh
+scripts/check_macdbg.sh
+```
+
 ## pathsum
 
 Tiny native recursive directory counter. It demonstrates the reusable
