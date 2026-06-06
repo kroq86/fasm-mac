@@ -35,6 +35,7 @@ match =macos, TARGET_OS {
 	O_APPEND equ 0008h
 	F_GETFL equ 3
 	F_SETFL equ 4
+	F_GETPATH equ 50
 	EAGAIN equ 35
 
 	AF_INET equ 2

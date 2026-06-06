@@ -305,6 +305,33 @@ Smoke test:
 scripts/check_raymaze.sh
 ```
 
+## httpmini
+
+Single-threaded concurrent static HTTP server for macOS x86_64. It uses the
+green-thread scheduler, `kqueue`, and nonblocking sockets: one slow or partial
+client does not block other clients.
+
+```sh
+fasm fasm/apps/httpmini.asm httpmini
+arch -x86_64 ./httpmini --root ./public --port 8080
+```
+
+V1 serves local regular files with `GET` and `HEAD`, closes each connection
+after one response, and rejects directories, symlinks, `%` escapes, backslashes,
+and `..` path components.
+
+Release packaging:
+
+```sh
+scripts/build-httpmini-release.sh 0.1.0
+```
+
+Smoke test:
+
+```sh
+scripts/check_httpmini.sh
+```
+
 ## macdbg
 
 AI-native LLDB snapshot debugger for macOS binaries. Its useful surface is the

@@ -15,6 +15,7 @@
 /fasm/apps/miniredis_server
 /fasm/apps/fscan
 /fasm/apps/hexpeek
+/fasm/apps/httpmini
 /fasm/apps/machodoctor
 /fasm/apps/logknife
 /fasm/apps/pathsum

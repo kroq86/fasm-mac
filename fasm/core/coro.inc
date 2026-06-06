@@ -28,8 +28,8 @@ CORO_TASK_SIZE equ 48
 
 macro coro_bss
 {
-	coro_tasks rb CORO_TASK_SIZE * CORO_MAX_TASKS
-	coro_stacks rb CORO_STACK_SIZE * CORO_MAX_TASKS
+	coro_tasks rb CORO_TASK_SIZE * (CORO_MAX_TASKS)
+	coro_stacks rb CORO_STACK_SIZE * (CORO_MAX_TASKS)
 	coro_task_count dq ?
 	coro_current dq ?
 	coro_next_scan dq ?
@@ -51,7 +51,8 @@ coro_init:
 	jae	.ci_kq
 	mov	rax, rbx
 	imul	rax, CORO_TASK_SIZE
-	mov	qword [coro_tasks + rax + CORO_TASK_STATE_OFF], CORO_STATE_EMPTY
+	lea	rdx, [coro_tasks]
+	mov	qword [rdx + rax + CORO_TASK_STATE_OFF], CORO_STATE_EMPTY
 	inc	rbx
 	jmp	.ci_clear
 .ci_kq:
@@ -80,16 +81,18 @@ coro_spawn:
 	jae	.cs_fail
 	mov	rax, rbx
 	imul	rax, CORO_TASK_SIZE
-	cmp	qword [coro_tasks + rax + CORO_TASK_STATE_OFF], CORO_STATE_EMPTY
+	lea	rdx, [coro_tasks]
+	cmp	qword [rdx + rax + CORO_TASK_STATE_OFF], CORO_STATE_EMPTY
 	je	.cs_found
-	cmp	qword [coro_tasks + rax + CORO_TASK_STATE_OFF], CORO_STATE_DEAD
+	cmp	qword [rdx + rax + CORO_TASK_STATE_OFF], CORO_STATE_DEAD
 	je	.cs_found
 	inc	rbx
 	jmp	.cs_find
 .cs_found:
 	mov	rax, rbx
 	imul	rax, CORO_TASK_SIZE
-	lea	rdx, [coro_tasks + rax]
+	lea	rdx, [coro_tasks]
+	add	rdx, rax
 	mov	qword [rdx + CORO_TASK_STATE_OFF], CORO_STATE_RUNNABLE
 	mov	[rdx + CORO_TASK_ENTRY_OFF], r12
 	mov	[rdx + CORO_TASK_ARG_OFF], r13
@@ -98,7 +101,9 @@ coro_spawn:
 
 	mov	rax, rbx
 	imul	rax, CORO_STACK_SIZE
-	lea	rcx, [coro_stacks + rax + CORO_STACK_SIZE]
+	lea	rcx, [coro_stacks]
+	add	rcx, rax
+	add	rcx, CORO_STACK_SIZE
 	and	rcx, -16
 	sub	rcx, 56
 	mov	qword [rcx + 0], 0
@@ -156,7 +161,8 @@ coro_pick_runnable:
 .cpr_idx_ok:
 	mov	rdx, rax
 	imul	rdx, CORO_TASK_SIZE
-	cmp	qword [coro_tasks + rdx + CORO_TASK_STATE_OFF], CORO_STATE_RUNNABLE
+	lea	r11, [coro_tasks]
+	cmp	qword [r11 + rdx + CORO_TASK_STATE_OFF], CORO_STATE_RUNNABLE
 	je	.cpr_found
 	inc	r12
 	inc	rbx
@@ -186,9 +192,10 @@ coro_has_alive:
 	jae	.cha_no
 	mov	rax, rbx
 	imul	rax, CORO_TASK_SIZE
-	cmp	qword [coro_tasks + rax + CORO_TASK_STATE_OFF], CORO_STATE_RUNNABLE
+	lea	rdx, [coro_tasks]
+	cmp	qword [rdx + rax + CORO_TASK_STATE_OFF], CORO_STATE_RUNNABLE
 	je	.cha_yes
-	cmp	qword [coro_tasks + rax + CORO_TASK_STATE_OFF], CORO_STATE_WAITING
+	cmp	qword [rdx + rax + CORO_TASK_STATE_OFF], CORO_STATE_WAITING
 	je	.cha_yes
 	inc	rbx
 	jmp	.cha_loop
@@ -202,7 +209,14 @@ coro_has_alive:
 	ret
 
 coro_wait_events:
-	syscall6 SYS_kevent, [coro_kq], 0, 0, coro_event, 1, 0
+	mov	rax, SYS_kevent
+	mov	rdi, [coro_kq]
+	xor	rsi, rsi
+	xor	rdx, rdx
+	lea	r10, [coro_event]
+	mov	r8, 1
+	xor	r9, r9
+	syscall
 	jc	.cwe_done
 	cmp	rax, 1
 	jb	.cwe_done
@@ -211,9 +225,10 @@ coro_wait_events:
 	jae	.cwe_done
 	mov	rdx, rax
 	imul	rdx, CORO_TASK_SIZE
-	cmp	qword [coro_tasks + rdx + CORO_TASK_STATE_OFF], CORO_STATE_WAITING
+	lea	r11, [coro_tasks]
+	cmp	qword [r11 + rdx + CORO_TASK_STATE_OFF], CORO_STATE_WAITING
 	jne	.cwe_done
-	mov	qword [coro_tasks + rdx + CORO_TASK_STATE_OFF], CORO_STATE_RUNNABLE
+	mov	qword [r11 + rdx + CORO_TASK_STATE_OFF], CORO_STATE_RUNNABLE
 .cwe_done:
 	ret
 
@@ -222,7 +237,8 @@ coro_resume_task:
 	mov	[coro_current], rdi
 	mov	rax, rdi
 	imul	rax, CORO_TASK_SIZE
-	lea	rdx, [coro_tasks + rax]
+	lea	rdx, [coro_tasks]
+	add	rdx, rax
 	mov	[coro_sched_rsp], rsp
 	mov	rsp, [rdx + CORO_TASK_RSP_OFF]
 	jmp	coro_restore_context
@@ -239,7 +255,8 @@ coro_restore_context:
 coro_task_bootstrap:
 	mov	rax, [coro_current]
 	imul	rax, CORO_TASK_SIZE
-	lea	rbx, [coro_tasks + rax]
+	lea	rbx, [coro_tasks]
+	add	rbx, rax
 	mov	rdi, [rbx + CORO_TASK_ARG_OFF]
 	call	qword [rbx + CORO_TASK_ENTRY_OFF]
 	call	coro_exit
@@ -253,7 +270,8 @@ coro_yield:
 	push	r15
 	mov	rax, [coro_current]
 	imul	rax, CORO_TASK_SIZE
-	lea	rdx, [coro_tasks + rax]
+	lea	rdx, [coro_tasks]
+	add	rdx, rax
 	mov	[rdx + CORO_TASK_RSP_OFF], rsp
 	cmp	qword [rdx + CORO_TASK_STATE_OFF], CORO_STATE_WAITING
 	je	.cy_switch
@@ -265,7 +283,8 @@ coro_yield:
 coro_exit:
 	mov	rax, [coro_current]
 	imul	rax, CORO_TASK_SIZE
-	lea	rdx, [coro_tasks + rax]
+	lea	rdx, [coro_tasks]
+	add	rdx, rax
 	mov	qword [rdx + CORO_TASK_STATE_OFF], CORO_STATE_DEAD
 	dec	qword [coro_task_count]
 	mov	rsp, [coro_sched_rsp]
@@ -279,7 +298,8 @@ coro_wait_fd:
 	mov	rbx, rsi
 	mov	rax, [coro_current]
 	imul	rax, CORO_TASK_SIZE
-	lea	rdx, [coro_tasks + rax]
+	lea	rdx, [coro_tasks]
+	add	rdx, rax
 	mov	qword [rdx + CORO_TASK_STATE_OFF], CORO_STATE_WAITING
 	mov	[rdx + CORO_TASK_WAIT_FD_OFF], r12
 	mov	[rdx + CORO_TASK_WAIT_FILTER_OFF], rbx
@@ -291,7 +311,14 @@ coro_wait_fd:
 	mov	qword [coro_change + KEVENT_DATA_OFF], 0
 	mov	rax, [coro_current]
 	mov	qword [coro_change + KEVENT_UDATA_OFF], rax
-	syscall6 SYS_kevent, [coro_kq], coro_change, 1, 0, 0, 0
+	mov	rax, SYS_kevent
+	mov	rdi, [coro_kq]
+	lea	rsi, [coro_change]
+	mov	rdx, 1
+	xor	r10, r10
+	xor	r8, r8
+	xor	r9, r9
+	syscall
 	jc	.cwf_err
 	call	coro_yield
 	xor	rax, rax
