@@ -10,6 +10,7 @@ match =macos, TARGET_OS {
 	SYS_write equ 02000004h
 	SYS_open equ 02000005h
 	SYS_close equ 02000006h
+	SYS_fcntl equ 0200005Ch
 	SYS_lseek equ 020000C7h
 	SYS_socket equ 02000061h
 	SYS_connect equ 02000062h
@@ -22,13 +23,19 @@ match =macos, TARGET_OS {
 	SYS_lstat64 equ 02000154h
 	SYS_fstat equ 020000BDh
 	SYS_getdirentries64 equ 02000158h
+	SYS_kqueue equ 0200016Ah
+	SYS_kevent equ 0200016Bh
 
 	O_RDONLY equ 0000h
 	O_WRONLY equ 0001h
 	O_RDWR equ 0002h
+	O_NONBLOCK equ 0004h
 	O_CREAT equ 0200h
 	O_TRUNC equ 0400h
 	O_APPEND equ 0008h
+	F_GETFL equ 3
+	F_SETFL equ 4
+	EAGAIN equ 35
 
 	AF_INET equ 2
 	SOCK_STREAM equ 1
@@ -51,6 +58,18 @@ match =macos, TARGET_OS {
 	DIRENT_RECLEN_OFF equ 16
 	DIRENT_TYPE_OFF equ 20
 	DIRENT_NAME_OFF equ 21
+
+	EVFILT_READ equ -1
+	EVFILT_WRITE equ -2
+	EV_ADD equ 0001h
+	EV_ONESHOT equ 0010h
+	KEVENT_SIZE equ 32
+	KEVENT_IDENT_OFF equ 0
+	KEVENT_FILTER_OFF equ 8
+	KEVENT_FLAGS_OFF equ 10
+	KEVENT_FFLAGS_OFF equ 12
+	KEVENT_DATA_OFF equ 16
+	KEVENT_UDATA_OFF equ 24
 }
 
 match =linux, TARGET_OS {
