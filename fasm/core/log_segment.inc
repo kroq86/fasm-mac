@@ -185,11 +185,23 @@ log_segment_read:
 ; rdi = index path, rsi = message offset
 ; rax = byte offset, or LOGSEG_EOF / LOGSEG_ERR
 log_segment_byte_offset:
+	lea	rdx, [logseg_u64]
+	call	log_segment_index_read_u64
+	cmp	rax, LOGSEG_OK
+	jne	.lsbo_done
+	mov	rax, [logseg_u64]
+.lsbo_done:
+	ret
+
+; rdi = index path, rsi = slot, rdx = u64 out*
+; rax = LOGSEG_OK / LOGSEG_EOF / LOGSEG_ERR
+log_segment_index_read_u64:
 	push	rbx
 	push	r12
 	mov	r12, rsi
+	mov	[logseg_u64_out], rdx
 	open_file rdi, O_RDONLY, 0
-	jump_if_syscall_error .lsbo_eof
+	jump_if_syscall_error .lsir_eof
 	mov	rbx, rax
 	mov	rdi, rbx
 	mov	rsi, r12
@@ -197,30 +209,118 @@ log_segment_byte_offset:
 	mov	rdx, SEEK_SET
 	mov	rax, SYS_lseek
 	syscall
-	jc	.lsbo_close_err
+	jc	.lsir_close_err
 	mov	rdi, rbx
 	lea	rsi, [logseg_u64]
 	mov	rdx, 8
 	call	logseg_read_exact_fd
 	cmp	rax, 0
-	je	.lsbo_close_eof
-	jl	.lsbo_close_err
-	mov	rdi, rbx
-	close_file rdi
+	je	.lsir_close_eof
+	jl	.lsir_close_err
+	mov	r10, [logseg_u64_out]
 	mov	rax, [logseg_u64]
-	jmp	.lsbo_out
-.lsbo_close_eof:
+	mov	[r10], rax
 	mov	rdi, rbx
 	close_file rdi
-.lsbo_eof:
+	mov	rax, LOGSEG_OK
+	jmp	.lsir_out
+.lsir_close_eof:
+	mov	rdi, rbx
+	close_file rdi
+.lsir_eof:
 	mov	rax, LOGSEG_EOF
-	jmp	.lsbo_out
-.lsbo_close_err:
+	jmp	.lsir_out
+.lsir_close_err:
 	mov	rdi, rbx
 	close_file rdi
 	mov	rax, LOGSEG_ERR
-.lsbo_out:
+.lsir_out:
 	pop	r12
+	pop	rbx
+	ret
+
+; rdi = index path
+; rax = number of u64 slots, or LOGSEG_ERR
+log_segment_index_count:
+	push	rbx
+	open_file rdi, O_RDONLY, 0
+	jump_if_syscall_error .lsic_zero
+	mov	rbx, rax
+	mov	rdi, rbx
+	xor	rsi, rsi
+	mov	rdx, SEEK_END
+	mov	rax, SYS_lseek
+	syscall
+	jc	.lsic_close_err
+	push	rax
+	mov	rdi, rbx
+	close_file rdi
+	pop	rax
+	shr	rax, 3
+	jmp	.lsic_out
+.lsic_close_err:
+	mov	rdi, rbx
+	close_file rdi
+	mov	rax, LOGSEG_ERR
+	jmp	.lsic_out
+.lsic_zero:
+	xor	rax, rax
+.lsic_out:
+	pop	rbx
+	ret
+
+; rdi = index path, rsi = u64 value
+; rax = LOGSEG_OK / LOGSEG_ERR
+log_segment_index_append_u64:
+	push	rbx
+	mov	[logseg_u64], rsi
+	open_file rdi, O_WRONLY or O_CREAT or O_APPEND, 420
+	jump_if_syscall_error .lsiau_err
+	mov	rbx, rax
+	mov	rdi, rbx
+	lea	rsi, [logseg_u64]
+	mov	rdx, 8
+	call	logseg_write_all_fd
+	push	rax
+	mov	rdi, rbx
+	close_file rdi
+	pop	rax
+	cmp	rax, 0
+	jl	.lsiau_err
+	mov	rax, LOGSEG_OK
+	jmp	.lsiau_out
+.lsiau_err:
+	mov	rax, LOGSEG_ERR
+.lsiau_out:
+	pop	rbx
+	ret
+
+; rdi = file path
+; rax = file size, 0 if missing, or LOGSEG_ERR
+log_segment_file_size:
+	push	rbx
+	open_file rdi, O_RDONLY, 0
+	jump_if_syscall_error .lsfs_zero
+	mov	rbx, rax
+	mov	rdi, rbx
+	xor	rsi, rsi
+	mov	rdx, SEEK_END
+	mov	rax, SYS_lseek
+	syscall
+	jc	.lsfs_close_err
+	push	rax
+	mov	rdi, rbx
+	close_file rdi
+	pop	rax
+	jmp	.lsfs_out
+.lsfs_close_err:
+	mov	rdi, rbx
+	close_file rdi
+	mov	rax, LOGSEG_ERR
+	jmp	.lsfs_out
+.lsfs_zero:
+	xor	rax, rax
+.lsfs_out:
 	pop	rbx
 	ret
 
@@ -392,4 +492,5 @@ macro log_segment_bss
 	logseg_batch_off_out dq ?
 	logseg_batch_count_out dq ?
 	logseg_batch_count dq ?
+	logseg_u64_out dq ?
 }

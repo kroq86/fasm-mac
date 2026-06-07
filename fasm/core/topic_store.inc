@@ -94,67 +94,155 @@ topic_store_prepare:
 ; rdi=root, rsi=topic, rdx=log_out, rcx=idx_out, r8=dir_scratch
 ; rax = TOPIC_STORE_OK / TOPIC_STORE_ERR
 topic_build_segment_paths:
+	mov	r9, r8
+	mov	r8, rcx
+	mov	rcx, rdx
+	xor	rdx, rdx
+	jmp	topic_build_segment_paths_base
+
+; rdi=root, rsi=topic, rdx=base offset, rcx=log_out, r8=idx_out, r9=dir_scratch
+; rax = TOPIC_STORE_OK / TOPIC_STORE_ERR
+topic_build_segment_paths_base:
 	push	r12
 	push	r13
 	push	r14
 	push	r15
+	push	rbx
 	mov	r12, rdi
 	mov	r13, rsi
-	mov	r14, rdx
-	mov	r15, rcx
-	mov	[topic_scratch], r8
+	mov	rbx, rdx
+	mov	r14, rcx
+	mov	r15, r8
+	mov	[topic_scratch], r9
 	mov	rdi, r13
 	call	topic_name_valid
 	test	rax, rax
-	jz	.tbsp_err
+	jz	.tbspb_err
 	mov	rdi, [topic_scratch]
 	mov	rsi, r12
 	call	topic_copy_cstr
 	cmp	rax, 0
-	jl	.tbsp_err
+	jl	.tbspb_err
 	mov	rdi, [topic_scratch]
 	lea	rsi, [topic_topics_suffix]
 	call	topic_append_cstr
 	cmp	rax, 0
-	jl	.tbsp_err
+	jl	.tbspb_err
 	mov	rdi, [topic_scratch]
 	lea	rsi, [topic_slash]
 	call	topic_append_cstr
 	cmp	rax, 0
-	jl	.tbsp_err
+	jl	.tbspb_err
 	mov	rdi, [topic_scratch]
 	mov	rsi, r13
 	call	topic_append_cstr
 	cmp	rax, 0
-	jl	.tbsp_err
+	jl	.tbspb_err
 	mov	rdi, [topic_scratch]
 	call	topic_mkdir_ignore
 	mov	rdi, r14
 	mov	rsi, [topic_scratch]
 	call	topic_copy_cstr
 	cmp	rax, 0
-	jl	.tbsp_err
+	jl	.tbspb_err
 	mov	rdi, r14
-	lea	rsi, [topic_log_suffix]
+	lea	rsi, [topic_slash]
 	call	topic_append_cstr
 	cmp	rax, 0
-	jl	.tbsp_err
+	jl	.tbspb_err
+	mov	rdi, r14
+	mov	rsi, rbx
+	call	topic_append_u20
+	cmp	rax, 0
+	jl	.tbspb_err
+	mov	rdi, r14
+	lea	rsi, [topic_log_ext]
+	call	topic_append_cstr
+	cmp	rax, 0
+	jl	.tbspb_err
 	mov	rdi, r15
 	mov	rsi, [topic_scratch]
 	call	topic_copy_cstr
 	cmp	rax, 0
-	jl	.tbsp_err
+	jl	.tbspb_err
 	mov	rdi, r15
-	lea	rsi, [topic_idx_suffix]
+	lea	rsi, [topic_slash]
 	call	topic_append_cstr
 	cmp	rax, 0
-	jl	.tbsp_err
+	jl	.tbspb_err
+	mov	rdi, r15
+	mov	rsi, rbx
+	call	topic_append_u20
+	cmp	rax, 0
+	jl	.tbspb_err
+	mov	rdi, r15
+	lea	rsi, [topic_idx_ext]
+	call	topic_append_cstr
+	cmp	rax, 0
+	jl	.tbspb_err
 	mov	rax, TOPIC_STORE_OK
-	jmp	.tbsp_out
-.tbsp_err:
+	jmp	.tbspb_out
+.tbspb_err:
 	mov	rax, TOPIC_STORE_ERR
-.tbsp_out:
+.tbspb_out:
+	pop	rbx
 	pop	r15
+	pop	r14
+	pop	r13
+	pop	r12
+	ret
+
+; rdi=root, rsi=topic, rdx=out, rcx=dir_scratch
+; rax = TOPIC_STORE_OK / TOPIC_STORE_ERR
+topic_build_global_idx_path:
+	push	r12
+	push	r13
+	push	r14
+	mov	r12, rdi
+	mov	r13, rsi
+	mov	r14, rdx
+	mov	[topic_scratch], rcx
+	mov	rdi, r13
+	call	topic_name_valid
+	test	rax, rax
+	jz	.tbgip_err
+	mov	rdi, [topic_scratch]
+	mov	rsi, r12
+	call	topic_copy_cstr
+	cmp	rax, 0
+	jl	.tbgip_err
+	mov	rdi, [topic_scratch]
+	lea	rsi, [topic_topics_suffix]
+	call	topic_append_cstr
+	cmp	rax, 0
+	jl	.tbgip_err
+	mov	rdi, [topic_scratch]
+	lea	rsi, [topic_slash]
+	call	topic_append_cstr
+	cmp	rax, 0
+	jl	.tbgip_err
+	mov	rdi, [topic_scratch]
+	mov	rsi, r13
+	call	topic_append_cstr
+	cmp	rax, 0
+	jl	.tbgip_err
+	mov	rdi, [topic_scratch]
+	call	topic_mkdir_ignore
+	mov	rdi, r14
+	mov	rsi, [topic_scratch]
+	call	topic_copy_cstr
+	cmp	rax, 0
+	jl	.tbgip_err
+	mov	rdi, r14
+	lea	rsi, [topic_global_idx_suffix]
+	call	topic_append_cstr
+	cmp	rax, 0
+	jl	.tbgip_err
+	mov	rax, TOPIC_STORE_OK
+	jmp	.tbgip_out
+.tbgip_err:
+	mov	rax, TOPIC_STORE_ERR
+.tbgip_out:
 	pop	r14
 	pop	r13
 	pop	r12
@@ -287,12 +375,58 @@ topic_append_cstr:
 	pop	rbx
 	ret
 
+; rdi=dst cstr, rsi=uint; append 20 zero-padded decimal digits.
+; rax=0 ok, -1 too long
+topic_append_u20:
+	push	rbx
+	push	r12
+	push	r13
+	push	r14
+	mov	r12, rdi
+	mov	r13, rsi
+	xor	rbx, rbx
+.tau_len:
+	cmp	byte [r12 + rbx], 0
+	je	.tau_have_len
+	inc	rbx
+	cmp	rbx, TOPIC_STORE_PATH_MAX - 21
+	jae	.tau_err
+	jmp	.tau_len
+.tau_have_len:
+	cmp	rbx, TOPIC_STORE_PATH_MAX - 21
+	jae	.tau_err
+	mov	rcx, 20
+	lea	r14, [r12 + rbx + 19]
+.tau_digits:
+	mov	rax, r13
+	xor	rdx, rdx
+	mov	rsi, 10
+	div	rsi
+	mov	r13, rax
+	add	dl, '0'
+	mov	[r14], dl
+	dec	r14
+	dec	rcx
+	jnz	.tau_digits
+	mov	byte [r12 + rbx + 20], 0
+	xor	rax, rax
+	jmp	.tau_out
+.tau_err:
+	mov	rax, -1
+.tau_out:
+	pop	r14
+	pop	r13
+	pop	r12
+	pop	rbx
+	ret
+
 topic_topics_suffix db '/topics', 0
 topic_offsets_suffix db '/offsets', 0
 topic_slash db '/', 0
 topic_dot db '.', 0
-topic_log_suffix db '/000000.log', 0
-topic_idx_suffix db '/000000.idx', 0
+topic_log_ext db '.log', 0
+topic_idx_ext db '.idx', 0
+topic_global_idx_suffix db '/global.idx', 0
 topic_offset_suffix db '.offset', 0
 
 macro topic_store_bss

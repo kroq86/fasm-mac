@@ -338,7 +338,9 @@ scripts/check_httpmini.sh
 
 Kafka-like local durable append-only message broker for macOS x86_64. It uses
 the green-thread scheduler, `kqueue`, nonblocking sockets, and a length-prefixed
-record log with a message-offset index.
+record log with a message-offset index. Topic data is stored as rotated
+base-offset segments plus a global offset index; tune segment size with
+`--segment-bytes N`.
 
 ```sh
 fasm fasm/apps/logbus.asm logbus

@@ -13,6 +13,7 @@ LOGBUS_DEFAULT_PORT equ 9092
 LOGBUS_PAYLOAD_MAX equ 65536
 LOGBUS_WIRE_PAYLOAD_MAX equ 4096
 LOGBUS_FETCHBATCH_MAX equ 1048576
+LOGBUS_DEFAULT_SEGMENT_MAX equ 1048576
 RESP_BUF_MAX equ 8192
 RESP_MAX_ARGS equ 16
 FETCH_MAX_RECORDS equ 64
@@ -55,6 +56,7 @@ start:
 	mov	[data_dir], rax
 	mov	qword [listen_port], LOGBUS_DEFAULT_PORT
 	mov	qword [bind_addr], INADDR_ANY
+	mov	qword [segment_max], LOGBUS_DEFAULT_SEGMENT_MAX
 	call	parse_args
 	cmp	rax, 0
 	jl	start_usage
@@ -106,6 +108,12 @@ parse_args:
 	call	str_eq
 	cmp	rax, 1
 	je	.pa_bind
+	mov	rax, [argv]
+	mov	rdi, [rax + rbx * 8]
+	lea	rsi, [opt_segment_bytes]
+	call	str_eq
+	cmp	rax, 1
+	je	.pa_segment_bytes
 	jmp	.pa_bad
 .pa_dir:
 	inc	rbx
@@ -151,6 +159,18 @@ parse_args:
 	jmp	.pa_loop
 .pa_bind_loopback:
 	mov	qword [bind_addr], 0100007Fh
+	inc	rbx
+	jmp	.pa_loop
+.pa_segment_bytes:
+	inc	rbx
+	cmp	rbx, [argc]
+	jae	.pa_bad
+	mov	rax, [argv]
+	mov	rdi, [rax + rbx * 8]
+	call	parse_uint
+	cmp	rax, 8
+	jb	.pa_bad
+	mov	[segment_max], rax
 	inc	rbx
 	jmp	.pa_loop
 .pa_ok:
@@ -553,6 +573,8 @@ server_dispatch:
 
 cmd_do_produce:
 	push	r12
+	push	r13
+	push	r14
 	mov	r12, rdi
 	cmp	qword [r12 + CONN_ARGC_OFF], 3
 	jne	.cdp_arity
@@ -561,12 +583,50 @@ cmd_do_produce:
 	ja	.cdp_too_large
 	mov	rdi, [data_dir]
 	mov	rsi, [r12 + CONN_ARGV_OFF + 8]
-	lea	rdx, [log_path]
-	lea	rcx, [idx_path]
-	lea	r8, [scratch_path]
-	call	topic_build_segment_paths
+	lea	rdx, [global_idx_path]
+	lea	rcx, [scratch_path]
+	call	topic_build_global_idx_path
 	cmp	rax, 0
 	jl	.cdp_bad_name
+	lea	rdi, [global_idx_path]
+	call	log_segment_index_count
+	cmp	rax, LOGSEG_ERR
+	je	.cdp_ioerr
+	mov	[next_global_offset], rax
+	xor	rax, rax
+	mov	[active_segment_base], rax
+	cmp	qword [next_global_offset], 0
+	je	.cdp_have_base
+	lea	rdi, [global_idx_path]
+	mov	rsi, [next_global_offset]
+	dec	rsi
+	lea	rdx, [active_segment_base]
+	call	log_segment_index_read_u64
+	cmp	rax, LOGSEG_OK
+	jne	.cdp_ioerr
+.cdp_have_base:
+	mov	r13, [r12 + CONN_ARGV_OFF + 8]
+	call	build_active_segment_paths
+	cmp	rax, 0
+	jl	.cdp_bad_name
+	lea	rdi, [log_path]
+	call	log_segment_file_size
+	cmp	rax, LOGSEG_ERR
+	je	.cdp_ioerr
+	mov	r14, rax
+	mov	rax, [r12 + CONN_ARGLEN_OFF + 16]
+	add	rax, 4
+	test	r14, r14
+	jz	.cdp_append
+	add	rax, r14
+	cmp	rax, [segment_max]
+	jbe	.cdp_append
+	mov	rax, [next_global_offset]
+	mov	[active_segment_base], rax
+	call	build_active_segment_paths
+	cmp	rax, 0
+	jl	.cdp_bad_name
+.cdp_append:
 	lea	rdi, [log_path]
 	lea	rsi, [idx_path]
 	mov	rdx, [r12 + CONN_ARGV_OFF + 16]
@@ -574,7 +634,13 @@ cmd_do_produce:
 	call	log_segment_append
 	cmp	rax, 0
 	jl	.cdp_ioerr
+	lea	rdi, [global_idx_path]
+	mov	rsi, [active_segment_base]
+	call	log_segment_index_append_u64
+	cmp	rax, LOGSEG_OK
+	jne	.cdp_ioerr
 	mov	rdi, [r12 + CONN_FD_OFF]
+	mov	rax, [next_global_offset]
 	call	resp_async_write_int
 	jmp	.cdp_done
 .cdp_arity:
@@ -597,7 +663,21 @@ cmd_do_produce:
 	lea	rsi, [msg_io]
 	call	resp_async_write_error
 .cdp_done:
+	pop	r14
+	pop	r13
 	pop	r12
+	ret
+
+; r13 = topic name, [active_segment_base] = segment base offset
+; rax = TOPIC_STORE_OK / TOPIC_STORE_ERR
+build_active_segment_paths:
+	mov	rdi, [data_dir]
+	mov	rsi, r13
+	mov	rdx, [active_segment_base]
+	lea	rcx, [log_path]
+	lea	r8, [idx_path]
+	lea	r9, [scratch_path]
+	call	topic_build_segment_paths_base
 	ret
 
 cmd_do_fetch:
@@ -627,12 +707,13 @@ cmd_do_fetch:
 .cdf_paths:
 	mov	rdi, [data_dir]
 	mov	rsi, [r12 + CONN_ARGV_OFF + 8]
-	lea	rdx, [log_path]
-	lea	rcx, [idx_path]
-	lea	r8, [scratch_path]
-	call	topic_build_segment_paths
+	lea	rdx, [global_idx_path]
+	lea	rcx, [scratch_path]
+	call	topic_build_global_idx_path
 	cmp	rax, 0
 	jl	.cdf_bad_name
+	mov	rax, [r12 + CONN_ARGV_OFF + 8]
+	mov	[fetch_topic_ptr], rax
 	mov	rdi, r12
 	mov	rsi, r13
 	mov	rdx, r14
@@ -680,12 +761,24 @@ fetch_records:
 	jae	.fr_done
 	cmp	r15, r14
 	jae	.fr_done
+	lea	rdi, [global_idx_path]
+	mov	rsi, r13
+	lea	rdx, [segment_base_tmp]
+	call	log_segment_index_read_u64
+	cmp	rax, LOGSEG_EOF
+	je	.fr_done
+	cmp	rax, LOGSEG_OK
+	jne	.fr_err
+	call	build_fetch_segment_paths
+	cmp	rax, 0
+	jl	.fr_err
+	mov	rdx, r13
+	sub	rdx, [segment_base_tmp]
+	lea	rdi, [log_path]
+	lea	rsi, [idx_path]
 	lea	rcx, [r12 + CONN_FETCH_BUF_OFF + r15]
 	mov	r8, FETCH_BUF_MAX
 	sub	r8, r15
-	lea	rdi, [log_path]
-	lea	rsi, [idx_path]
-	mov	rdx, r13
 	lea	r9, [fetch_last_len]
 	call	log_segment_read
 	cmp	rax, LOGSEG_EOF
@@ -718,6 +811,18 @@ fetch_records:
 	pop	rbx
 	ret
 
+; [fetch_topic_ptr] = topic, [segment_base_tmp] = segment base offset
+; rax = TOPIC_STORE_OK / TOPIC_STORE_ERR
+build_fetch_segment_paths:
+	mov	rdi, [data_dir]
+	mov	rsi, [fetch_topic_ptr]
+	mov	rdx, [segment_base_tmp]
+	lea	rcx, [log_path]
+	lea	r8, [idx_path]
+	lea	r9, [scratch_path]
+	call	topic_build_segment_paths_base
+	ret
+
 cmd_do_fetchbatch:
 	push	rbx
 	push	r12
@@ -746,21 +851,37 @@ cmd_do_fetchbatch:
 .cdfb_paths:
 	mov	rdi, [data_dir]
 	mov	rsi, [r12 + CONN_ARGV_OFF + 8]
-	lea	rdx, [log_path]
-	lea	rcx, [idx_path]
-	lea	r8, [scratch_path]
-	call	topic_build_segment_paths
+	lea	rdx, [global_idx_path]
+	lea	rcx, [scratch_path]
+	call	topic_build_global_idx_path
+	cmp	rax, 0
+	jl	.cdfb_bad_name
+	lea	rdi, [global_idx_path]
+	mov	rsi, r13
+	lea	rdx, [segment_base_tmp]
+	call	log_segment_index_read_u64
+	cmp	rax, LOGSEG_EOF
+	je	.cdfb_empty
+	cmp	rax, LOGSEG_OK
+	jne	.cdfb_ioerr
+	mov	rax, r13
+	sub	rax, [segment_base_tmp]
+	mov	[fetchbatch_local_offset], rax
+	mov	rax, [r12 + CONN_ARGV_OFF + 8]
+	mov	[fetch_topic_ptr], rax
+	call	build_fetch_segment_paths
 	cmp	rax, 0
 	jl	.cdfb_bad_name
 	lea	rdi, [log_path]
 	lea	rsi, [idx_path]
-	mov	rdx, r13
+	mov	rdx, [fetchbatch_local_offset]
 	mov	rcx, r14
 	lea	r8, [fetchbatch_byte_offset]
 	lea	r9, [fetchbatch_byte_count]
 	call	log_segment_batch_span
 	cmp	rax, LOGSEG_OK
 	jne	.cdfb_ioerr
+.cdfb_write:
 	mov	rdi, [r12 + CONN_FD_OFF]
 	mov	rax, [fetchbatch_byte_count]
 	call	resp_async_write_bulk_header
@@ -787,6 +908,9 @@ cmd_do_fetchbatch:
 	mov	rdx, 2
 	call	coro_write_all
 	jmp	.cdfb_done
+.cdfb_empty:
+	mov	qword [fetchbatch_byte_count], 0
+	jmp	.cdfb_write
 .cdfb_arity:
 	mov	rdi, [r12 + CONN_FD_OFF]
 	lea	rsi, [msg_arity]
@@ -1221,10 +1345,11 @@ segment readable writeable
 opt_dir db '--dir', 0
 opt_port db '--port', 0
 opt_bind db '--bind', 0
+opt_segment_bytes db '--segment-bytes', 0
 bind_loopback db '127.0.0.1', 0
 bind_any db '0.0.0.0', 0
 default_dir db './data', 0
-usage_msg db 'usage: logbus [--dir DIR] [--port PORT] [--bind 127.0.0.1|0.0.0.0]', 10
+usage_msg db 'usage: logbus [--dir DIR] [--port PORT] [--bind 127.0.0.1|0.0.0.0] [--segment-bytes N]', 10
 usage_msg_len = $ - usage_msg
 
 argc dq ?
@@ -1232,13 +1357,20 @@ argv dq ?
 data_dir dq ?
 listen_port dq ?
 bind_addr dq ?
+segment_max dq ?
 listen_fd dq ?
 fetch_last_len dq ?
 fetchbatch_byte_offset dq ?
 fetchbatch_byte_count dq ?
+fetchbatch_local_offset dq ?
+fetch_topic_ptr dq ?
+segment_base_tmp dq ?
+active_segment_base dq ?
+next_global_offset dq ?
 
 log_path rb TOPIC_STORE_PATH_MAX
 idx_path rb TOPIC_STORE_PATH_MAX
+global_idx_path rb TOPIC_STORE_PATH_MAX
 offset_path rb TOPIC_STORE_PATH_MAX
 scratch_path rb TOPIC_STORE_PATH_MAX
 offset_read_buf rb 64

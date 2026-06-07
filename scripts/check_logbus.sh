@@ -21,7 +21,7 @@ PY
 fasm "$ROOT/fasm/apps/logbus.asm" "$BIN" >/dev/null
 
 start_server() {
-    arch -x86_64 "$BIN" --dir "$DATA" --port "$PORT" --bind 127.0.0.1 >"$OUT_DIR/server.out" 2>"$OUT_DIR/server.err" &
+    arch -x86_64 "$BIN" --dir "$DATA" --port "$PORT" --bind 127.0.0.1 --segment-bytes 20 >"$OUT_DIR/server.out" 2>"$OUT_DIR/server.err" &
     SERVER_PID=$!
 }
 
@@ -120,8 +120,26 @@ request(
     "4096",
 )
 request(client, b"$0\r\n\r\n", "FETCHBATCH", "events", "99", "4096")
-request(client, b"+OK\r\n", "COMMIT", "group1", "events", "2")
-request(client, b":2\r\n", "OFFSET", "group1", "events")
+request(client, b":2\r\n", "PRODUCE", "events", "again")
+request(
+    client,
+    b"*1\r\n*2\r\n:2\r\n$5\r\nagain\r\n",
+    "FETCH",
+    "events",
+    "2",
+    "4096",
+)
+raw_again = struct.pack("<I", 5) + b"again"
+request(
+    client,
+    b"$%d\r\n" % len(raw_again) + raw_again + b"\r\n",
+    "FETCHBATCH",
+    "events",
+    "2",
+    "4096",
+)
+request(client, b"+OK\r\n", "COMMIT", "group1", "events", "3")
+request(client, b":3\r\n", "OFFSET", "group1", "events")
 
 client.sendall(encode("PRODUCE", "bad/name", "x"))
 if not read_resp(client).startswith(b"-ERR"):
@@ -142,6 +160,14 @@ if not read_resp(client).startswith(b"-ERR"):
 stalled.close()
 client.close()
 PY
+
+test -f "$DATA/topics/events/00000000000000000000.log"
+test -f "$DATA/topics/events/00000000000000000002.log"
+LOG_COUNT="$(find "$DATA/topics/events" -name '*.log' | wc -l | tr -d ' ')"
+if [[ "$LOG_COUNT" -lt 2 ]]; then
+    echo "expected rotated log segments, found $LOG_COUNT" >&2
+    exit 1
+fi
 
 stop_server
 start_server
@@ -206,7 +232,7 @@ def request(sock, expected, *args):
 client = connect_retry()
 request(
     client,
-    b"*2\r\n*2\r\n:0\r\n$5\r\nhello\r\n*2\r\n:1\r\n$5\r\nworld\r\n",
+    b"*3\r\n*2\r\n:0\r\n$5\r\nhello\r\n*2\r\n:1\r\n$5\r\nworld\r\n*2\r\n:2\r\n$5\r\nagain\r\n",
     "FETCH",
     "events",
     "0",
@@ -221,7 +247,24 @@ request(
     "0",
     "4096",
 )
-request(client, b":2\r\n", "OFFSET", "group1", "events")
+request(
+    client,
+    b"*1\r\n*2\r\n:2\r\n$5\r\nagain\r\n",
+    "FETCH",
+    "events",
+    "2",
+    "4096",
+)
+raw_again = struct.pack("<I", 5) + b"again"
+request(
+    client,
+    b"$%d\r\n" % len(raw_again) + raw_again + b"\r\n",
+    "FETCHBATCH",
+    "events",
+    "2",
+    "4096",
+)
+request(client, b":3\r\n", "OFFSET", "group1", "events")
 client.close()
 PY
 
