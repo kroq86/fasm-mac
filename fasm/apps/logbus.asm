@@ -12,6 +12,7 @@ CORO_STACK_SIZE equ 16384
 LOGBUS_DEFAULT_PORT equ 9092
 LOGBUS_PAYLOAD_MAX equ 65536
 LOGBUS_WIRE_PAYLOAD_MAX equ 4096
+LOGBUS_FETCHBATCH_MAX equ 1048576
 RESP_BUF_MAX equ 8192
 RESP_MAX_ARGS equ 16
 FETCH_MAX_RECORDS equ 64
@@ -37,6 +38,7 @@ include "fasm/core/print_io.inc"
 include "fasm/core/socket.inc"
 include "fasm/core/coro.inc"
 include "fasm/core/socket_async.inc"
+include "fasm/core/sendfile.inc"
 include "fasm/core/log_segment.inc"
 include "fasm/core/topic_store.inc"
 include "fasm/core/runtime_bss.inc"
@@ -482,6 +484,11 @@ server_dispatch:
 	cmp	rax, 1
 	je	.sd_fetch
 	mov	rdi, [r12 + CONN_ARGV_OFF]
+	lea	rsi, [cmd_fetchbatch]
+	call	str_eq
+	cmp	rax, 1
+	je	.sd_fetchbatch
+	mov	rdi, [r12 + CONN_ARGV_OFF]
 	lea	rsi, [cmd_commit]
 	call	str_eq
 	cmp	rax, 1
@@ -514,6 +521,10 @@ server_dispatch:
 .sd_fetch:
 	mov	rdi, r12
 	call	cmd_do_fetch
+	jmp	.sd_done
+.sd_fetchbatch:
+	mov	rdi, r12
+	call	cmd_do_fetchbatch
 	jmp	.sd_done
 .sd_commit:
 	mov	rdi, r12
@@ -701,6 +712,100 @@ fetch_records:
 	mov	rax, -1
 .fr_out:
 	pop	r15
+	pop	r14
+	pop	r13
+	pop	r12
+	pop	rbx
+	ret
+
+cmd_do_fetchbatch:
+	push	rbx
+	push	r12
+	push	r13
+	push	r14
+	mov	r12, rdi
+	cmp	qword [r12 + CONN_ARGC_OFF], 4
+	jne	.cdfb_arity
+	mov	rdi, [r12 + CONN_ARGV_OFF + 16]
+	call	str_parse_int64
+	test	rbx, rbx
+	jnz	.cdfb_arity
+	test	rax, rax
+	js	.cdfb_arity
+	mov	r13, rax
+	mov	rdi, [r12 + CONN_ARGV_OFF + 24]
+	call	str_parse_int64
+	test	rbx, rbx
+	jnz	.cdfb_arity
+	test	rax, rax
+	jle	.cdfb_arity
+	mov	r14, rax
+	cmp	r14, LOGBUS_FETCHBATCH_MAX
+	jbe	.cdfb_paths
+	mov	r14, LOGBUS_FETCHBATCH_MAX
+.cdfb_paths:
+	mov	rdi, [data_dir]
+	mov	rsi, [r12 + CONN_ARGV_OFF + 8]
+	lea	rdx, [log_path]
+	lea	rcx, [idx_path]
+	lea	r8, [scratch_path]
+	call	topic_build_segment_paths
+	cmp	rax, 0
+	jl	.cdfb_bad_name
+	lea	rdi, [log_path]
+	lea	rsi, [idx_path]
+	mov	rdx, r13
+	mov	rcx, r14
+	lea	r8, [fetchbatch_byte_offset]
+	lea	r9, [fetchbatch_byte_count]
+	call	log_segment_batch_span
+	cmp	rax, LOGSEG_OK
+	jne	.cdfb_ioerr
+	mov	rdi, [r12 + CONN_FD_OFF]
+	mov	rax, [fetchbatch_byte_count]
+	call	resp_async_write_bulk_header
+	cmp	qword [fetchbatch_byte_count], 0
+	je	.cdfb_trailer
+	lea	rdi, [log_path]
+	open_file rdi, O_RDONLY, 0
+	jump_if_syscall_error .cdfb_ioerr_after_header
+	mov	rbx, rax
+	mov	rdi, rbx
+	mov	rsi, [r12 + CONN_FD_OFF]
+	mov	rdx, [fetchbatch_byte_offset]
+	mov	rcx, [fetchbatch_byte_count]
+	call	file_send_range_socket
+	push	rax
+	mov	rdi, rbx
+	close_file rdi
+	pop	rax
+	cmp	rax, 0
+	jl	.cdfb_close_conn
+.cdfb_trailer:
+	mov	rdi, [r12 + CONN_FD_OFF]
+	lea	rsi, [resp_crlf]
+	mov	rdx, 2
+	call	coro_write_all
+	jmp	.cdfb_done
+.cdfb_arity:
+	mov	rdi, [r12 + CONN_FD_OFF]
+	lea	rsi, [msg_arity]
+	call	resp_async_write_error
+	jmp	.cdfb_done
+.cdfb_bad_name:
+	mov	rdi, [r12 + CONN_FD_OFF]
+	lea	rsi, [msg_bad_name]
+	call	resp_async_write_error
+	jmp	.cdfb_done
+.cdfb_ioerr:
+	mov	rdi, [r12 + CONN_FD_OFF]
+	lea	rsi, [msg_io]
+	call	resp_async_write_error
+	jmp	.cdfb_done
+.cdfb_ioerr_after_header:
+.cdfb_close_conn:
+	mov	qword [r12 + CONN_QUIT_OFF], 1
+.cdfb_done:
 	pop	r14
 	pop	r13
 	pop	r12
@@ -1020,6 +1125,33 @@ resp_async_write_bulk:
 	pop	r12
 	ret
 
+; rdi = fd, rax = bulk byte length
+resp_async_write_bulk_header:
+	push	r12
+	push	r13
+	sub	rsp, 32
+	mov	r12, rdi
+	mov	r13, rax
+	mov	rdi, r12
+	lea	rsi, [resp_dollar]
+	mov	rdx, 1
+	call	coro_write_all
+	mov	rax, r13
+	lea	rdi, [rsp + 31]
+	call	print_int64_to_buf
+	mov	rsi, rdi
+	mov	rdx, rax
+	mov	rdi, r12
+	call	coro_write_all
+	mov	rdi, r12
+	lea	rsi, [resp_crlf]
+	mov	rdx, 2
+	call	coro_write_all
+	add	rsp, 32
+	pop	r13
+	pop	r12
+	ret
+
 ; rdi=conn, rsi=count
 resp_async_write_fetch:
 	push	rbx
@@ -1063,6 +1195,7 @@ write_stderr:
 cmd_ping db 'PING', 0
 cmd_produce db 'PRODUCE', 0
 cmd_fetch db 'FETCH', 0
+cmd_fetchbatch db 'FETCHBATCH', 0
 cmd_commit db 'COMMIT', 0
 cmd_offset db 'OFFSET', 0
 cmd_quit db 'QUIT', 0
@@ -1101,6 +1234,8 @@ listen_port dq ?
 bind_addr dq ?
 listen_fd dq ?
 fetch_last_len dq ?
+fetchbatch_byte_offset dq ?
+fetchbatch_byte_count dq ?
 
 log_path rb TOPIC_STORE_PATH_MAX
 idx_path rb TOPIC_STORE_PATH_MAX
@@ -1110,6 +1245,7 @@ offset_read_buf rb 64
 connections rb CONN_SIZE * LOGBUS_MAX_CLIENTS
 
 coro_bss
+sendfile_bss
 log_segment_bss
 topic_store_bss
 runtime_print_bss

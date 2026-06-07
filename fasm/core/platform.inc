@@ -19,6 +19,7 @@ match =macos, TARGET_OS {
 	SYS_bind equ 02000068h
 	SYS_listen equ 0200006Ah
 	SYS_setsockopt equ 02000069h
+	SYS_sendfile equ 02000151h
 	SYS_stat64 equ 02000152h
 	SYS_fstat64 equ 02000153h
 	SYS_lstat64 equ 02000154h
@@ -39,6 +40,7 @@ match =macos, TARGET_OS {
 	F_GETFL equ 3
 	F_SETFL equ 4
 	F_GETPATH equ 50
+	EINTR equ 4
 	EAGAIN equ 35
 
 	AF_INET equ 2

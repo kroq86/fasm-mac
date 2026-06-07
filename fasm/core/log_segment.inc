@@ -182,6 +182,138 @@ log_segment_read:
 	pop	rbx
 	ret
 
+; rdi = index path, rsi = message offset
+; rax = byte offset, or LOGSEG_EOF / LOGSEG_ERR
+log_segment_byte_offset:
+	push	rbx
+	push	r12
+	mov	r12, rsi
+	open_file rdi, O_RDONLY, 0
+	jump_if_syscall_error .lsbo_eof
+	mov	rbx, rax
+	mov	rdi, rbx
+	mov	rsi, r12
+	shl	rsi, 3
+	mov	rdx, SEEK_SET
+	mov	rax, SYS_lseek
+	syscall
+	jc	.lsbo_close_err
+	mov	rdi, rbx
+	lea	rsi, [logseg_u64]
+	mov	rdx, 8
+	call	logseg_read_exact_fd
+	cmp	rax, 0
+	je	.lsbo_close_eof
+	jl	.lsbo_close_err
+	mov	rdi, rbx
+	close_file rdi
+	mov	rax, [logseg_u64]
+	jmp	.lsbo_out
+.lsbo_close_eof:
+	mov	rdi, rbx
+	close_file rdi
+.lsbo_eof:
+	mov	rax, LOGSEG_EOF
+	jmp	.lsbo_out
+.lsbo_close_err:
+	mov	rdi, rbx
+	close_file rdi
+	mov	rax, LOGSEG_ERR
+.lsbo_out:
+	pop	r12
+	pop	rbx
+	ret
+
+; rdi = log path, rsi = index path, rdx = start message offset, rcx = max bytes,
+; r8 = byte offset out*, r9 = byte count out*
+; rax = LOGSEG_OK / LOGSEG_ERR
+log_segment_batch_span:
+	push	rbx
+	push	r12
+	push	r13
+	push	r14
+	push	r15
+	mov	r12, rdi
+	mov	r13, rsi
+	mov	r14, rdx
+	mov	r15, rcx
+	mov	[logseg_batch_off_out], r8
+	mov	[logseg_batch_count_out], r9
+	mov	rdi, r13
+	mov	rsi, r14
+	call	log_segment_byte_offset
+	cmp	rax, LOGSEG_ERR
+	je	.lsbs_err
+	cmp	rax, LOGSEG_EOF
+	je	.lsbs_empty
+	mov	r10, [logseg_batch_off_out]
+	mov	[r10], rax
+	mov	qword [logseg_batch_count], 0
+	mov	rdi, r12
+	open_file rdi, O_RDONLY, 0
+	jump_if_syscall_error .lsbs_err
+	mov	rbx, rax
+	mov	rdi, rbx
+	mov	rsi, [r10]
+	mov	rdx, SEEK_SET
+	mov	rax, SYS_lseek
+	syscall
+	jc	.lsbs_close_err
+.lsbs_loop:
+	mov	rax, [logseg_batch_count]
+	cmp	rax, r15
+	jae	.lsbs_done
+	mov	rdi, rbx
+	lea	rsi, [logseg_u32]
+	mov	rdx, 4
+	call	logseg_read_exact_fd
+	cmp	rax, 0
+	je	.lsbs_done
+	jl	.lsbs_close_err
+	mov	eax, [logseg_u32]
+	add	rax, 4
+	mov	r11, [logseg_batch_count]
+	add	r11, rax
+	cmp	r11, r15
+	ja	.lsbs_done
+	mov	[logseg_batch_count], r11
+	mov	rdi, rbx
+	mov	rsi, [logseg_batch_count]
+	mov	r10, [logseg_batch_off_out]
+	add	rsi, [r10]
+	mov	rdx, SEEK_SET
+	mov	rax, SYS_lseek
+	syscall
+	jc	.lsbs_close_err
+	jmp	.lsbs_loop
+.lsbs_done:
+	mov	r10, [logseg_batch_count_out]
+	mov	rax, [logseg_batch_count]
+	mov	[r10], rax
+	mov	rdi, rbx
+	close_file rdi
+	mov	rax, LOGSEG_OK
+	jmp	.lsbs_out
+.lsbs_empty:
+	mov	r10, [logseg_batch_off_out]
+	mov	qword [r10], 0
+	mov	r10, [logseg_batch_count_out]
+	mov	qword [r10], 0
+	mov	rax, LOGSEG_OK
+	jmp	.lsbs_out
+.lsbs_close_err:
+	mov	rdi, rbx
+	close_file rdi
+.lsbs_err:
+	mov	rax, LOGSEG_ERR
+.lsbs_out:
+	pop	r15
+	pop	r14
+	pop	r13
+	pop	r12
+	pop	rbx
+	ret
+
 ; rdi = fd, rsi = buf, rdx = len; rax = 0 ok, -1 error
 logseg_write_all_fd:
 	push	rbx
@@ -257,4 +389,7 @@ macro log_segment_bss
 	logseg_u32 dd ?
 	logseg_cap dq ?
 	logseg_len_out dq ?
+	logseg_batch_off_out dq ?
+	logseg_batch_count_out dq ?
+	logseg_batch_count dq ?
 }

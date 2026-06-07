@@ -37,6 +37,7 @@ start_server
 
 "$PYTHON" - "$PORT" <<'PY'
 import socket
+import struct
 import sys
 import time
 
@@ -109,6 +110,16 @@ request(
     "0",
     "4096",
 )
+raw_batch = struct.pack("<I", 5) + b"hello" + struct.pack("<I", 5) + b"world"
+request(
+    client,
+    b"$%d\r\n" % len(raw_batch) + raw_batch + b"\r\n",
+    "FETCHBATCH",
+    "events",
+    "0",
+    "4096",
+)
+request(client, b"$0\r\n\r\n", "FETCHBATCH", "events", "99", "4096")
 request(client, b"+OK\r\n", "COMMIT", "group1", "events", "2")
 request(client, b":2\r\n", "OFFSET", "group1", "events")
 
@@ -120,6 +131,14 @@ client.sendall(encode("PRODUCE", "events", b"a" * 5000))
 if not read_resp(client).startswith(b"-ERR"):
     raise AssertionError("overlarge payload did not return ERR")
 
+client.sendall(encode("FETCHBATCH", "events", "-1", "4096"))
+if not read_resp(client).startswith(b"-ERR"):
+    raise AssertionError("negative FETCHBATCH offset did not return ERR")
+
+client.sendall(encode("FETCHBATCH", "events", "0", "nope"))
+if not read_resp(client).startswith(b"-ERR"):
+    raise AssertionError("bad FETCHBATCH max_bytes did not return ERR")
+
 stalled.close()
 client.close()
 PY
@@ -129,6 +148,7 @@ start_server
 
 "$PYTHON" - "$PORT" <<'PY'
 import socket
+import struct
 import sys
 import time
 
@@ -188,6 +208,15 @@ request(
     client,
     b"*2\r\n*2\r\n:0\r\n$5\r\nhello\r\n*2\r\n:1\r\n$5\r\nworld\r\n",
     "FETCH",
+    "events",
+    "0",
+    "4096",
+)
+raw_batch = struct.pack("<I", 5) + b"hello" + struct.pack("<I", 5) + b"world"
+request(
+    client,
+    b"$%d\r\n" % len(raw_batch) + raw_batch + b"\r\n",
+    "FETCHBATCH",
     "events",
     "0",
     "4096",

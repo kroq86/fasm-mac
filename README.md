@@ -345,9 +345,11 @@ arch -x86_64 ./logbus --dir ./data --port 9092 --bind 127.0.0.1
 ```
 
 V1 commands use a RESP-like protocol: `PING`, `PRODUCE topic payload`,
-`FETCH topic offset max_bytes`, `COMMIT group topic offset`,
-`OFFSET group topic`, and `QUIT`. This is a local single-partition broker, not
-a distributed Kafka replacement.
+`FETCH topic offset max_bytes`, `FETCHBATCH topic offset max_bytes`,
+`COMMIT group topic offset`, `OFFSET group topic`, and `QUIT`.
+`FETCHBATCH` returns raw `[u32_len][payload]...` log bytes via macOS
+`sendfile`. This is a local single-partition broker, not a distributed Kafka
+replacement.
 
 Release packaging:
 
