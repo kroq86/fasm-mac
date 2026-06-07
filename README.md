@@ -309,7 +309,8 @@ scripts/check_raymaze.sh
 
 Single-threaded concurrent static HTTP server for macOS x86_64. It uses the
 green-thread scheduler, `kqueue`, and nonblocking sockets: one slow or partial
-client does not block other clients.
+client does not block other clients. Successful `GET` responses for regular
+files use macOS `sendfile`.
 
 ```sh
 fasm fasm/apps/httpmini.asm httpmini

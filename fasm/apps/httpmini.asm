@@ -14,7 +14,6 @@ CORO_STACK_SIZE equ 16384
 HTTP_REQ_MAX equ 4096
 HTTP_REQ_META_SIZE equ 32
 HTTP_HEADER_MAX equ 1024
-HTTP_FILE_CHUNK equ 4096
 HTTP_DEFAULT_PORT equ 8080
 
 CONN_FD_OFF equ 0
@@ -24,8 +23,7 @@ CONN_STATUS_OFF equ CONN_REQ_META_OFF + HTTP_REQ_META_SIZE
 CONN_HEADER_LEN_OFF equ CONN_STATUS_OFF + 8
 CONN_REQ_BUF_OFF equ CONN_HEADER_LEN_OFF + 8
 CONN_HEADER_BUF_OFF equ CONN_REQ_BUF_OFF + HTTP_REQ_MAX
-CONN_FILE_BUF_OFF equ CONN_HEADER_BUF_OFF + HTTP_HEADER_MAX
-CONN_SIZE equ CONN_FILE_BUF_OFF + HTTP_FILE_CHUNK
+CONN_SIZE equ CONN_HEADER_BUF_OFF + HTTP_HEADER_MAX
 
 segment readable executable
 
@@ -41,6 +39,7 @@ include "fasm/core/file.inc"
 include "fasm/core/socket.inc"
 include "fasm/core/coro.inc"
 include "fasm/core/socket_async.inc"
+include "fasm/core/sendfile.inc"
 include "fasm/core/http.inc"
 include "fasm/core/http_response.inc"
 include "fasm/core/path_real.inc"
@@ -445,22 +444,11 @@ serve_request:
 	jl	.sr_close_file
 	cmp	qword [r12 + CONN_REQ_META_OFF + HTTP_REQ_METHOD_OFF], HTTP_METHOD_HEAD
 	je	.sr_close_file
-.sr_file_loop:
 	mov	rdi, r13
-	lea	rsi, [r12 + CONN_FILE_BUF_OFF]
-	mov	rdx, HTTP_FILE_CHUNK
-	call	file_read_chunk
-	cmp	rax, 0
-	jl	.sr_close_file
-	je	.sr_close_file
-	mov	rbx, rax
-	mov	rdi, [r12 + CONN_FD_OFF]
-	lea	rsi, [r12 + CONN_FILE_BUF_OFF]
-	mov	rdx, rbx
-	call	coro_write_all
-	cmp	rax, 0
-	jl	.sr_close_file
-	jmp	.sr_file_loop
+	mov	rsi, [r12 + CONN_FD_OFF]
+	xor	rdx, rdx
+	mov	rcx, qword [stat_buf + STAT64_SIZE_OFF]
+	call	file_send_range_socket
 .sr_close_file:
 	mov	rdi, r13
 	call	file_close
@@ -710,4 +698,5 @@ stat_buf rb STAT64_SIZE
 connections rb CONN_SIZE * HTTPMINI_MAX_CLIENTS
 
 coro_bss
+sendfile_bss
 http_response_bss

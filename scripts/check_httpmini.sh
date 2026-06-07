@@ -25,6 +25,13 @@ mkdir -p "$PUBLIC/dir"
 printf '<h1>home</h1>\n' > "$PUBLIC/index.html"
 printf 'hello\n' > "$PUBLIC/hello.txt"
 printf '{"ok":true}\n' > "$PUBLIC/data.json"
+"$PYTHON" - "$PUBLIC/big.bin" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+path.write_bytes(bytes((i * 17 + 3) % 256 for i in range(20000)))
+PY
 printf 'secret\n' > "$PRIVATE"
 ln -s "$PRIVATE" "$PUBLIC/escape.txt"
 
@@ -83,6 +90,13 @@ assert_contains(resp, b"Content-Type: text/html; charset=utf-8\r\n")
 if not resp.endswith(b"\r\n\r\n<h1>home</h1>\n"):
     raise AssertionError(f"bad index body: {resp!r}")
 
+big_body = bytes((i * 17 + 3) % 256 for i in range(20000))
+resp = request(b"GET /big.bin HTTP/1.1\r\nHost: local\r\n\r\n")
+assert_contains(resp, b"HTTP/1.1 200 OK\r\n")
+assert_contains(resp, b"Content-Length: 20000\r\n")
+if not resp.endswith(b"\r\n\r\n" + big_body):
+    raise AssertionError("bad big.bin body")
+
 resp = request(b"HEAD /hello.txt HTTP/1.1\r\nHost: local\r\n\r\n")
 assert_contains(resp, b"HTTP/1.1 200 OK\r\n")
 assert_contains(resp, b"Content-Length: 6\r\n")
@@ -106,6 +120,7 @@ PY
 
 grep -q 'GET /hello.txt 200' "$OUT_DIR/server.err"
 grep -q 'GET / 200' "$OUT_DIR/server.err"
+grep -q 'GET /big.bin 200' "$OUT_DIR/server.err"
 grep -q 'HEAD /hello.txt 200' "$OUT_DIR/server.err"
 grep -q 'GET /missing.txt 404' "$OUT_DIR/server.err"
 grep -q -- '- 405' "$OUT_DIR/server.err"
