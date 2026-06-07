@@ -338,10 +338,12 @@ scripts/check_httpmini.sh
 
 Kafka-like local durable append-only message broker for macOS x86_64. It uses
 the green-thread scheduler, `kqueue`, nonblocking sockets, and a length-prefixed
-record log with a message-offset index. Topic data is stored as rotated
-base-offset segments plus a global offset index; tune segment size with
-`--segment-bytes N`. Accepted `PRODUCE` writes are fsync-backed, and restart
-recovery trims segment/index tails back to the committed global offset index.
+record log with a message-offset index and CRC32C per record. Topic data is
+stored as rotated base-offset segments plus a global offset index; tune segment
+size with `--segment-bytes N`. Accepted `PRODUCE` writes are fsync-backed, and
+restart recovery trims segment/index tails back to the committed global offset
+index. v1.3 uses a breaking storage/raw fetch format:
+`[u32_len][u32_crc32c][payload]`.
 
 ```sh
 fasm fasm/apps/logbus.asm logbus
@@ -351,7 +353,7 @@ arch -x86_64 ./logbus --dir ./data --port 9092 --bind 127.0.0.1
 V1 commands use a RESP-like protocol: `PING`, `PRODUCE topic payload`,
 `FETCH topic offset max_bytes`, `FETCHBATCH topic offset max_bytes`,
 `COMMIT group topic offset`, `OFFSET group topic`, and `QUIT`.
-`FETCHBATCH` returns raw `[u32_len][payload]...` log bytes via macOS
+`FETCHBATCH` returns raw `[u32_len][u32_crc32c][payload]...` log bytes via macOS
 `sendfile`. This is a local single-partition broker, not a distributed Kafka
 replacement.
 

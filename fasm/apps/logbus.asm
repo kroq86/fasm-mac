@@ -618,7 +618,7 @@ cmd_do_produce:
 	je	.cdp_ioerr
 	mov	r14, rax
 	mov	rax, [r12 + CONN_ARGLEN_OFF + 16]
-	add	rax, 4
+	add	rax, 8
 	test	r14, r14
 	jz	.cdp_append
 	add	rax, r14

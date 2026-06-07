@@ -1,12 +1,15 @@
 ; Durable append-only log segment helpers.
 ;
-; Record file format: u32_le payload_len, then payload bytes.
+; Record file format: u32_le payload_len, u32_le CRC32C(payload), payload bytes.
 ; Index file format: u64_le record byte offset in the record file.
+
+include "fasm/core/crc32c.inc"
 
 LOGSEG_OK equ 0
 LOGSEG_EOF equ 1
 LOGSEG_ERR equ -1
 LOGSEG_TOO_LARGE equ -2
+LOGSEG_RECOVER_BUF_MAX equ 65536
 
 ; rdi = log path, rsi = index path, rdx = payload ptr, rcx = payload len
 ; rax = message offset, or LOGSEG_ERR
@@ -46,8 +49,18 @@ log_segment_append:
 	mov	[logseg_u64], rax
 	mov	eax, r15d
 	mov	[logseg_u32], eax
+	mov	rdi, r14
+	mov	rsi, r15
+	call	crc32c_compute
+	mov	[logseg_crc], eax
 	mov	rdi, r10
 	lea	rsi, [logseg_u32]
+	mov	rdx, 4
+	call	logseg_write_all_fd
+	cmp	rax, 0
+	jl	.lsa_close_both_err
+	mov	rdi, r10
+	lea	rsi, [logseg_crc]
 	mov	rdx, 4
 	call	logseg_write_all_fd
 	cmp	rax, 0
@@ -148,15 +161,27 @@ log_segment_read:
 	cmp	rax, 1
 	jne	.lsr_close_log_err
 	mov	eax, [logseg_u32]
+	mov	[logseg_payload_len], rax
 	mov	r10, [logseg_len_out]
 	mov	[r10], rax
 	cmp	rax, [logseg_cap]
 	ja	.lsr_close_log_too_large
 	mov	rdi, rbx
-	mov	rsi, r15
-	mov	rdx, rax
+	lea	rsi, [logseg_crc]
+	mov	rdx, 4
 	call	logseg_read_exact_fd
 	cmp	rax, 1
+	jne	.lsr_close_log_err
+	mov	rdi, rbx
+	mov	rsi, r15
+	mov	rdx, [logseg_payload_len]
+	call	logseg_read_exact_fd
+	cmp	rax, 1
+	jne	.lsr_close_log_err
+	mov	rdi, r15
+	mov	rsi, [logseg_payload_len]
+	call	crc32c_compute
+	cmp	eax, [logseg_crc]
 	jne	.lsr_close_log_err
 	mov	rdi, rbx
 	close_file rdi
@@ -349,7 +374,7 @@ log_segment_recover_to_count:
 	mov	rdx, 8
 	call	logseg_read_exact_fd
 	cmp	rax, 1
-	jne	.lsrtc_close_both_err
+	jne	.lsrtc_truncate_err
 	mov	rdi, rbx
 	mov	rsi, [logseg_u64]
 	mov	rdx, SEEK_SET
@@ -361,10 +386,31 @@ log_segment_recover_to_count:
 	mov	rdx, 4
 	call	logseg_read_exact_fd
 	cmp	rax, 1
-	jne	.lsrtc_close_both_err
+	jne	.lsrtc_truncate_err
 	mov	eax, [logseg_u32]
+	mov	[logseg_payload_len], rax
+	mov	rdi, rbx
+	lea	rsi, [logseg_crc]
+	mov	rdx, 4
+	call	logseg_read_exact_fd
+	cmp	rax, 1
+	jne	.lsrtc_truncate_err
+	cmp	qword [logseg_payload_len], LOGSEG_RECOVER_BUF_MAX
+	ja	.lsrtc_truncate_err
+	mov	rdi, rbx
+	lea	rsi, [logseg_recover_buf]
+	mov	rdx, [logseg_payload_len]
+	call	logseg_read_exact_fd
+	cmp	rax, 1
+	jne	.lsrtc_truncate_err
+	lea	rdi, [logseg_recover_buf]
+	mov	rsi, [logseg_payload_len]
+	call	crc32c_compute
+	cmp	eax, [logseg_crc]
+	jne	.lsrtc_truncate_err
+	mov	rax, [logseg_payload_len]
 	mov	rdx, [logseg_u64]
-	add	rdx, 4
+	add	rdx, 8
 	add	rdx, rax
 	mov	[logseg_recover_end], rdx
 	mov	rdi, rbx
@@ -400,6 +446,32 @@ log_segment_recover_to_count:
 	mov	rdi, rbx
 	close_file rdi
 	mov	rax, LOGSEG_OK
+	jmp	.lsrtc_out
+.lsrtc_truncate_err:
+	mov	rdi, r15
+	mov	rsi, [logseg_recover_i]
+	shl	rsi, 3
+	mov	rax, SYS_ftruncate
+	syscall
+	jc	.lsrtc_close_both_err
+	mov	rdi, rbx
+	mov	rsi, [logseg_recover_end]
+	mov	rax, SYS_ftruncate
+	syscall
+	jc	.lsrtc_close_both_err
+	mov	rdi, rbx
+	mov	rax, SYS_fsync
+	syscall
+	jc	.lsrtc_close_both_err
+	mov	rdi, r15
+	mov	rax, SYS_fsync
+	syscall
+	jc	.lsrtc_close_both_err
+	mov	rdi, r15
+	close_file rdi
+	mov	rdi, rbx
+	close_file rdi
+	mov	rax, LOGSEG_ERR
 	jmp	.lsrtc_out
 .lsrtc_close_both_err:
 	mov	rdi, r15
@@ -493,7 +565,7 @@ log_segment_batch_span:
 	je	.lsbs_done
 	jl	.lsbs_close_err
 	mov	eax, [logseg_u32]
-	add	rax, 4
+	add	rax, 8
 	mov	r11, [logseg_batch_count]
 	add	r11, rax
 	cmp	r11, r15
@@ -609,6 +681,8 @@ macro log_segment_bss
 {
 	logseg_u64 dq ?
 	logseg_u32 dd ?
+	logseg_crc dd ?
+	logseg_payload_len dq ?
 	logseg_cap dq ?
 	logseg_len_out dq ?
 	logseg_batch_off_out dq ?
@@ -617,4 +691,5 @@ macro log_segment_bss
 	logseg_u64_out dq ?
 	logseg_recover_i dq ?
 	logseg_recover_end dq ?
+	logseg_recover_buf rb LOGSEG_RECOVER_BUF_MAX
 }

@@ -19,9 +19,10 @@ PY
 )"
 
 fasm "$ROOT/fasm/apps/logbus.asm" "$BIN" >/dev/null
+fasm run "$ROOT/fasm/tests/macos-smoke/crc32c.asm" "$OUT_DIR/crc32c_smoke" >/dev/null
 
 start_server() {
-    arch -x86_64 "$BIN" --dir "$DATA" --port "$PORT" --bind 127.0.0.1 --segment-bytes 20 >"$OUT_DIR/server.out" 2>"$OUT_DIR/server.err" &
+    arch -x86_64 "$BIN" --dir "$DATA" --port "$PORT" --bind 127.0.0.1 --segment-bytes 30 >"$OUT_DIR/server.out" 2>"$OUT_DIR/server.err" &
     SERVER_PID=$!
 }
 
@@ -60,6 +61,23 @@ def encode(*args):
             arg = arg.encode()
         out += b"$%d\r\n" % len(arg) + arg + b"\r\n"
     return out
+
+def crc32c(data):
+    crc = 0xFFFFFFFF
+    for b in data:
+        crc ^= b
+        for _ in range(8):
+            if crc & 1:
+                crc = (crc >> 1) ^ 0x82F63B78
+            else:
+                crc >>= 1
+            crc &= 0xFFFFFFFF
+    return crc ^ 0xFFFFFFFF
+
+def raw_record(payload):
+    if isinstance(payload, str):
+        payload = payload.encode()
+    return struct.pack("<II", len(payload), crc32c(payload)) + payload
 
 def read_line(sock):
     data = b""
@@ -110,7 +128,7 @@ request(
     "0",
     "4096",
 )
-raw_batch = struct.pack("<I", 5) + b"hello" + struct.pack("<I", 5) + b"world"
+raw_batch = raw_record("hello") + raw_record("world")
 request(
     client,
     b"$%d\r\n" % len(raw_batch) + raw_batch + b"\r\n",
@@ -129,7 +147,7 @@ request(
     "2",
     "4096",
 )
-raw_again = struct.pack("<I", 5) + b"again"
+raw_again = raw_record("again")
 request(
     client,
     b"$%d\r\n" % len(raw_again) + raw_again + b"\r\n",
@@ -181,8 +199,21 @@ segment = data / "topics" / "events" / "00000000000000000002"
 log_path = segment.with_suffix(".log")
 idx_path = segment.with_suffix(".idx")
 offset = log_path.stat().st_size
+def crc32c(data):
+    crc = 0xFFFFFFFF
+    for b in data:
+        crc ^= b
+        for _ in range(8):
+            if crc & 1:
+                crc = (crc >> 1) ^ 0x82F63B78
+            else:
+                crc >>= 1
+            crc &= 0xFFFFFFFF
+    return crc ^ 0xFFFFFFFF
+
+payload = b"orphan"
 with log_path.open("ab") as f:
-    f.write(struct.pack("<I", 6) + b"orphan")
+    f.write(struct.pack("<II", len(payload), crc32c(payload)) + payload)
 with idx_path.open("ab") as f:
     f.write(struct.pack("<Q", offset))
 PY
@@ -214,6 +245,23 @@ def encode(*args):
             arg = arg.encode()
         out += b"$%d\r\n" % len(arg) + arg + b"\r\n"
     return out
+
+def crc32c(data):
+    crc = 0xFFFFFFFF
+    for b in data:
+        crc ^= b
+        for _ in range(8):
+            if crc & 1:
+                crc = (crc >> 1) ^ 0x82F63B78
+            else:
+                crc >>= 1
+            crc &= 0xFFFFFFFF
+    return crc ^ 0xFFFFFFFF
+
+def raw_record(payload):
+    if isinstance(payload, str):
+        payload = payload.encode()
+    return struct.pack("<II", len(payload), crc32c(payload)) + payload
 
 def read_line(sock):
     data = b""
@@ -256,7 +304,7 @@ request(
     "0",
     "4096",
 )
-raw_batch = struct.pack("<I", 5) + b"hello" + struct.pack("<I", 5) + b"world"
+raw_batch = raw_record("hello") + raw_record("world")
 request(
     client,
     b"$%d\r\n" % len(raw_batch) + raw_batch + b"\r\n",
@@ -273,7 +321,7 @@ request(
     "2",
     "4096",
 )
-raw_again = struct.pack("<I", 5) + b"again" + struct.pack("<I", 5) + b"after"
+raw_again = raw_record("again") + raw_record("after")
 request(
     client,
     b"$%d\r\n" % len(raw_again) + raw_again + b"\r\n",
@@ -283,6 +331,63 @@ request(
     "4096",
 )
 request(client, b":3\r\n", "OFFSET", "group1", "events")
+client.close()
+PY
+
+stop_server
+
+"$PYTHON" - "$DATA" <<'PY'
+import pathlib
+import sys
+
+data = pathlib.Path(sys.argv[1])
+log_path = data / "topics" / "events" / "00000000000000000002.log"
+body = bytearray(log_path.read_bytes())
+body[8] ^= 0xFF
+log_path.write_bytes(body)
+PY
+
+start_server
+
+"$PYTHON" - "$PORT" <<'PY'
+import socket
+import sys
+import time
+
+port = int(sys.argv[1])
+
+def connect_retry():
+    last = None
+    for _ in range(80):
+        try:
+            return socket.create_connection(("127.0.0.1", port), timeout=0.5)
+        except OSError as exc:
+            last = exc
+            time.sleep(0.05)
+    raise RuntimeError(f"server did not accept connections after corruption: {last}")
+
+def encode(*args):
+    out = f"*{len(args)}\r\n".encode()
+    for arg in args:
+        if isinstance(arg, str):
+            arg = arg.encode()
+        out += b"$%d\r\n" % len(arg) + arg + b"\r\n"
+    return out
+
+def read_line(sock):
+    data = b""
+    while not data.endswith(b"\r\n"):
+        chunk = sock.recv(1)
+        if not chunk:
+            raise EOFError("connection closed")
+        data += chunk
+    return data
+
+client = connect_retry()
+client.sendall(encode("FETCH", "events", "2", "4096"))
+line = read_line(client)
+if not line.startswith(b"-ERR"):
+    raise AssertionError(f"corrupt record did not return ERR: {line!r}")
 client.close()
 PY
 
