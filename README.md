@@ -313,12 +313,13 @@ client does not block other clients.
 
 ```sh
 fasm fasm/apps/httpmini.asm httpmini
-arch -x86_64 ./httpmini --root ./public --port 8080
+arch -x86_64 ./httpmini --root ./public --port 8080 --bind 127.0.0.1
 ```
 
 V1 serves local regular files with `GET` and `HEAD`, closes each connection
-after one response, and rejects directories, symlinks, `%` escapes, backslashes,
-and `..` path components.
+after one response, serves `/index.html` for `/`, writes a simple access log to
+stderr, and rejects directories, symlinks, `%` escapes, backslashes, and `..`
+path components.
 
 Release packaging:
 

@@ -22,12 +22,13 @@ PY
 fasm "$ROOT/fasm/apps/httpmini.asm" "$BIN" >/dev/null
 
 mkdir -p "$PUBLIC/dir"
+printf '<h1>home</h1>\n' > "$PUBLIC/index.html"
 printf 'hello\n' > "$PUBLIC/hello.txt"
 printf '{"ok":true}\n' > "$PUBLIC/data.json"
 printf 'secret\n' > "$PRIVATE"
 ln -s "$PRIVATE" "$PUBLIC/escape.txt"
 
-arch -x86_64 "$BIN" --root "$PUBLIC" --port "$PORT" >"$OUT_DIR/server.out" 2>"$OUT_DIR/server.err" &
+arch -x86_64 "$BIN" --root "$PUBLIC" --port "$PORT" --bind 127.0.0.1 >"$OUT_DIR/server.out" 2>"$OUT_DIR/server.err" &
 SERVER_PID=$!
 
 "$PYTHON" - "$PORT" <<'PY'
@@ -76,6 +77,12 @@ assert_contains(resp, b"Content-Length: 6\r\n")
 if not resp.endswith(b"\r\n\r\nhello\n"):
     raise AssertionError(f"bad GET body: {resp!r}")
 
+resp = request(b"GET / HTTP/1.1\r\nHost: local\r\n\r\n")
+assert_contains(resp, b"HTTP/1.1 200 OK\r\n")
+assert_contains(resp, b"Content-Type: text/html; charset=utf-8\r\n")
+if not resp.endswith(b"\r\n\r\n<h1>home</h1>\n"):
+    raise AssertionError(f"bad index body: {resp!r}")
+
 resp = request(b"HEAD /hello.txt HTTP/1.1\r\nHost: local\r\n\r\n")
 assert_contains(resp, b"HTTP/1.1 200 OK\r\n")
 assert_contains(resp, b"Content-Length: 6\r\n")
@@ -96,5 +103,11 @@ assert_contains(resp, b"HTTP/1.1 200 OK\r\n")
 assert_contains(resp, b'{"ok":true}\n')
 stalled.close()
 PY
+
+grep -q 'GET /hello.txt 200' "$OUT_DIR/server.err"
+grep -q 'GET / 200' "$OUT_DIR/server.err"
+grep -q 'HEAD /hello.txt 200' "$OUT_DIR/server.err"
+grep -q 'GET /missing.txt 404' "$OUT_DIR/server.err"
+grep -q -- '- 405' "$OUT_DIR/server.err"
 
 echo 'httpmini checks passed'

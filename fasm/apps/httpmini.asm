@@ -20,7 +20,8 @@ HTTP_DEFAULT_PORT equ 8080
 CONN_FD_OFF equ 0
 CONN_REQ_LEN_OFF equ 8
 CONN_REQ_META_OFF equ 16
-CONN_HEADER_LEN_OFF equ CONN_REQ_META_OFF + HTTP_REQ_META_SIZE
+CONN_STATUS_OFF equ CONN_REQ_META_OFF + HTTP_REQ_META_SIZE
+CONN_HEADER_LEN_OFF equ CONN_STATUS_OFF + 8
 CONN_REQ_BUF_OFF equ CONN_HEADER_LEN_OFF + 8
 CONN_HEADER_BUF_OFF equ CONN_REQ_BUF_OFF + HTTP_REQ_MAX
 CONN_FILE_BUF_OFF equ CONN_HEADER_BUF_OFF + HTTP_HEADER_MAX
@@ -55,6 +56,7 @@ start:
 	lea	rax, [dot_path]
 	mov	[root_arg], rax
 	mov	qword [listen_port], HTTP_DEFAULT_PORT
+	mov	qword [bind_addr], INADDR_ANY
 	call	parse_args
 	cmp	rax, 0
 	jl	start_usage
@@ -109,6 +111,12 @@ parse_args:
 	call	str_eq
 	cmp	rax, 1
 	je	.pa_port
+	mov	rax, [argv]
+	mov	rdi, [rax + rbx * 8]
+	lea	rsi, [opt_bind]
+	call	str_eq
+	cmp	rax, 1
+	je	.pa_bind
 	mov	rax, -1
 	jmp	.pa_out
 .pa_root:
@@ -132,6 +140,29 @@ parse_args:
 	cmp	rax, 65535
 	ja	.pa_bad
 	mov	[listen_port], rax
+	inc	rbx
+	jmp	.pa_loop
+.pa_bind:
+	inc	rbx
+	cmp	rbx, [argc]
+	jae	.pa_bad
+	mov	rax, [argv]
+	mov	rdi, [rax + rbx * 8]
+	lea	rsi, [bind_loopback]
+	call	str_eq
+	cmp	rax, 1
+	je	.pa_bind_loopback
+	mov	rax, [argv]
+	mov	rdi, [rax + rbx * 8]
+	lea	rsi, [bind_any]
+	call	str_eq
+	cmp	rax, 1
+	jne	.pa_bad
+	mov	qword [bind_addr], INADDR_ANY
+	inc	rbx
+	jmp	.pa_loop
+.pa_bind_loopback:
+	mov	qword [bind_addr], 0100007Fh
 	inc	rbx
 	jmp	.pa_loop
 .pa_ok:
@@ -170,7 +201,8 @@ accept_task:
 	push	r12
 	push	r13
 	mov	rdi, [listen_port]
-	call	tcp_listen
+	mov	rsi, [bind_addr]
+	call	tcp_listen_addr
 	cmp	rax, 0
 	jl	.at_done
 	mov	[listen_fd], rax
@@ -215,6 +247,7 @@ accept_task:
 client_task:
 	push	r12
 	mov	r12, rdi
+	mov	qword [r12 + CONN_STATUS_OFF], 0
 	mov	rdi, r12
 	call	conn_read_request
 	cmp	rax, HTTP_PARSE_OK
@@ -241,6 +274,8 @@ client_task:
 	mov	rdi, r12
 	call	serve_request
 .ct_done:
+	mov	rdi, r12
+	call	log_access
 	mov	rdi, r12
 	call	conn_close_release
 	pop	r12
@@ -288,14 +323,24 @@ conn_alloc:
 conn_init:
 	mov	[rdi + CONN_FD_OFF], rsi
 	mov	qword [rdi + CONN_REQ_LEN_OFF], 0
+	mov	qword [rdi + CONN_REQ_META_OFF + HTTP_REQ_METHOD_OFF], 0
+	mov	qword [rdi + CONN_REQ_META_OFF + HTTP_REQ_PATH_PTR_OFF], 0
+	mov	qword [rdi + CONN_REQ_META_OFF + HTTP_REQ_PATH_LEN_OFF], 0
+	mov	qword [rdi + CONN_REQ_META_OFF + HTTP_REQ_LINE_LEN_OFF], 0
 	mov	qword [rdi + CONN_HEADER_LEN_OFF], 0
+	mov	qword [rdi + CONN_STATUS_OFF], 0
 	mov	rax, rdi
 	ret
 
 conn_release:
 	mov	qword [rdi + CONN_FD_OFF], -1
 	mov	qword [rdi + CONN_REQ_LEN_OFF], 0
+	mov	qword [rdi + CONN_REQ_META_OFF + HTTP_REQ_METHOD_OFF], 0
+	mov	qword [rdi + CONN_REQ_META_OFF + HTTP_REQ_PATH_PTR_OFF], 0
+	mov	qword [rdi + CONN_REQ_META_OFF + HTTP_REQ_PATH_LEN_OFF], 0
+	mov	qword [rdi + CONN_REQ_META_OFF + HTTP_REQ_LINE_LEN_OFF], 0
 	mov	qword [rdi + CONN_HEADER_LEN_OFF], 0
+	mov	qword [rdi + CONN_STATUS_OFF], 0
 	ret
 
 conn_close_release:
@@ -347,15 +392,25 @@ serve_request:
 	push	rbx
 	push	r12
 	push	r13
+	push	r14
 	mov	r12, rdi
-	mov	rdi, [r12 + CONN_REQ_META_OFF + HTTP_REQ_PATH_PTR_OFF]
-	mov	rsi, [r12 + CONN_REQ_META_OFF + HTTP_REQ_PATH_LEN_OFF]
+	mov	r14, [r12 + CONN_REQ_META_OFF + HTTP_REQ_PATH_PTR_OFF]
+	mov	rbx, [r12 + CONN_REQ_META_OFF + HTTP_REQ_PATH_LEN_OFF]
+	cmp	rbx, 1
+	jne	.sr_have_path
+	cmp	byte [r14], '/'
+	jne	.sr_have_path
+	lea	r14, [index_req_path]
+	mov	rbx, index_req_path_len
+.sr_have_path:
+	mov	rdi, r14
+	mov	rsi, rbx
 	call	path_http_unsafe
 	cmp	rax, 1
 	je	.sr_403
 	mov	rdi, [root_arg]
-	mov	rsi, [r12 + CONN_REQ_META_OFF + HTTP_REQ_PATH_PTR_OFF]
-	mov	rdx, [r12 + CONN_REQ_META_OFF + HTTP_REQ_PATH_LEN_OFF]
+	mov	rsi, r14
+	mov	rdx, rbx
 	lea	rcx, [candidate_path]
 	call	path_join_root_http
 	test	rax, rax
@@ -378,8 +433,8 @@ serve_request:
 	cmp	rax, 0
 	jl	.sr_404
 	mov	r13, rax
-	mov	rdi, [r12 + CONN_REQ_META_OFF + HTTP_REQ_PATH_PTR_OFF]
-	mov	rsi, [r12 + CONN_REQ_META_OFF + HTTP_REQ_PATH_LEN_OFF]
+	mov	rdi, r14
+	mov	rsi, rbx
 	call	http_content_type
 	mov	r8, rax
 	mov	rdi, r12
@@ -426,6 +481,7 @@ serve_request:
 	call	send_error
 	jmp	.sr_done
 .sr_done:
+	pop	r14
 	pop	r13
 	pop	r12
 	pop	rbx
@@ -462,147 +518,22 @@ send_error:
 
 ; rdi = conn*, rsi = status, rdx = content len, r8 = content type
 send_header2:
-	push	rbx
 	push	r12
-	push	r13
-	push	r14
-	push	r15
 	mov	r12, rdi
-	mov	r13, rsi
-	mov	r14, rdx
-	mov	r15, r8
-	mov	rdi, r12
-	mov	rsi, r13
-	call	send_status_line
-	cmp	rax, 0
-	jl	.sh2_out
-	mov	rdi, r12
-	lea	rsi, [hdr_server]
-	call	conn_write_cstr
-	cmp	rax, 0
-	jl	.sh2_out
-	mov	rdi, r12
-	lea	rsi, [hdr_content_length]
-	call	conn_write_cstr
-	cmp	rax, 0
-	jl	.sh2_out
+	mov	[r12 + CONN_STATUS_OFF], rsi
 	lea	rdi, [r12 + CONN_HEADER_BUF_OFF]
-	mov	rax, r14
-	call	uint_to_buf
-	mov	rdi, r12
-	mov	rsi, rbx
-	mov	rdx, rax
-	call	conn_write_bytes
+	mov	rcx, rdx
+	mov	rdx, rsi
+	mov	rsi, HTTP_HEADER_MAX
+	call	http_build_header
 	cmp	rax, 0
-	jl	.sh2_out
-	mov	rdi, r12
-	lea	rsi, [crlf]
-	call	conn_write_cstr
-	cmp	rax, 0
-	jl	.sh2_out
-	mov	rdi, r12
-	lea	rsi, [hdr_content_type]
-	call	conn_write_cstr
-	cmp	rax, 0
-	jl	.sh2_out
-	mov	rdi, r12
-	mov	rsi, r15
-	call	conn_write_cstr
-	cmp	rax, 0
-	jl	.sh2_out
-	mov	rdi, r12
-	lea	rsi, [hdr_close]
-	call	conn_write_cstr
-	cmp	rax, 0
-	jl	.sh2_out
-	mov	rdi, r12
-	lea	rsi, [crlf]
-	call	conn_write_cstr
-.sh2_out:
-	pop	r15
-	pop	r14
-	pop	r13
-	pop	r12
-	pop	rbx
-	ret
-
-; rdi = conn*, rsi = status
-send_status_line:
-	cmp	rsi, HTTP_STATUS_200
-	je	.ssl_200
-	cmp	rsi, HTTP_STATUS_400
-	je	.ssl_400
-	cmp	rsi, HTTP_STATUS_403
-	je	.ssl_403
-	cmp	rsi, HTTP_STATUS_404
-	je	.ssl_404
-	cmp	rsi, HTTP_STATUS_405
-	je	.ssl_405
-	cmp	rsi, HTTP_STATUS_414
-	je	.ssl_414
-	lea	rsi, [status_500]
-	jmp	conn_write_cstr
-.ssl_200:
-	lea	rsi, [status_200]
-	jmp	conn_write_cstr
-.ssl_400:
-	lea	rsi, [status_400]
-	jmp	conn_write_cstr
-.ssl_403:
-	lea	rsi, [status_403]
-	jmp	conn_write_cstr
-.ssl_404:
-	lea	rsi, [status_404]
-	jmp	conn_write_cstr
-.ssl_405:
-	lea	rsi, [status_405]
-	jmp	conn_write_cstr
-.ssl_414:
-	lea	rsi, [status_414]
-	jmp	conn_write_cstr
-
-; rdi = conn*, rsi = cstr
-conn_write_cstr:
-	push	rdi
-	push	rsi
-	mov	rdi, rsi
-	call	str_len
-	mov	rdx, rax
-	pop	rsi
-	pop	rdi
-	jmp	conn_write_bytes
-
-; rdi = conn*, rsi = ptr, rdx = len
-conn_write_bytes:
-	mov	rdi, [rdi + CONN_FD_OFF]
-	jmp	coro_write_all
-
-; rdi = scratch buffer, rax = value
-; rbx = ptr, rax = len
-uint_to_buf:
-	push	r12
-	push	r13
-	mov	r12, 10
-	lea	rbx, [rdi + HTTP_HEADER_MAX - 1]
-	mov	byte [rbx], 0
-	test	rax, rax
-	jnz	.utb_loop
-	dec	rbx
-	mov	byte [rbx], '0'
-	jmp	.utb_done
-.utb_loop:
-	xor	rdx, rdx
-	div	r12
-	add	dl, '0'
-	dec	rbx
-	mov	[rbx], dl
-	test	rax, rax
-	jnz	.utb_loop
-.utb_done:
-	lea	r13, [rdi + HTTP_HEADER_MAX - 1]
-	sub	r13, rbx
-	mov	rax, r13
-	pop	r13
+	jl	.sh2_done
+	mov	[r12 + CONN_HEADER_LEN_OFF], rax
+	mov	rdi, [r12 + CONN_FD_OFF]
+	lea	rsi, [r12 + CONN_HEADER_BUF_OFF]
+	mov	rdx, [r12 + CONN_HEADER_LEN_OFF]
+	call	coro_write_all
+.sh2_done:
 	pop	r12
 	ret
 
@@ -649,14 +580,97 @@ write_stderr:
 	syscall
 	ret
 
+; rdi = conn*
+log_access:
+	push	r12
+	mov	r12, rdi
+	cmp	qword [r12 + CONN_STATUS_OFF], 0
+	je	.la_done
+	mov	rdi, [r12 + CONN_REQ_META_OFF + HTTP_REQ_PATH_PTR_OFF]
+	test	rdi, rdi
+	jz	.la_status_only
+	mov	rax, [r12 + CONN_REQ_META_OFF + HTTP_REQ_METHOD_OFF]
+	cmp	rax, HTTP_METHOD_HEAD
+	je	.la_head
+	lea	rdi, [log_get]
+	mov	rsi, log_get_len
+	call	write_stderr
+	jmp	.la_path
+.la_head:
+	lea	rdi, [log_head]
+	mov	rsi, log_head_len
+	call	write_stderr
+.la_path:
+	mov	rdi, [r12 + CONN_REQ_META_OFF + HTTP_REQ_PATH_PTR_OFF]
+	mov	rsi, [r12 + CONN_REQ_META_OFF + HTTP_REQ_PATH_LEN_OFF]
+	call	write_stderr
+	lea	rdi, [log_space]
+	mov	rsi, 1
+	call	write_stderr
+	mov	rax, [r12 + CONN_STATUS_OFF]
+	call	write_uint_stderr
+	mov	al, 10
+	call	write_char_stderr
+	jmp	.la_done
+.la_status_only:
+	lea	rdi, [log_dash]
+	mov	rsi, log_dash_len
+	call	write_stderr
+	mov	rax, [r12 + CONN_STATUS_OFF]
+	call	write_uint_stderr
+	mov	al, 10
+	call	write_char_stderr
+.la_done:
+	pop	r12
+	ret
+
+write_char_stderr:
+	mov	[stderr_char], al
+	lea	rdi, [stderr_char]
+	mov	rsi, 1
+	jmp	write_stderr
+
+write_uint_stderr:
+	push	rbx
+	push	r12
+	mov	rbx, 10
+	lea	r12, [log_num_buf + 31]
+	mov	byte [r12], 0
+	test	rax, rax
+	jnz	.wus_loop
+	dec	r12
+	mov	byte [r12], '0'
+	jmp	.wus_emit
+.wus_loop:
+	xor	rdx, rdx
+	div	rbx
+	add	dl, '0'
+	dec	r12
+	mov	[r12], dl
+	test	rax, rax
+	jnz	.wus_loop
+.wus_emit:
+	lea	rsi, [log_num_buf + 31]
+	sub	rsi, r12
+	mov	rdi, r12
+	call	write_stderr
+	pop	r12
+	pop	rbx
+	ret
+
 
 
 segment readable writeable
 
 opt_root db '--root', 0
 opt_port db '--port', 0
+opt_bind db '--bind', 0
+bind_loopback db '127.0.0.1', 0
+bind_any db '0.0.0.0', 0
 dot_path db '.', 0
-usage_msg db 'usage: httpmini [--root DIR] [--port PORT]', 10
+index_req_path db '/index.html'
+index_req_path_len = $ - index_req_path
+usage_msg db 'usage: httpmini [--root DIR] [--port PORT] [--bind 127.0.0.1|0.0.0.0]', 10
 usage_msg_len = $ - usage_msg
 bad_root_msg db 'httpmini: unable to canonicalize root', 10
 bad_root_msg_len = $ - bad_root_msg
@@ -673,12 +687,22 @@ body_414 db '414 URI Too Long', 10
 body_414_len = $ - body_414
 body_500 db '500 Internal Server Error', 10
 body_500_len = $ - body_500
+log_get db 'GET '
+log_get_len = $ - log_get
+log_head db 'HEAD '
+log_head_len = $ - log_head
+log_dash db '- '
+log_dash_len = $ - log_dash
+log_space db ' '
 
 argc dq ?
 argv dq ?
 root_arg dq ?
 listen_port dq ?
+bind_addr dq ?
 listen_fd dq ?
+stderr_char rb 1
+log_num_buf rb 32
 
 target_real rb PATH_REAL_MAX
 candidate_path rb PATH_REAL_MAX

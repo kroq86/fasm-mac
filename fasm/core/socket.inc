@@ -71,12 +71,20 @@ sock_write_all:
 ; rdi = port (host order)
 ; rax = listen fd or -1
 tcp_listen:
+	xor	rsi, rsi
+	jmp	tcp_listen_addr
+
+; rdi = port (host order), rsi = IPv4 address in network byte order, or 0
+; rax = listen fd or -1
+tcp_listen_addr:
 	push	rbp
 	mov	rbp, rsp
 	push	rbx
 	push	r12
+	push	r13
 	sub	rsp, 20
 	mov	r12d, edi
+	mov	r13d, esi
 
 	syscall3 SYS_socket, AF_INET, SOCK_STREAM, 0
 	jc	.tl_fail
@@ -97,7 +105,7 @@ tcp_listen:
 	mov	ax, r12w
 	xchg	ah, al
 	mov	word [rsp + 2], ax
-	mov	dword [rsp + 4], INADDR_ANY
+	mov	dword [rsp + 4], r13d
 	xor	rax, rax
 	mov	[rsp + 8], rax
 
@@ -124,6 +132,7 @@ tcp_listen:
 	mov	rax, -1
 .tl_out:
 	add	rsp, 20
+	pop	r13
 	pop	r12
 	pop	rbx
 	pop	rbp

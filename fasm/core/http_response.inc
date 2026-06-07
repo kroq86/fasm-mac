@@ -178,32 +178,28 @@ http_build_header:
 	ret
 .hbh_append_uint:
 	push	rbx
-	push	r12
-	push	r13
 	mov	rbx, 10
-	lea	r12, [http_num_buf + 31]
-	mov	byte [r12], 0
+	lea	r10, [http_num_buf + 31]
+	mov	byte [r10], 0
 	test	rax, rax
 	jnz	.hbh_uint_loop
-	dec	r12
-	mov	byte [r12], '0'
+	dec	r10
+	mov	byte [r10], '0'
 	jmp	.hbh_uint_emit
 .hbh_uint_loop:
 	xor	rdx, rdx
 	div	rbx
 	add	dl, '0'
-	dec	r12
-	mov	[r12], dl
+	dec	r10
+	mov	[r10], dl
 	test	rax, rax
 	jnz	.hbh_uint_loop
 .hbh_uint_emit:
-	lea	r13, [http_num_buf + 31]
-	sub	r13, r12
-	mov	rdi, r12
-	mov	rsi, r13
+	lea	r11, [http_num_buf + 31]
+	sub	r11, r10
+	mov	rdi, r10
+	mov	rsi, r11
 	call	.hbh_append
-	pop	r13
-	pop	r12
 	pop	rbx
 	ret
 .hbh_out:
