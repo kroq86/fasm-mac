@@ -369,6 +369,27 @@ Smoke test:
 scripts/check_logbus.sh
 ```
 
+## logvec
+
+Experimental brew-worthy tool: **batch snapshot** index builder plus exact
+cosine top-k search. logbus stays dumb; FASM owns f32 dot/norm/top-k only;
+Zig wires protocol, files, ingest, and doc_id mapping. v0 metric: cosine
+similarity (`score = dot / (norm(q)*norm(v))`, higher is better). `build-index`
+is one-shot — it does not tail topics. Spec: `docs/logvec.md`.
+
+```sh
+fasm --emit=macho-obj fasm/apps/logvec_core.asm logvec_core.o
+zig build-exe fasm/apps/logvec.zig logvec_core.o \
+  -target x86_64-macos -mcpu=baseline -O ReleaseSafe -femit-bin=logvec
+arch -x86_64 ./logvec search --index index.lv --query query.bin --top 5
+```
+
+Smoke test:
+
+```sh
+scripts/check_logvec.sh
+```
+
 ## macdbg
 
 AI-native LLDB snapshot debugger for macOS binaries. Its useful surface is the

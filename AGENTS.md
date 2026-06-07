@@ -49,6 +49,7 @@ Core changes can break every product, so make them small and verified.
   smoke set:
   - `scripts/check_machodoctor.sh`
   - `scripts/check_logknife.sh`
+  - `scripts/check_logvec.sh` (when touching `vec_f32.inc` or `logvec_payload.inc`)
   - `scripts/check_fscan.sh`
   - `scripts/check_leetcode_examples.sh`
   - affected macOS smoke tests under `fasm/tests/macos-smoke`
