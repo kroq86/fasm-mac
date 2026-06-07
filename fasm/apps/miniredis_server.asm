@@ -1,6 +1,7 @@
 ; Mini-Redis TCP server v1: cooperative multi-client RESP server.
 ;
 ; PING/SET/GET/QUIT on one OS thread using fasm/core/coro.inc + kqueue.
+; SET is persisted to miniredis.aof and replayed on restart.
 
 format ELF64 executable 3
 include "fasm/core/platform.inc"
@@ -15,6 +16,7 @@ CORO_STACK_SIZE equ 16384
 
 RESP_BUF_MAX equ 4096
 RESP_MAX_ARGS equ 16
+AOF_LINE_MAX equ 4096
 
 CONN_FD_OFF equ 0
 CONN_BUF_LEN_OFF equ 8
@@ -47,6 +49,11 @@ start:
 	lea	rsi, [storage_map]
 	mov	rdx, HASHMAP_DEFAULT_BUCKETS
 	call	hashmap_str_init
+
+	call	aof_replay
+	call	aof_open_append
+	cmp	rax, 0
+	jl	start_fail
 
 	call	conn_pool_init
 	call	coro_init
@@ -351,6 +358,7 @@ resp_conn_try_parse:
 server_dispatch:
 	push	r12
 	push	r13
+	push	r14
 	push	r15
 	mov	r15, rdi
 	mov	r12, [r15 + CONN_FD_OFF]
@@ -400,11 +408,15 @@ server_dispatch:
 	call	str_parse_int64
 	test	rbx, rbx
 	jnz	.sd_set_str
+	mov	r14, rax
 	mov	rcx, rax
 	lea	rdi, [storage_heap]
 	lea	rsi, [storage_map]
 	mov	rdx, [r15 + CONN_ARGV_OFF + 8]
 	call	hashmap_str_put_int
+	mov	rdi, [r15 + CONN_ARGV_OFF + 8]
+	mov	rax, r14
+	call	aof_append_set_int
 	jmp	.sd_ok
 .sd_set_str:
 	lea	rdi, [storage_heap]
@@ -412,6 +424,9 @@ server_dispatch:
 	mov	rdx, [r15 + CONN_ARGV_OFF + 8]
 	mov	rcx, [r15 + CONN_ARGV_OFF + 16]
 	call	hashmap_str_put_str
+	mov	rdi, [r15 + CONN_ARGV_OFF + 8]
+	mov	rsi, [r15 + CONN_ARGV_OFF + 16]
+	call	aof_append_set_str
 .sd_ok:
 	mov	rdi, r12
 	lea	rsi, [msg_ok]
@@ -467,6 +482,216 @@ server_dispatch:
 
 .sd_done:
 	pop	r15
+	pop	r14
+	pop	r13
+	pop	r12
+	ret
+
+aof_replay:
+	push	rbx
+	push	r12
+	push	r13
+	lea	rdi, [aof_path]
+	open_file rdi, O_RDONLY, 0
+	jump_if_syscall_error .ar_done
+	mov	rbx, rax
+	xor	r12, r12
+.ar_loop:
+	mov	rdi, rbx
+	lea	rsi, [aof_char]
+	mov	rdx, 1
+	mov	rax, SYS_read
+	syscall
+	jc	.ar_close
+	test	rax, rax
+	jz	.ar_eof
+	mov	al, [aof_char]
+	cmp	al, 10
+	je	.ar_line
+	cmp	r12, AOF_LINE_MAX - 1
+	jae	.ar_reset
+	mov	[aof_line_buf + r12], al
+	inc	r12
+	jmp	.ar_loop
+.ar_reset:
+	xor	r12, r12
+	jmp	.ar_loop
+.ar_line:
+	mov	byte [aof_line_buf + r12], 0
+	test	r12, r12
+	jz	.ar_next
+	lea	rdi, [aof_line_buf]
+	call	aof_replay_line
+.ar_next:
+	xor	r12, r12
+	jmp	.ar_loop
+.ar_eof:
+	test	r12, r12
+	jz	.ar_close
+	mov	byte [aof_line_buf + r12], 0
+	lea	rdi, [aof_line_buf]
+	call	aof_replay_line
+.ar_close:
+	mov	rdi, rbx
+	close_file rdi
+.ar_done:
+	pop	r13
+	pop	r12
+	pop	rbx
+	ret
+
+; rdi = null-terminated "I key value" or "S key value"
+aof_replay_line:
+	push	rbx
+	push	r12
+	push	r13
+	push	r14
+	mov	r12, rdi
+	mov	bl, [r12]
+	cmp	bl, '#'
+	je	.arl_done
+	cmp	bl, 'I'
+	je	.arl_type_ok
+	cmp	bl, 'S'
+	jne	.arl_done
+.arl_type_ok:
+	cmp	byte [r12 + 1], ' '
+	jne	.arl_done
+	lea	r13, [r12 + 2]
+	mov	r14, r13
+.arl_key_loop:
+	mov	al, [r14]
+	test	al, al
+	jz	.arl_done
+	cmp	al, ' '
+	je	.arl_split
+	inc	r14
+	jmp	.arl_key_loop
+.arl_split:
+	mov	byte [r14], 0
+	inc	r14
+	cmp	byte [r14], 0
+	je	.arl_done
+	cmp	bl, 'I'
+	je	.arl_int
+	lea	rdi, [storage_heap]
+	lea	rsi, [storage_map]
+	mov	rdx, r13
+	mov	rcx, r14
+	call	hashmap_str_put_str
+	jmp	.arl_done
+.arl_int:
+	mov	rdi, r14
+	call	str_parse_int64
+	test	rbx, rbx
+	jnz	.arl_done
+	mov	rcx, rax
+	lea	rdi, [storage_heap]
+	lea	rsi, [storage_map]
+	mov	rdx, r13
+	call	hashmap_str_put_int
+.arl_done:
+	pop	r14
+	pop	r13
+	pop	r12
+	pop	rbx
+	ret
+
+; rax = fd or -1
+aof_open_append:
+	lea	rdi, [aof_path]
+	open_file rdi, O_WRONLY or O_CREAT or O_APPEND, 420
+	jump_if_syscall_error .aoa_err
+	mov	[aof_fd], rax
+	ret
+.aoa_err:
+	mov	qword [aof_fd], -1
+	mov	rax, -1
+	ret
+
+; rdi = key ptr, rax = int64 value
+aof_append_set_int:
+	push	r12
+	push	r13
+	sub	rsp, 32
+	mov	r12, rdi
+	mov	r13, rax
+	lea	rsi, [aof_prefix_i]
+	mov	rdx, 2
+	call	aof_write
+	mov	rdi, r12
+	call	aof_write_cstr
+	lea	rsi, [aof_space]
+	mov	rdx, 1
+	call	aof_write
+	mov	rax, r13
+	lea	rdi, [rsp + 31]
+	call	print_int64_to_buf
+	mov	rsi, rdi
+	mov	rdx, rax
+	call	aof_write
+	lea	rsi, [aof_nl]
+	mov	rdx, 1
+	call	aof_write
+	add	rsp, 32
+	pop	r13
+	pop	r12
+	ret
+
+; rdi = key ptr, rsi = value ptr
+aof_append_set_str:
+	push	r12
+	push	r13
+	mov	r12, rdi
+	mov	r13, rsi
+	lea	rsi, [aof_prefix_s]
+	mov	rdx, 2
+	call	aof_write
+	mov	rdi, r12
+	call	aof_write_cstr
+	lea	rsi, [aof_space]
+	mov	rdx, 1
+	call	aof_write
+	mov	rdi, r13
+	call	aof_write_cstr
+	lea	rsi, [aof_nl]
+	mov	rdx, 1
+	call	aof_write
+	pop	r13
+	pop	r12
+	ret
+
+; rdi = cstr
+aof_write_cstr:
+	push	rdi
+	call	str_len
+	pop	rsi
+	mov	rdx, rax
+	jmp	aof_write
+
+; rsi = buffer, rdx = len
+aof_write:
+	push	r12
+	push	r13
+	mov	r12, rsi
+	mov	r13, rdx
+	cmp	qword [aof_fd], 0
+	jl	.aw_done
+.aw_loop:
+	test	r13, r13
+	jz	.aw_done
+	mov	rdi, [aof_fd]
+	mov	rsi, r12
+	mov	rdx, r13
+	mov	rax, SYS_write
+	syscall
+	jc	.aw_done
+	test	rax, rax
+	jle	.aw_done
+	add	r12, rax
+	sub	r13, rax
+	jmp	.aw_loop
+.aw_done:
 	pop	r13
 	pop	r12
 	ret
@@ -609,12 +834,21 @@ resp_err_prefix_len = $ - resp_err_prefix
 resp_null db '$-1', 13, 10
 resp_null_len = $ - resp_null
 
+aof_path db 'miniredis.aof', 0
+aof_prefix_i db 'I '
+aof_prefix_s db 'S '
+aof_space db ' '
+aof_nl db 10
+
 segment readable writeable
 
 storage_heap rb HEAP_SIZE
 storage_map rb HASHMAP_STR_SIZE
 
 listen_fd dq ?
+aof_fd dq ?
+aof_char rb 1
+aof_line_buf rb AOF_LINE_MAX
 connections rb CONN_SIZE * MINIREDIS_MAX_CLIENTS
 
 coro_bss

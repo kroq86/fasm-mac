@@ -84,11 +84,14 @@ print_int_sp:
 print_int64_to_buf:
 	push	rbx
 	push	r12
+	push	r13
 	mov	r12, rax
 	mov	rbx, rdi
+	xor	r13, r13
 	test	r12, r12
 	jns	.pitb_pos
 	neg	r12
+	mov	r13, 1
 .pitb_pos:
 	mov	rdi, rbx
 .pitb_loop:
@@ -106,12 +109,19 @@ print_int64_to_buf:
 	je	.pitb_zero
 	mov	rax, rbx
 	sub	rax, rdi
-	jmp	.pitb_done
+	jmp	.pitb_sign
 .pitb_zero:
 	dec	rdi
 	mov	byte [rdi], '0'
 	mov	rax, 1
+.pitb_sign:
+	test	r13, r13
+	jz	.pitb_done
+	dec	rdi
+	mov	byte [rdi], '-'
+	inc	rax
 .pitb_done:
+	pop	r13
 	pop	r12
 	pop	rbx
 	ret
