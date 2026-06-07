@@ -11,8 +11,10 @@ match =macos, TARGET_OS {
 	SYS_open equ 02000005h
 	SYS_close equ 02000006h
 	SYS_mkdir equ 02000088h
+	SYS_fsync equ 0200005Fh
 	SYS_fcntl equ 0200005Ch
 	SYS_lseek equ 020000C7h
+	SYS_ftruncate equ 020000C9h
 	SYS_socket equ 02000061h
 	SYS_connect equ 02000062h
 	SYS_accept equ 0200001Eh
@@ -84,6 +86,8 @@ match =linux, TARGET_OS {
 	SYS_open equ 2
 	SYS_close equ 3
 	SYS_mkdir equ 83
+	SYS_fsync equ 74
+	SYS_ftruncate equ 77
 	SYS_lseek equ 8
 	SYS_exit equ 60
 

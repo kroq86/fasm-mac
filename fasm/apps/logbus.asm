@@ -609,6 +609,9 @@ cmd_do_produce:
 	call	build_active_segment_paths
 	cmp	rax, 0
 	jl	.cdp_bad_name
+	call	recover_active_segment
+	cmp	rax, LOGSEG_OK
+	jne	.cdp_ioerr
 	lea	rdi, [log_path]
 	call	log_segment_file_size
 	cmp	rax, LOGSEG_ERR
@@ -626,6 +629,10 @@ cmd_do_produce:
 	call	build_active_segment_paths
 	cmp	rax, 0
 	jl	.cdp_bad_name
+	mov	qword [committed_local_count], 0
+	call	recover_active_segment_with_count
+	cmp	rax, LOGSEG_OK
+	jne	.cdp_ioerr
 .cdp_append:
 	lea	rdi, [log_path]
 	lea	rsi, [idx_path]
@@ -678,6 +685,17 @@ build_active_segment_paths:
 	lea	r8, [idx_path]
 	lea	r9, [scratch_path]
 	call	topic_build_segment_paths_base
+	ret
+
+recover_active_segment:
+	mov	rax, [next_global_offset]
+	sub	rax, [active_segment_base]
+	mov	[committed_local_count], rax
+recover_active_segment_with_count:
+	lea	rdi, [log_path]
+	lea	rsi, [idx_path]
+	mov	rdx, [committed_local_count]
+	call	log_segment_recover_to_count
 	ret
 
 cmd_do_fetch:
@@ -772,6 +790,12 @@ fetch_records:
 	call	build_fetch_segment_paths
 	cmp	rax, 0
 	jl	.fr_err
+	call	count_committed_segment_records
+	cmp	rax, LOGSEG_OK
+	jne	.fr_err
+	call	recover_active_segment_with_count
+	cmp	rax, LOGSEG_OK
+	jne	.fr_err
 	mov	rdx, r13
 	sub	rdx, [segment_base_tmp]
 	lea	rdi, [log_path]
@@ -823,6 +847,39 @@ build_fetch_segment_paths:
 	call	topic_build_segment_paths_base
 	ret
 
+; [segment_base_tmp] and [global_idx_path] set.
+; Writes [committed_local_count].
+; rax = LOGSEG_OK / LOGSEG_ERR
+count_committed_segment_records:
+	push	r12
+	push	r13
+	mov	r12, [segment_base_tmp]
+	xor	r13, r13
+.ccsr_loop:
+	lea	rsi, [r12 + r13]
+	lea	rdi, [global_idx_path]
+	lea	rdx, [active_segment_base]
+	call	log_segment_index_read_u64
+	cmp	rax, LOGSEG_EOF
+	je	.ccsr_done
+	cmp	rax, LOGSEG_OK
+	jne	.ccsr_err
+	mov	rax, [active_segment_base]
+	cmp	rax, r12
+	jne	.ccsr_done
+	inc	r13
+	jmp	.ccsr_loop
+.ccsr_done:
+	mov	[committed_local_count], r13
+	mov	rax, LOGSEG_OK
+	jmp	.ccsr_out
+.ccsr_err:
+	mov	rax, LOGSEG_ERR
+.ccsr_out:
+	pop	r13
+	pop	r12
+	ret
+
 cmd_do_fetchbatch:
 	push	rbx
 	push	r12
@@ -872,6 +929,12 @@ cmd_do_fetchbatch:
 	call	build_fetch_segment_paths
 	cmp	rax, 0
 	jl	.cdfb_bad_name
+	call	count_committed_segment_records
+	cmp	rax, LOGSEG_OK
+	jne	.cdfb_ioerr
+	call	recover_active_segment_with_count
+	cmp	rax, LOGSEG_OK
+	jne	.cdfb_ioerr
 	lea	rdi, [log_path]
 	lea	rsi, [idx_path]
 	mov	rdx, [fetchbatch_local_offset]
@@ -1039,6 +1102,10 @@ write_offset_file:
 	call	logseg_write_all_fd
 	cmp	rax, 0
 	jl	.wof_close_err
+	mov	rdi, rbx
+	mov	rax, SYS_fsync
+	syscall
+	jc	.wof_close_err
 	mov	rdi, rbx
 	close_file rdi
 	xor	rax, rax
@@ -1367,6 +1434,7 @@ fetch_topic_ptr dq ?
 segment_base_tmp dq ?
 active_segment_base dq ?
 next_global_offset dq ?
+committed_local_count dq ?
 
 log_path rb TOPIC_STORE_PATH_MAX
 idx_path rb TOPIC_STORE_PATH_MAX

@@ -340,7 +340,8 @@ Kafka-like local durable append-only message broker for macOS x86_64. It uses
 the green-thread scheduler, `kqueue`, nonblocking sockets, and a length-prefixed
 record log with a message-offset index. Topic data is stored as rotated
 base-offset segments plus a global offset index; tune segment size with
-`--segment-bytes N`.
+`--segment-bytes N`. Accepted `PRODUCE` writes are fsync-backed, and restart
+recovery trims segment/index tails back to the committed global offset index.
 
 ```sh
 fasm fasm/apps/logbus.asm logbus

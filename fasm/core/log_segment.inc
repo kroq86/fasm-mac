@@ -65,6 +65,14 @@ log_segment_append:
 	cmp	rax, 0
 	jl	.lsa_close_both_err
 	mov	rdi, r10
+	mov	rax, SYS_fsync
+	syscall
+	jc	.lsa_close_both_err
+	mov	rdi, rbx
+	mov	rax, SYS_fsync
+	syscall
+	jc	.lsa_close_both_err
+	mov	rdi, r10
 	close_file rdi
 	mov	rdi, rbx
 	close_file rdi
@@ -283,15 +291,129 @@ log_segment_index_append_u64:
 	call	logseg_write_all_fd
 	push	rax
 	mov	rdi, rbx
+	mov	rax, SYS_fsync
+	syscall
+	jc	.lsiau_pop_err
+	mov	rdi, rbx
 	close_file rdi
 	pop	rax
 	cmp	rax, 0
 	jl	.lsiau_err
 	mov	rax, LOGSEG_OK
 	jmp	.lsiau_out
+.lsiau_pop_err:
+	add	rsp, 8
+	mov	rdi, rbx
+	close_file rdi
 .lsiau_err:
 	mov	rax, LOGSEG_ERR
 .lsiau_out:
+	pop	rbx
+	ret
+
+; rdi = log path, rsi = index path, rdx = committed record count
+; Truncates segment/index to the first committed whole records.
+; rax = LOGSEG_OK / LOGSEG_ERR
+log_segment_recover_to_count:
+	push	rbx
+	push	r12
+	push	r13
+	push	r14
+	push	r15
+	mov	r12, rdi
+	mov	r13, rsi
+	mov	r14, rdx
+	mov	rdi, r12
+	open_file rdi, O_RDWR or O_CREAT, 420
+	jump_if_syscall_error .lsrtc_err
+	mov	rbx, rax
+	mov	rdi, r13
+	open_file rdi, O_RDWR or O_CREAT, 420
+	jump_if_syscall_error .lsrtc_close_log_err
+	mov	r15, rax
+	mov	qword [logseg_recover_i], 0
+	mov	qword [logseg_recover_end], 0
+.lsrtc_loop:
+	mov	rax, [logseg_recover_i]
+	cmp	rax, r14
+	jae	.lsrtc_truncate
+	mov	rdi, r15
+	mov	rsi, [logseg_recover_i]
+	shl	rsi, 3
+	mov	rdx, SEEK_SET
+	mov	rax, SYS_lseek
+	syscall
+	jc	.lsrtc_close_both_err
+	mov	rdi, r15
+	lea	rsi, [logseg_u64]
+	mov	rdx, 8
+	call	logseg_read_exact_fd
+	cmp	rax, 1
+	jne	.lsrtc_close_both_err
+	mov	rdi, rbx
+	mov	rsi, [logseg_u64]
+	mov	rdx, SEEK_SET
+	mov	rax, SYS_lseek
+	syscall
+	jc	.lsrtc_close_both_err
+	mov	rdi, rbx
+	lea	rsi, [logseg_u32]
+	mov	rdx, 4
+	call	logseg_read_exact_fd
+	cmp	rax, 1
+	jne	.lsrtc_close_both_err
+	mov	eax, [logseg_u32]
+	mov	rdx, [logseg_u64]
+	add	rdx, 4
+	add	rdx, rax
+	mov	[logseg_recover_end], rdx
+	mov	rdi, rbx
+	mov	rsi, [logseg_recover_end]
+	mov	rdx, SEEK_SET
+	mov	rax, SYS_lseek
+	syscall
+	jc	.lsrtc_close_both_err
+	inc	qword [logseg_recover_i]
+	jmp	.lsrtc_loop
+.lsrtc_truncate:
+	mov	rdi, r15
+	mov	rsi, r14
+	shl	rsi, 3
+	mov	rax, SYS_ftruncate
+	syscall
+	jc	.lsrtc_close_both_err
+	mov	rdi, rbx
+	mov	rsi, [logseg_recover_end]
+	mov	rax, SYS_ftruncate
+	syscall
+	jc	.lsrtc_close_both_err
+	mov	rdi, rbx
+	mov	rax, SYS_fsync
+	syscall
+	jc	.lsrtc_close_both_err
+	mov	rdi, r15
+	mov	rax, SYS_fsync
+	syscall
+	jc	.lsrtc_close_both_err
+	mov	rdi, r15
+	close_file rdi
+	mov	rdi, rbx
+	close_file rdi
+	mov	rax, LOGSEG_OK
+	jmp	.lsrtc_out
+.lsrtc_close_both_err:
+	mov	rdi, r15
+	close_file rdi
+.lsrtc_close_log_err:
+	mov	rdi, rbx
+	close_file rdi
+.lsrtc_err:
+	mov	rax, LOGSEG_ERR
+.lsrtc_out:
+	pop	r15
+	pop	r14
+	pop	r13
+	pop	r12
 	pop	rbx
 	ret
 
@@ -493,4 +615,6 @@ macro log_segment_bss
 	logseg_batch_count_out dq ?
 	logseg_batch_count dq ?
 	logseg_u64_out dq ?
+	logseg_recover_i dq ?
+	logseg_recover_end dq ?
 }

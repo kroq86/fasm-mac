@@ -170,6 +170,23 @@ if [[ "$LOG_COUNT" -lt 2 ]]; then
 fi
 
 stop_server
+
+"$PYTHON" - "$DATA" <<'PY'
+import pathlib
+import struct
+import sys
+
+data = pathlib.Path(sys.argv[1])
+segment = data / "topics" / "events" / "00000000000000000002"
+log_path = segment.with_suffix(".log")
+idx_path = segment.with_suffix(".idx")
+offset = log_path.stat().st_size
+with log_path.open("ab") as f:
+    f.write(struct.pack("<I", 6) + b"orphan")
+with idx_path.open("ab") as f:
+    f.write(struct.pack("<Q", offset))
+PY
+
 start_server
 
 "$PYTHON" - "$PORT" <<'PY'
@@ -230,9 +247,10 @@ def request(sock, expected, *args):
         raise AssertionError(f"{args}: expected {expected!r}, got {got!r}")
 
 client = connect_retry()
+request(client, b":3\r\n", "PRODUCE", "events", "after")
 request(
     client,
-    b"*3\r\n*2\r\n:0\r\n$5\r\nhello\r\n*2\r\n:1\r\n$5\r\nworld\r\n*2\r\n:2\r\n$5\r\nagain\r\n",
+    b"*4\r\n*2\r\n:0\r\n$5\r\nhello\r\n*2\r\n:1\r\n$5\r\nworld\r\n*2\r\n:2\r\n$5\r\nagain\r\n*2\r\n:3\r\n$5\r\nafter\r\n",
     "FETCH",
     "events",
     "0",
@@ -249,13 +267,13 @@ request(
 )
 request(
     client,
-    b"*1\r\n*2\r\n:2\r\n$5\r\nagain\r\n",
+    b"*2\r\n*2\r\n:2\r\n$5\r\nagain\r\n*2\r\n:3\r\n$5\r\nafter\r\n",
     "FETCH",
     "events",
     "2",
     "4096",
 )
-raw_again = struct.pack("<I", 5) + b"again"
+raw_again = struct.pack("<I", 5) + b"again" + struct.pack("<I", 5) + b"after"
 request(
     client,
     b"$%d\r\n" % len(raw_again) + raw_again + b"\r\n",
