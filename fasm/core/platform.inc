@@ -10,6 +10,7 @@ match =macos, TARGET_OS {
 	SYS_write equ 02000004h
 	SYS_open equ 02000005h
 	SYS_close equ 02000006h
+	SYS_mkdir equ 02000088h
 	SYS_fcntl equ 0200005Ch
 	SYS_lseek equ 020000C7h
 	SYS_socket equ 02000061h
@@ -33,6 +34,8 @@ match =macos, TARGET_OS {
 	O_CREAT equ 0200h
 	O_TRUNC equ 0400h
 	O_APPEND equ 0008h
+	SEEK_SET equ 0
+	SEEK_END equ 2
 	F_GETFL equ 3
 	F_SETFL equ 4
 	F_GETPATH equ 50
@@ -78,6 +81,7 @@ match =linux, TARGET_OS {
 	SYS_write equ 1
 	SYS_open equ 2
 	SYS_close equ 3
+	SYS_mkdir equ 83
 	SYS_lseek equ 8
 	SYS_exit equ 60
 
@@ -87,6 +91,8 @@ match =linux, TARGET_OS {
 	O_CREAT equ 64
 	O_TRUNC equ 512
 	O_APPEND equ 1024
+	SEEK_SET equ 0
+	SEEK_END equ 2
 }
 
 STDIN equ 0

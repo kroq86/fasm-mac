@@ -333,6 +333,34 @@ Smoke test:
 scripts/check_httpmini.sh
 ```
 
+## logbus
+
+Kafka-like local durable append-only message broker for macOS x86_64. It uses
+the green-thread scheduler, `kqueue`, nonblocking sockets, and a length-prefixed
+record log with a message-offset index.
+
+```sh
+fasm fasm/apps/logbus.asm logbus
+arch -x86_64 ./logbus --dir ./data --port 9092 --bind 127.0.0.1
+```
+
+V1 commands use a RESP-like protocol: `PING`, `PRODUCE topic payload`,
+`FETCH topic offset max_bytes`, `COMMIT group topic offset`,
+`OFFSET group topic`, and `QUIT`. This is a local single-partition broker, not
+a distributed Kafka replacement.
+
+Release packaging:
+
+```sh
+scripts/build-logbus-release.sh 0.1.0
+```
+
+Smoke test:
+
+```sh
+scripts/check_logbus.sh
+```
+
 ## macdbg
 
 AI-native LLDB snapshot debugger for macOS binaries. Its useful surface is the
