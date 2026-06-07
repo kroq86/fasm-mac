@@ -8,6 +8,17 @@
 - **Core changes are high blast radius** — small diffs, caller audit before semantic edits, then broad checks (`scripts/check_*.sh`, macOS smoke, `git diff --check`); not done until every known consumer still builds and matches expected output.
 - **Brew-worthy products beat toy examples** — finished binaries, real macOS/developer workflows, check scripts, and a release path (`Formula/`, `scripts/build-*-release.sh`).
 
+## Complexity Checklist (humans and agents)
+
+Before expanding scope or mixing layers, run this list — one concern at a time:
+
+1. **Core or app?** Reusable behavior → `fasm/core/*.inc`; product wiring → `fasm/apps/*`; demos → `fasm/examples/*`. Do not blend syscall/Mach-O/ABI work with product logic in one place.
+2. **Contract first.** Register args, return codes, struct offsets, and clobber rules in comments (`ccall64.inc` style). Prefer one extern + C ABI over ad hoc coupling.
+3. **Additive and local.** Extend core with new helpers; audit callers before changing semantics. A change should touch few modules (`scripts/check_*.sh` locks the contract).
+4. **Hide implementation, not obligations.** DSL/macros and stdlib helpers reduce cognitive load only when the boundary is explicit — not when complexity leaks across callers.
+5. **Narrow the problem.** Stay within repo limits (x86_64 macOS, documented ABI). Reject extra platforms, backends, or “future-proof” layers unless explicitly requested.
+6. **No parasitic complexity.** No app-local mini-frameworks, no drive-by refactors, no patterns that widen variability without a product need. Two failed fix attempts on the same issue → stop and hand off.
+
 ## Core-First Product Strategy
 
 This repository is not just a collection of standalone FASM demos. Treat it as
