@@ -734,3 +734,11 @@ file /tmp/add.o
 - Upstream archive used here: `fasm-1.73.35.tgz`
 
 The original license is kept at [fasm/license.txt](fasm/license.txt).
+
+## References
+
+- <https://flatassembler.net/> — flat assembler (fasm1) by Tomasz Grysztar
+- <https://2ton.com.au/> — HeavyThing x86_64 FASM library by Jeff Marrison (GPLv2+); algorithms in `mem.inc`, `base64.inc`, `math_fp.inc` adapted from here
+- <https://www.agner.org/optimize/> — Agner Fog's optimization guides and asmlib; small-copy and memcmp patterns
+- <https://board.flatassembler.net/> — FASM community board; macro techniques and fasm1 idioms
+- <https://github.com/tgrysztar/fasmg> — fasmg by Tomasz Grysztar; `control.inc` structured-flow macros inspired by `packages/x86/include/macro/if.inc`
