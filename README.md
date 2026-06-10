@@ -128,6 +128,26 @@ The shim passes:
 `close_file`, `exit`, syscall helper macros, and the Darwin constants needed by
 the reusable file, socket, stat, and directory-walk helpers.
 
+## Standard Library Includes
+
+Platform-agnostic helpers for `format ELF64 executable 3`. All assemble
+without data-segment declarations and follow the System V AMD64 ABI.
+
+| File | What it provides |
+|------|-----------------|
+| [`fasm/core/for.inc`](fasm/core/for.inc) | `for reg, lo, hi` / `endfor reg` — nestable register-based counted loop |
+| [`fasm/core/control.inc`](fasm/core/control.inc) | `_if/_else/_endif`, `_while/_endw`, `_repeat/_until` structured control flow |
+| [`fasm/core/mem.inc`](fasm/core/mem.inc) | `memcpy`, `memset`, `memcmp`, `memmove`, `memxor` |
+| [`fasm/core/base64.inc`](fasm/core/base64.inc) | `base64_encode(rdi,rsi,rdx)→rax`, `base64_decode(rdi,rsi,rdx)→rax` |
+| [`fasm/core/math_fp.inc`](fasm/core/math_fp.inc) | `fp_isnan`, `fp_isinfinite`, `fp_isfinite`, `fp_floor`, `fp_ceil`, `fp_fmod`, `fp_frexp` |
+
+Examples:
+
+```sh
+fasm fasm/examples/elfexe/forloop64.asm /tmp/forloop64
+fasm fasm/examples/elfexe/control64.asm /tmp/control64
+```
+
 ## Structures and nested dynamic lists
 
 fasm `struc` defines **memory layout** at assemble time (field offsets and
@@ -190,7 +210,7 @@ scripts/check_leetcode_examples.sh
 | `valid_anagram.asm` | LC 242 character counts | `1` |
 | `valid_parentheses.asm` | LC 20 via `stack.inc` | `1` |
 
-Core libraries: [`dirwalk.inc`](fasm/core/dirwalk.inc), [`dp.inc`](fasm/core/dp.inc), [`file.inc`](fasm/core/file.inc), [`grid.inc`](fasm/core/grid.inc), [`hashmap.inc`](fasm/core/hashmap.inc), [`hashmap_str.inc`](fasm/core/hashmap_str.inc), [`hex.inc`](fasm/core/hex.inc), [`json.inc`](fasm/core/json.inc), [`listnode.inc`](fasm/core/listnode.inc), [`macho.inc`](fasm/core/macho.inc), [`scanner.inc`](fasm/core/scanner.inc), [`search.inc`](fasm/core/search.inc), [`stack.inc`](fasm/core/stack.inc), [`tree.inc`](fasm/core/tree.inc), [`sort.inc`](fasm/core/sort.inc), [`str.inc`](fasm/core/str.inc), [`repl.inc`](fasm/core/repl.inc), [`oop.inc`](fasm/core/oop.inc) (vtable + methods).
+Core libraries: [`base64.inc`](fasm/core/base64.inc), [`control.inc`](fasm/core/control.inc), [`dirwalk.inc`](fasm/core/dirwalk.inc), [`dp.inc`](fasm/core/dp.inc), [`file.inc`](fasm/core/file.inc), [`for.inc`](fasm/core/for.inc), [`grid.inc`](fasm/core/grid.inc), [`hashmap.inc`](fasm/core/hashmap.inc), [`hashmap_str.inc`](fasm/core/hashmap_str.inc), [`hex.inc`](fasm/core/hex.inc), [`json.inc`](fasm/core/json.inc), [`listnode.inc`](fasm/core/listnode.inc), [`macho.inc`](fasm/core/macho.inc), [`math_fp.inc`](fasm/core/math_fp.inc), [`mem.inc`](fasm/core/mem.inc), [`scanner.inc`](fasm/core/scanner.inc), [`search.inc`](fasm/core/search.inc), [`stack.inc`](fasm/core/stack.inc), [`tree.inc`](fasm/core/tree.inc), [`sort.inc`](fasm/core/sort.inc), [`str.inc`](fasm/core/str.inc), [`repl.inc`](fasm/core/repl.inc), [`oop.inc`](fasm/core/oop.inc) (vtable + methods).
 
 OOP-style demo (`Playlist` with `append` / `print` / `reverse` via vtable):
 
@@ -215,6 +235,49 @@ Commands (v1.1): `PING`, `SET key value`, `GET key`, `EXISTS key`, `DEL key`, `D
 `SET` stores a signed int64 when the value parses as an integer; otherwise the raw token is stored as a string. `GET` prints ints, strings, or `(nil)` if missing. `INCR`/`DECR` require an int value (or create `1`/`-1` if the key is absent); strings return `ERR wrongtype`. `MGET` needs at least two key tokens (max 16 tokens per line). `KEYS` lists all keys (no pattern filter in v1). `SAVE`/`LOAD` use a line-oriented text dump (see below).
 
 Limits: 256-byte lines, ASCII keys/values without spaces in v1, up to 16 tokens per REPL line.
+
+Dump format (`# miniredis v1` header):
+
+```text
+# miniredis v1
+I user 42
+S greeting hello
+```
+
+`I` = int value, `S` = string value (remainder of line after the key token).
+
+Example session:
+
+```text
+miniredis> SET user 42
+OK
+miniredis> SET greeting hello
+OK
+miniredis> GET user
+42
+miniredis> GET greeting
+hello
+miniredis> INCR user
+OK
+miniredis> GET user
+43
+miniredis> SAVE dump.txt
+OK
+miniredis> LOAD dump.txt
+OK
+miniredis> DEL user
+1
+miniredis> GET user
+(nil)
+```
+
+Pipe a script:
+
+```sh
+printf 'SET a 1\nGET a\nDBSIZE\nQUIT\n' | arch -x86_64 ./fasm/apps/miniredis
+```
+
+Smoke tests: `fasm/tests/macos-smoke/str_hash.asm`, `hashmap_str.asm`, `repl_ping.asm`, `miniredis_script.asm`, `tcp_echo.asm`.
 
 ## fscan
 
@@ -568,49 +631,6 @@ Smoke test:
 ```sh
 scripts/check_logknife.sh
 ```
-
-Dump format (`# miniredis v1` header):
-
-```text
-# miniredis v1
-I user 42
-S greeting hello
-```
-
-`I` = int value, `S` = string value (remainder of line after the key token).
-
-Example session:
-
-```text
-miniredis> SET user 42
-OK
-miniredis> SET greeting hello
-OK
-miniredis> GET user
-42
-miniredis> GET greeting
-hello
-miniredis> INCR user
-OK
-miniredis> GET user
-43
-miniredis> SAVE dump.txt
-OK
-miniredis> LOAD dump.txt
-OK
-miniredis> DEL user
-1
-miniredis> GET user
-(nil)
-```
-
-Pipe a script:
-
-```sh
-printf 'SET a 1\nGET a\nDBSIZE\nQUIT\n' | arch -x86_64 ./fasm/apps/miniredis
-```
-
-Smoke tests: `fasm/tests/macos-smoke/str_hash.asm`, `hashmap_str.asm`, `repl_ping.asm`, `miniredis_script.asm`, `tcp_echo.asm`.
 
 ## Mini-Redis TCP server (v0)
 
