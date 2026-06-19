@@ -1,7 +1,8 @@
 ; Null-terminated C string helpers.
 
-; rdi = null-terminated string
-; rax = length (excluding null)
+; contract: rdi = null-terminated string
+; returns: rax = length (excluding null)
+; clobbers: rax
 str_len:
 	xor	rax, rax
 .sl_loop:
@@ -12,8 +13,9 @@ str_len:
 .sl_done:
 	ret
 
-; rdi = a, rsi = b (null-terminated)
-; rax = 1 if equal, 0 otherwise
+; contract: rdi = a, rsi = b (null-terminated)
+; returns: rax = 1 if equal, 0 otherwise
+; clobbers: rax, rcx, rdi, rsi
 str_eq:
 .se_loop:
 	mov	al, [rdi]
@@ -32,8 +34,9 @@ str_eq:
 	xor	rax, rax
 	ret
 
-; rdi = null-terminated string
-; rax = hash (xor-shift mix over bytes)
+; contract: rdi = null-terminated string
+; returns: rax = hash (xor-shift mix over bytes)
+; clobbers: rax, rcx, rdi
 str_hash:
 	push	rsi
 	xor	rax, rax
@@ -54,8 +57,9 @@ str_hash:
 	pop	rsi
 	ret
 
-; rdi = null-terminated string
-; rax = parsed int64, rbx = 0 on success, 1 on error
+; contract: rdi = null-terminated string
+; returns: rax = parsed int64, rbx = 0 on success, 1 on error
+; clobbers: rax, rbx, rcx
 str_parse_int64:
 	push	r12
 	push	r13
@@ -101,6 +105,9 @@ str_parse_int64:
 	pop	r12
 	ret
 
-; rdi = null-terminated string; writes to stdout (requires print_io.inc BSS)
+; contract: rdi = null-terminated string
+; returns: none
+; clobbers: delegated to print_cstr
+; notes: writes to stdout; requires print_io.inc BSS
 str_write:
 	jmp	print_cstr
