@@ -183,3 +183,153 @@ lb_vec_topk_cosine_exact:
 	pop	rbx
 	pop	rbp
 	ret
+
+; int lb_vec_topk_cosine_lv(
+;   const float *query, const uint8_t *records,
+;   uint64_t count, uint64_t dim, uint64_t k, uint64_t record_stride,
+;   uint32_t *out_index, float *out_score)
+; rdi query, rsi records, rdx count, rcx dim, r8 k, r9 record_stride
+; stack: [rbp+16] out_index, [rbp+24] out_score
+; eax = 0 ok, -1 bad args/norm
+;
+; .lv record: u64 doc_id | f32 norm | u32 reserved | f32 vector[dim]
+; r14 walks record base; vector at r14+16, norm at r14+8
+lb_vec_topk_cosine_lv:
+	push	rbp
+	mov	rbp, rsp
+	push	rbx
+	push	r12
+	push	r13
+	push	r14
+	push	r15
+	sub	rsp, 8
+	mov	r10, rdi
+	mov	r14, rsi
+	mov	r15, rdx
+	mov	rbx, rcx
+	mov	r11, r9
+	test	r15, r15
+	jz	.v32tlv_bad
+	test	rbx, rbx
+	jz	.v32tlv_bad
+	test	r8, r8
+	jz	.v32tlv_bad
+	cmp	r8, VEC_F32_MAX_TOPK
+	ja	.v32tlv_bad
+	test	r11, r11
+	jz	.v32tlv_bad
+	mov	r13, r8
+	cmp	r13, r15
+	jbe	.v32tlv_k_ok
+	mov	r13, r15
+.v32tlv_k_ok:
+	mov	rdi, r10
+	mov	rsi, rbx
+	call	lb_vec_norm_f32
+	movaps	xmm6, xmm0
+	xorps	xmm1, xmm1
+	ucomiss	xmm0, xmm1
+	je	.v32tlv_bad
+	mov	rax, r13
+	shl	rax, 3
+	add	rax, 15
+	and	rax, -16
+	sub	rsp, rax
+	mov	r12, rsp
+	xor	rax, rax
+.v32tlv_seed:
+	cmp	rax, r13
+	jae	.v32tlv_seed_done
+	mov	rdi, r10
+	lea	rsi, [r14 + 16]
+	mov	rdx, rbx
+	call	lb_vec_dot_f32
+	movss	xmm5, dword [r14 + 8]
+	xorps	xmm1, xmm1
+	ucomiss	xmm5, xmm1
+	jbe	.v32tlv_bad
+	movaps	xmm2, xmm5
+	ucomiss	xmm5, xmm2
+	jp	.v32tlv_bad
+	movaps	xmm4, xmm6
+	mulss	xmm4, xmm5
+	divss	xmm0, xmm4
+	movss	dword [r12 + rax * 8], xmm0
+	mov	dword [r12 + rax * 8 + 4], eax
+	inc	rax
+	add	r14, r11
+	jmp	.v32tlv_seed
+.v32tlv_seed_done:
+	mov	rax, r13
+.v32tlv_scan:
+	cmp	rax, r15
+	jae	.v32tlv_copy
+	mov	rdi, r10
+	lea	rsi, [r14 + 16]
+	mov	rdx, rbx
+	call	lb_vec_dot_f32
+	movss	xmm5, dword [r14 + 8]
+	xorps	xmm1, xmm1
+	ucomiss	xmm5, xmm1
+	jbe	.v32tlv_bad
+	movaps	xmm2, xmm5
+	ucomiss	xmm5, xmm2
+	jp	.v32tlv_bad
+	movaps	xmm4, xmm6
+	mulss	xmm4, xmm5
+	divss	xmm0, xmm4
+	movaps	xmm7, xmm0
+	movss	xmm8, dword [r12]
+	xor	r9d, r9d
+	mov	ecx, 1
+	cmp	r13, 1
+	jbe	.v32tlv_try_replace
+.v32tlv_find_min:
+	cmp	rcx, r13
+	jae	.v32tlv_try_replace
+	movss	xmm0, dword [r12 + rcx * 8]
+	ucomiss	xmm0, xmm8
+	jae	.v32tlv_min_skip
+	movaps	xmm8, xmm0
+	mov	r9d, ecx
+.v32tlv_min_skip:
+	inc	rcx
+	jmp	.v32tlv_find_min
+.v32tlv_try_replace:
+	movaps	xmm0, xmm7
+	ucomiss	xmm0, xmm8
+	jbe	.v32tlv_scan_next
+	movss	dword [r12 + r9 * 8], xmm0
+	mov	dword [r12 + r9 * 8 + 4], eax
+.v32tlv_scan_next:
+	inc	rax
+	add	r14, r11
+	jmp	.v32tlv_scan
+.v32tlv_copy:
+	xor	rax, rax
+.v32tlv_copy_loop:
+	cmp	rax, r13
+	jae	.v32tlv_ok
+	mov	ecx, dword [r12 + rax * 8 + 4]
+	mov	rdx, [rbp + 16]
+	mov	dword [rdx + rax * 4], ecx
+	movss	xmm0, dword [r12 + rax * 8]
+	mov	rdx, [rbp + 24]
+	movss	dword [rdx + rax * 4], xmm0
+	inc	rax
+	jmp	.v32tlv_copy_loop
+.v32tlv_ok:
+	xor	eax, eax
+	jmp	.v32tlv_out
+.v32tlv_bad:
+	mov	eax, -1
+.v32tlv_out:
+	mov	rsp, rbp
+	sub	rsp, VEC_F32_SAVED_REGS
+	pop	r15
+	pop	r14
+	pop	r13
+	pop	r12
+	pop	rbx
+	pop	rbp
+	ret

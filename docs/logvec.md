@@ -8,9 +8,12 @@ top-k search.
 
 ```text
 logbus     dumb durable log — no vector semantics
-FASM       f32 dot / norm / exact top-k only — no logbus, no .lv, no doc_id
+FASM       f32 dot / norm / exact top-k / in-place `.lv` top-k (`lb_vec_topk_cosine_lv`) only
 Zig        payload validate, CRC envelope check, index I/O, FETCH/--dir ingest,
            doc_id mapping, final sort (score desc, doc_id asc)
+C++        same host responsibilities as Zig (`fasm/apps/logvec/`) — additive alternative;
+           CRC via FASM `lb_crc32c`, index search loads `.lv` via mmap and uses
+           in-place `lb_vec_topk_cosine_lv`; `build-index` streams one record at a time
 ```
 
 `build-index` is a **one-shot snapshot builder**. It does not tail topics or
@@ -78,7 +81,8 @@ logvec build-index --dir DATA --topic TOPIC --out PATH
 ## CRC32C
 
 Zig verifies logbus record envelopes with the same CRC32C polynomial/format as
-logbus (`[u32_len][u32_crc32c][payload]`). Parity is tested against
+logbus (`[u32_len][u32_crc32c][payload]`). The C++ host delegates CRC to FASM
+`lb_crc32c` (`fasm/core/crc32c.inc`). Parity is tested against
 `scripts/check_logbus.sh` fixtures, not against Python as the spec source.
 
 ## Checks
@@ -86,4 +90,5 @@ logbus (`[u32_len][u32_crc32c][payload]`). Parity is tested against
 ```sh
 scripts/check_logvec_search.sh   # PR1: fixture .lv -> search only
 scripts/check_logvec.sh          # wrapper; grows with ingest parity tests
+scripts/check_logvec_cpp.sh      # same checks for C++ host (clang++)
 ```
