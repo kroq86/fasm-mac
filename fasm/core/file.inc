@@ -5,8 +5,9 @@ FILE_ERR_OPEN equ 1
 FILE_ERR_READ equ 2
 FILE_ERR_TOO_LARGE equ 3
 
-; rdi = path, rsi = destination buffer, rdx = buffer capacity, rcx = size storage*
-; rax = FILE_OK / FILE_ERR_*
+; contract: rdi = path, rsi = destination buffer, rdx = buffer capacity, rcx = size storage*
+; returns: rax = FILE_OK / FILE_ERR_*
+; clobbers: rax, rcx, rdx, rsi, rdi, r11
 file_read_all_fixed:
 	push	rbx
 	push	r12
@@ -55,8 +56,9 @@ file_read_all_fixed:
 	pop	rbx
 	ret
 
-; rdi = path
-; rax = fd or -1
+; contract: rdi = path
+; returns: rax = fd or -1
+; clobbers: rax, rcx, r11
 file_open_read:
 	open_file rdi, O_RDONLY, 0
 	jump_if_syscall_error .for_err
@@ -65,8 +67,9 @@ file_open_read:
 	mov	rax, -1
 	ret
 
-; rdi = fd, rsi = buffer, rdx = capacity
-; rax = bytes read, 0 EOF, -1 error
+; contract: rdi = fd, rsi = buffer, rdx = capacity
+; returns: rax = bytes read, 0 EOF, -1 error
+; clobbers: rax, rcx, r11
 file_read_chunk:
 	mov	rax, SYS_read
 	syscall
@@ -76,7 +79,9 @@ file_read_chunk:
 	mov	rax, -1
 	ret
 
-; rdi = fd
+; contract: rdi = fd
+; returns: none
+; clobbers: rax, rcx, r11
 file_close:
 	close_file rdi
 	ret

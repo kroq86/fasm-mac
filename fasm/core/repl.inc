@@ -4,8 +4,9 @@ REPL_LINE_MAX equ 256
 REPL_MAX_TOKENS equ 16
 REPL_EOF equ -1
 
-; rdi = buffer, rsi = max bytes (including null room)
-; rax = line length, REPL_EOF on EOF, 0 on empty line
+; contract: rdi = buffer, rsi = max bytes (including null room)
+; returns: rax = line length, REPL_EOF on EOF, 0 on empty line
+; clobbers: rax, rcx, rdx, rsi, rdi, r11
 repl_read_line:
 	push	rbx
 	push	r12
@@ -46,8 +47,9 @@ repl_read_line:
 	pop	rbx
 	ret
 
-; rdi = line, rsi = token pointer array, rdx = max tokens
-; rax = token count
+; contract: rdi = line, rsi = token pointer array, rdx = max tokens
+; returns: rax = token count
+; clobbers: rax, rcx
 repl_tokenize:
 	push	rbx
 	push	r12
@@ -94,8 +96,9 @@ repl_tokenize:
 	pop	rbx
 	ret
 
-; rdi = buffer, rsi = max bytes, rdx = fd
-; rax = line length, REPL_EOF on EOF
+; contract: rdi = buffer, rsi = max bytes, rdx = fd
+; returns: rax = line length, REPL_EOF on EOF
+; clobbers: rax, rcx, rdx, rsi, rdi, r11
 repl_read_line_fd:
 	push	rbx
 	push	r12
@@ -139,32 +142,52 @@ repl_read_line_fd:
 	pop	rbx
 	ret
 
+; contract: none
+; returns: writes "OK\n" to stdout
+; clobbers: delegated to repl_write_cstr
 repl_write_ok:
 	lea	rdi, [msg_ok]
 	jmp	repl_write_cstr
 
+; contract: none
+; returns: writes "PONG\n" to stdout
+; clobbers: delegated to repl_write_cstr
 repl_write_pong:
 	lea	rdi, [msg_pong]
 	jmp	repl_write_cstr
 
+; contract: none
+; returns: writes "(nil)\n" to stdout
+; clobbers: delegated to repl_write_cstr
 repl_write_nil:
 	lea	rdi, [msg_nil]
 	jmp	repl_write_cstr
 
+; contract: none
+; returns: writes "ERR syntax\n" to stdout
+; clobbers: delegated to repl_write_cstr
 repl_write_err:
 	lea	rdi, [msg_err]
 	jmp	repl_write_cstr
 
+; contract: none
+; returns: writes "ERR wrongtype\n" to stdout
+; clobbers: delegated to repl_write_cstr
 repl_write_wrongtype:
 	lea	rdi, [msg_wrongtype]
 	jmp	repl_write_cstr
 
-; rdi = null-terminated string
+; contract: rdi = null-terminated string
+; returns: writes string to stdout
+; clobbers: delegated to str_len and io_write
 repl_write_cstr:
 	call	str_len
 	mov	rsi, rax
 	jmp	io_write
 
+; contract: none
+; returns: writes prompt to stdout
+; clobbers: delegated to repl_write_cstr
 repl_write_prompt:
 	lea	rdi, [msg_prompt]
 	jmp	repl_write_cstr
