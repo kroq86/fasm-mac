@@ -68,11 +68,12 @@ def write_lv(path: Path) -> None:
     out += struct.pack("<QQ", 0, 0)
     for rec in RECORDS:
         vec = rec["vector"]
-        doc_id = rec["doc_id"]
         n = norm(vec)
-        out += struct.pack("<Q", doc_id)
-        out += struct.pack("<fI", n, 0)
-        out += struct.pack("<" + "f" * DIM, *vec)
+        unit = [x / n for x in vec]
+        un = norm(unit)
+        out += struct.pack("<Q", rec["doc_id"])
+        out += struct.pack("<fI", un, 0)
+        out += struct.pack("<" + "f" * DIM, *unit)
     path.write_bytes(out)
 
 

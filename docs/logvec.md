@@ -78,6 +78,35 @@ logvec build-index --dir DATA --topic TOPIC --out PATH
 
 `search` writes `doc_id score` lines to stdout (score fixed to 6 decimal places).
 
+```text
+logvec bench --index PATH --query PATH [--top K] [--iters N]
+```
+
+`bench` loads the index once and times in-process exact top-k (median over
+`--iters`, default 50). Use for regression checks, not as a FAISS comparison.
+
+## Performance (v0.1, Apple Silicon via Rosetta x86_64)
+
+Exact brute-force cosine over mmap'd unit vectors. FASM AVX2 dot/norm when the
+host reports AVX2 (currently always enabled on x86_64 builds; CPUID gate is
+Rosetta-safe stub).
+
+| Vectors | dim | median top-8 (in-process) |
+|--------:|----:|--------------------------:|
+| 1k      | 768 | ~0.4 ms                   |
+| 10k     | 768 | ~4–5 ms                   |
+
+Subprocess `search` adds ~25–40 ms process spawn overhead per query — not
+representative of in-process use (ragbox embeds search in-process).
+
+```sh
+scripts/bench_logvec.sh
+```
+
+This is **not** ANN. At 100k×768 (~300 MB index) scan time scales linearly.
+For large corpora use an external ANN index; logvec/ragbox target agent-scale
+snapshots (thousands of chunks), not billion-vector search.
+
 ## CRC32C
 
 Zig verifies logbus record envelopes with the same CRC32C polynomial/format as

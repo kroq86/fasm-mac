@@ -111,11 +111,18 @@ const Index = struct {
             try out.appendSlice(buf[0..8]);
             const norm = lb_vec_norm_f32(f32Align4(item.vector), dim);
             if (norm == 0) return error.ZeroNorm;
-            std.mem.writeInt(u32, buf[0..4], @bitCast(norm), .little);
+            var unit: [4096]f32 = undefined;
+            if (dim > unit.len) return error.BadDim;
+            var j: u32 = 0;
+            while (j < dim) : (j += 1) {
+                unit[j] = item.vector[j] / norm;
+            }
+            const unit_norm = lb_vec_norm_f32(f32Align4(unit[0..dim].ptr), dim);
+            std.mem.writeInt(u32, buf[0..4], @bitCast(unit_norm), .little);
             try out.appendSlice(buf[0..4]);
             std.mem.writeInt(u32, buf[0..4], 0, .little);
             try out.appendSlice(buf[0..4]);
-            try out.appendSlice(std.mem.sliceAsBytes(item.vector));
+            try out.appendSlice(std.mem.sliceAsBytes(unit[0..dim]));
         }
         return try out.toOwnedSlice();
     }

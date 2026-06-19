@@ -12,6 +12,7 @@ extern "C" {
 
 float lb_vec_dot_f32(const float* a, const float* b, std::uint64_t len);
 float lb_vec_norm_f32(const float* v, std::uint64_t len);
+int lb_vec_has_avx2();
 int lb_vec_topk_cosine_exact(
     const float* query,
     const float* vectors,

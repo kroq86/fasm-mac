@@ -33,6 +33,12 @@ def cosine(a: list[float], b: list[float]) -> float:
     return dot / (na * nb)
 
 
+def unit_vec(vec: list[float]) -> tuple[list[float], float]:
+    n = norm(vec)
+    u = [x / n for x in vec]
+    return u, norm(u)
+
+
 def write_lv(path: Path) -> None:
     items = sorted(DOCS.items(), key=lambda item: item[0])
     out = bytearray()
@@ -41,10 +47,10 @@ def write_lv(path: Path) -> None:
     out += struct.pack("<Q", len(items))
     out += struct.pack("<QQ", 0, 0)  # flags, reserved
     for doc_id, vec in items:
-        n = norm(vec)
+        unit, unit_norm = unit_vec(vec)
         out += struct.pack("<Q", doc_id)
-        out += struct.pack("<fI", n, 0)  # norm, record reserved
-        out += struct.pack("<" + "f" * DIM, *vec)
+        out += struct.pack("<fI", unit_norm, 0)  # norm, record reserved
+        out += struct.pack("<" + "f" * DIM, *unit)
     path.write_bytes(out)
 
 

@@ -462,7 +462,12 @@ Smoke test:
 ```sh
 scripts/check_logvec.sh
 scripts/check_logvec_cpp.sh
+scripts/bench_logvec.sh   # in-process top-k regression (1k/10k/100k × dim=768)
 ```
+
+v0.1 adds AVX2 dot/norm, unit vectors at build time, and `logvec bench`.
+Exact linear scan — ~4–5 ms for 10k×768 in-process on x86_64 (see
+`docs/logvec.md`). Not ANN; agent-scale snapshots only.
 
 ## ragbox
 

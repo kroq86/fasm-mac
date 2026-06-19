@@ -283,7 +283,7 @@ inline Manifest loadManifest(const std::filesystem::path& path) {
     return m;
 }
 
-inline void writeManifest(const std::filesystem::path& path, const Manifest& m) {
+inline void writeManifest(const std::filesystem::path& path, const Manifest& m, bool embed_text) {
     std::ofstream out(path, std::ios::trunc);
     if (!out) {
         throw std::runtime_error("failed to write manifest: " + path.string());
@@ -302,8 +302,13 @@ inline void writeManifest(const std::filesystem::path& path, const Manifest& m) 
         out << "      \"doc_id\": " << rec.doc_id << ",\n";
         out << "      \"path\": \"" << jsonEscape(rec.path) << "\",\n";
         out << "      \"offset\": " << rec.offset << ",\n";
-        out << "      \"length\": " << rec.length << ",\n";
-        out << "      \"text\": \"" << jsonEscape(rec.text) << "\"\n";
+        out << "      \"length\": " << rec.length;
+        if (embed_text) {
+            out << ",\n";
+            out << "      \"text\": \"" << jsonEscape(rec.text) << "\"\n";
+        } else {
+            out << '\n';
+        }
         out << "    }";
         if (i + 1 < m.records.size()) {
             out << ',';

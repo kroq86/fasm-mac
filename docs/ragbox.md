@@ -150,6 +150,16 @@ scripts/check_ragbox_live.sh
 
 Fixtures: `fasm/tests/ragbox/fixtures/` (dim=4 synthetic index + `tiny-repo/`).
 
+## Performance
+
+ragbox search is **exact linear scan** over a mmap'd logvec index — same path as
+`logvec bench`. Typical agent repo (hundreds to low thousands of chunks at
+dim=768) completes in single-digit milliseconds in-process on x86_64 with AVX2.
+
+Ollama embedding dominates `build` and query latency (network + model), not the
+FASM top-k pass. See [`docs/logvec.md`](logvec.md) for bench numbers and limits
+(512 MB max index size).
+
 ## Not in v0
 
 - logbus ingest pipeline

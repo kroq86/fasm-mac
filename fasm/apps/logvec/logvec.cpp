@@ -1,6 +1,7 @@
 #include "logbus_client.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -99,6 +100,7 @@ void usage() {
     std::cerr
         << "usage:\n"
         << "  logvec search --index PATH --query PATH --top K\n"
+        << "  logvec bench --index PATH --query PATH [--top K] [--iters N]\n"
         << "  logvec build-index --payload-dir DIR --out PATH\n"
         << "  logvec build-index --host H --port P --topic TOPIC --out PATH\n"
         << "  logvec build-index --dir DATA --topic TOPIC --out PATH\n";
@@ -134,6 +136,64 @@ int runSearch(int argc, char** argv) {
     for (const auto& hit : hits) {
         std::cout << hit.doc_id << ' ' << std::fixed << std::setprecision(6) << hit.score << '\n';
     }
+    return 0;
+}
+
+int runBench(int argc, char** argv) {
+    std::filesystem::path index_path;
+    std::filesystem::path query_path;
+    std::uint32_t top_k = 8;
+    std::uint32_t iters = 100;
+    for (int i = 2; i < argc; ++i) {
+        const std::string arg = argv[i];
+        if (arg == "--index" && i + 1 < argc) {
+            index_path = argv[++i];
+        } else if (arg == "--query" && i + 1 < argc) {
+            query_path = argv[++i];
+        } else if (arg == "--top" && i + 1 < argc) {
+            top_k = static_cast<std::uint32_t>(std::stoul(argv[++i]));
+        } else if (arg == "--iters" && i + 1 < argc) {
+            iters = static_cast<std::uint32_t>(std::stoul(argv[++i]));
+        } else {
+            throw std::runtime_error("Usage");
+        }
+    }
+    if (index_path.empty() || query_path.empty() || top_k == 0 || iters == 0) {
+        throw std::runtime_error("Usage");
+    }
+    const logvec::VectorIndex index = logvec::VectorIndex::load(index_path);
+    const auto qbytes = logvec::readWholeFile(query_path, 64 * 1024);
+    if (qbytes.size() != static_cast<std::size_t>(index.dim()) * 4) {
+        throw std::runtime_error("QueryDimMismatch");
+    }
+    const auto* qptr = reinterpret_cast<const float*>(qbytes.data());
+    const std::span<const float> query{qptr, index.dim()};
+
+    for (std::uint32_t i = 0; i < 5; ++i) {
+        (void)index.search(query, top_k);
+    }
+
+    std::vector<double> samples;
+    samples.reserve(iters);
+    for (std::uint32_t i = 0; i < iters; ++i) {
+        const auto t0 = std::chrono::steady_clock::now();
+        (void)index.search(query, top_k);
+        const auto t1 = std::chrono::steady_clock::now();
+        samples.push_back(
+            std::chrono::duration<double, std::milli>(t1 - t0).count());
+    }
+    std::sort(samples.begin(), samples.end());
+    const double median = samples[samples.size() / 2];
+    const double min_ms = samples.front();
+    std::cout << std::fixed << std::setprecision(3)
+              << "bench count=" << index.count()
+              << " dim=" << index.dim()
+              << " top=" << top_k
+              << " iters=" << iters
+              << " avx2=" << logvec::lb_vec_has_avx2()
+              << " median_ms=" << median
+              << " min_ms=" << min_ms
+              << '\n';
     return 0;
 }
 
@@ -195,6 +255,9 @@ int main(int argc, char** argv) {
         const std::string cmd = argv[1];
         if (cmd == "search") {
             return runSearch(argc, argv);
+        }
+        if (cmd == "bench") {
+            return runBench(argc, argv);
         }
         if (cmd == "build-index") {
             return runBuildIndex(argc, argv);

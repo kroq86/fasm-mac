@@ -1,18 +1,42 @@
 ; f32 vector math for logvec.
 ;
 ; C ABI: float in xmm0, int32 status in eax.
+;
+; CPU flags (lb_vec_cpu_flags): 0 = uninitialized, 1 = scalar, 2 = avx2
 
 VEC_F32_MAX_TOPK equ 256
 VEC_F32_SAVED_REGS equ 40
+VEC_CPU_UNINIT equ 0
+VEC_CPU_SCALAR equ 1
+VEC_CPU_AVX2 equ 2
 
-; float lb_vec_dot_f32(const float *a, const float *b, uint64_t len)
+; int lb_vec_has_avx2(void) — eax = 1 on x86_64 mac targets (Rosetta-safe)
+lb_vec_has_avx2:
+	mov	eax, 1
+	ret
+
+; void lb_vec_init_cpu_flags(void)
+lb_vec_init_cpu_flags:
+	push	rbx
+	call	lb_vec_has_avx2
+	test	eax, eax
+	jz	.v32init_scalar
+	mov	dword [lb_vec_cpu_flags], VEC_CPU_AVX2
+	jmp	.v32init_done
+.v32init_scalar:
+	mov	dword [lb_vec_cpu_flags], VEC_CPU_SCALAR
+.v32init_done:
+	pop	rbx
+	ret
+
+; float lb_vec_dot_f32_scalar(const float *a, const float *b, uint64_t len)
 ; rdi = a, rsi = b, rdx = len
-lb_vec_dot_f32:
+lb_vec_dot_f32_scalar:
 	xorps	xmm0, xmm0
 	test	rdx, rdx
-	jz	.v32d_done
+	jz	.v32ds_done
 	mov	rcx, rdx
-.v32d_loop:
+.v32ds_loop:
 	movss	xmm1, dword [rdi]
 	movss	xmm2, dword [rsi]
 	mulss	xmm1, xmm2
@@ -20,27 +44,139 @@ lb_vec_dot_f32:
 	add	rdi, 4
 	add	rsi, 4
 	dec	rcx
-	jnz	.v32d_loop
-.v32d_done:
+	jnz	.v32ds_loop
+.v32ds_done:
 	ret
 
-; float lb_vec_norm_f32(const float *v, uint64_t len)
+; ymm horizontal sum of 8 floats into xmm0[0]
+lb_vec_reduce_ymm_ps:
+	vextractf128 xmm1, ymm0, 1
+	vaddps	xmm0, xmm0, xmm1
+	vhaddps	xmm0, xmm0, xmm0
+	vhaddps	xmm0, xmm0, xmm0
+	ret
+
+; float lb_vec_dot_f32_avx2(const float *a, const float *b, uint64_t len)
+; rdi = a, rsi = b, rdx = len
+lb_vec_dot_f32_avx2:
+	vxorps	ymm0, ymm0, ymm0
+	test	rdx, rdx
+	jz	.v32da_done
+	mov	rcx, rdx
+	cmp	rcx, 8
+	jb	.v32da_tail
+.v32da_loop8:
+	vmovups	ymm1, [rdi]
+	vmovups	ymm2, [rsi]
+	vfmadd231ps ymm0, ymm1, ymm2
+	add	rdi, 32
+	add	rsi, 32
+	sub	rcx, 8
+	cmp	rcx, 8
+	jae	.v32da_loop8
+.v32da_tail:
+	test	rcx, rcx
+	jz	.v32da_reduce
+.v32da_tail_loop:
+	movss	xmm1, dword [rdi]
+	movss	xmm2, dword [rsi]
+	mulss	xmm1, xmm2
+	addss	xmm0, xmm1
+	add	rdi, 4
+	add	rsi, 4
+	dec	rcx
+	jnz	.v32da_tail_loop
+.v32da_reduce:
+	test	rdx, rdx
+	jbe	.v32da_done
+	cmp	rdx, 8
+	jb	.v32da_done
+	call	lb_vec_reduce_ymm_ps
+.v32da_done:
+	vzeroupper
+	ret
+
+; float lb_vec_dot_f32(const float *a, const float *b, uint64_t len)
+; rdi = a, rsi = b, rdx = len
+lb_vec_dot_f32:
+	cmp	dword [lb_vec_cpu_flags], VEC_CPU_UNINIT
+	je	.v32d_init
+.v32d_dispatch:
+	cmp	dword [lb_vec_cpu_flags], VEC_CPU_AVX2
+	je	lb_vec_dot_f32_avx2
+	jmp	lb_vec_dot_f32_scalar
+.v32d_init:
+	call	lb_vec_init_cpu_flags
+	jmp	.v32d_dispatch
+
+; float lb_vec_norm_f32_scalar(const float *v, uint64_t len)
 ; rdi = v, rsi = len
-lb_vec_norm_f32:
+lb_vec_norm_f32_scalar:
 	xorps	xmm0, xmm0
 	test	rsi, rsi
-	jz	.v32n_done
+	jz	.v32ns_done
 	mov	rcx, rsi
-.v32n_loop:
+.v32ns_loop:
 	movss	xmm1, dword [rdi]
 	mulss	xmm1, xmm1
 	addss	xmm0, xmm1
 	add	rdi, 4
 	dec	rcx
-	jnz	.v32n_loop
+	jnz	.v32ns_loop
 	sqrtss	xmm0, xmm0
-.v32n_done:
+.v32ns_done:
 	ret
+
+; float lb_vec_norm_f32_avx2(const float *v, uint64_t len)
+; rdi = v, rsi = len
+lb_vec_norm_f32_avx2:
+	vxorps	ymm0, ymm0, ymm0
+	mov	rcx, rsi
+	test	rcx, rcx
+	jz	.v32na_done
+	cmp	rcx, 8
+	jb	.v32na_tail
+.v32na_loop8:
+	vmovups	ymm1, [rdi]
+	vfmadd231ps ymm0, ymm1, ymm1
+	add	rdi, 32
+	sub	rcx, 8
+	cmp	rcx, 8
+	jae	.v32na_loop8
+.v32na_tail:
+	test	rcx, rcx
+	jz	.v32na_reduce
+.v32na_tail_loop:
+	movss	xmm1, dword [rdi]
+	mulss	xmm1, xmm1
+	addss	xmm0, xmm1
+	add	rdi, 4
+	dec	rcx
+	jnz	.v32na_tail_loop
+.v32na_reduce:
+	test	rsi, rsi
+	jbe	.v32na_done
+	cmp	rsi, 8
+	jb	.v32na_sqrt
+	call	lb_vec_reduce_ymm_ps
+.v32na_sqrt:
+	sqrtss	xmm0, xmm0
+.v32na_done:
+	vzeroupper
+	ret
+
+; float lb_vec_norm_f32(const float *v, uint64_t len)
+; rdi = v, rsi = len
+lb_vec_norm_f32:
+	cmp	dword [lb_vec_cpu_flags], VEC_CPU_UNINIT
+	je	.v32n_init
+.v32n_dispatch:
+	cmp	dword [lb_vec_cpu_flags], VEC_CPU_AVX2
+	je	lb_vec_norm_f32_avx2
+	jmp	lb_vec_norm_f32_scalar
+.v32n_init:
+	call	lb_vec_init_cpu_flags
+	jmp	.v32n_dispatch
 
 ; int lb_vec_topk_cosine_exact(
 ;   const float *query, const float *vectors, const float *norms,
@@ -53,7 +189,7 @@ lb_vec_norm_f32:
 ; Register map:
 ;   r10 = query, r11 = norms, r14 = vectors walk ptr
 ;   r15 = count, rbx = dim, r13 = k_eff, r12 = heap base
-;   xmm6 = qnorm (callee-saved), xmm7 = row score, xmm8 = heap min
+;   xmm6 = inv_qnorm (callee-saved), xmm7 = row score, xmm8 = heap min
 lb_vec_topk_cosine_exact:
 	push	rbp
 	mov	rbp, rsp
@@ -84,10 +220,14 @@ lb_vec_topk_cosine_exact:
 	mov	rdi, r10
 	mov	rsi, rbx
 	call	lb_vec_norm_f32
-	movaps	xmm6, xmm0
 	xorps	xmm1, xmm1
 	ucomiss	xmm0, xmm1
 	je	.v32t_bad
+	movaps	xmm2, xmm0
+	ucomiss	xmm0, xmm2
+	jp	.v32t_bad
+	movss	xmm6, dword [lb_vec_one_f32]
+	divss	xmm6, xmm0
 	mov	rax, r13
 	shl	rax, 3
 	add	rax, 15
@@ -102,10 +242,15 @@ lb_vec_topk_cosine_exact:
 	mov	rsi, r14
 	mov	rdx, rbx
 	call	lb_vec_dot_f32
-	movaps	xmm4, xmm6
 	movss	xmm5, dword [r11 + rax * 4]
-	mulss	xmm4, xmm5
-	divss	xmm0, xmm4
+	xorps	xmm1, xmm1
+	ucomiss	xmm5, xmm1
+	jbe	.v32t_bad
+	movaps	xmm2, xmm5
+	ucomiss	xmm5, xmm2
+	jp	.v32t_bad
+	mulss	xmm0, xmm6
+	divss	xmm0, xmm5
 	movss	dword [r12 + rax * 8], xmm0
 	mov	dword [r12 + rax * 8 + 4], eax
 	inc	rax
@@ -122,10 +267,15 @@ lb_vec_topk_cosine_exact:
 	mov	rsi, r14
 	mov	rdx, rbx
 	call	lb_vec_dot_f32
-	movaps	xmm4, xmm6
 	movss	xmm5, dword [r11 + rax * 4]
-	mulss	xmm4, xmm5
-	divss	xmm0, xmm4
+	xorps	xmm1, xmm1
+	ucomiss	xmm5, xmm1
+	jbe	.v32t_bad
+	movaps	xmm2, xmm5
+	ucomiss	xmm5, xmm2
+	jp	.v32t_bad
+	mulss	xmm0, xmm6
+	divss	xmm0, xmm5
 	movaps	xmm7, xmm0
 	movss	xmm8, dword [r12]
 	xor	r9d, r9d
@@ -194,6 +344,7 @@ lb_vec_topk_cosine_exact:
 ;
 ; .lv record: u64 doc_id | f32 norm | u32 reserved | f32 vector[dim]
 ; r14 walks record base; vector at r14+16, norm at r14+8
+; xmm6 = inv_qnorm
 lb_vec_topk_cosine_lv:
 	push	rbp
 	mov	rbp, rsp
@@ -226,10 +377,14 @@ lb_vec_topk_cosine_lv:
 	mov	rdi, r10
 	mov	rsi, rbx
 	call	lb_vec_norm_f32
-	movaps	xmm6, xmm0
 	xorps	xmm1, xmm1
 	ucomiss	xmm0, xmm1
 	je	.v32tlv_bad
+	movaps	xmm2, xmm0
+	ucomiss	xmm0, xmm2
+	jp	.v32tlv_bad
+	movss	xmm6, dword [lb_vec_one_f32]
+	divss	xmm6, xmm0
 	mov	rax, r13
 	shl	rax, 3
 	add	rax, 15
@@ -251,9 +406,8 @@ lb_vec_topk_cosine_lv:
 	movaps	xmm2, xmm5
 	ucomiss	xmm5, xmm2
 	jp	.v32tlv_bad
-	movaps	xmm4, xmm6
-	mulss	xmm4, xmm5
-	divss	xmm0, xmm4
+	mulss	xmm0, xmm6
+	divss	xmm0, xmm5
 	movss	dword [r12 + rax * 8], xmm0
 	mov	dword [r12 + rax * 8 + 4], eax
 	inc	rax
@@ -275,9 +429,8 @@ lb_vec_topk_cosine_lv:
 	movaps	xmm2, xmm5
 	ucomiss	xmm5, xmm2
 	jp	.v32tlv_bad
-	movaps	xmm4, xmm6
-	mulss	xmm4, xmm5
-	divss	xmm0, xmm4
+	mulss	xmm0, xmm6
+	divss	xmm0, xmm5
 	movaps	xmm7, xmm0
 	movss	xmm8, dword [r12]
 	xor	r9d, r9d

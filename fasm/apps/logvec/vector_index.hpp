@@ -102,18 +102,31 @@ inline void writeWholeFile(const std::filesystem::path& path, std::span<const st
     }
 }
 
+inline float normalizeUnitVector(std::span<const float> vector, std::uint32_t dim, float* unit_out) {
+    const float norm = lb_vec_norm_f32(vector.data(), dim);
+    if (norm == 0.0f) {
+        throw std::runtime_error("ZeroNorm");
+    }
+    for (std::uint32_t i = 0; i < dim; ++i) {
+        unit_out[i] = vector[i] / norm;
+    }
+    return lb_vec_norm_f32(unit_out, dim);
+}
+
 class VectorIndex {
 public:
     static constexpr std::array<std::uint8_t, 8> kMagic = {'L', 'O', 'G', 'V', 'E', 'C', '1', 0};
     static constexpr std::uint32_t kVersion = 1;
 
+    static constexpr std::size_t kMaxIndexBytes = 512 * 1024 * 1024;
+
     static VectorIndex load(const std::filesystem::path& path) {
         try {
-            auto mapped = std::make_shared<MappedFile>(path, 256 * 1024 * 1024);
+            auto mapped = std::make_shared<MappedFile>(path, kMaxIndexBytes);
             const auto [dim, count] = validateHeader(mapped->bytes());
             return VectorIndex{dim, count, std::move(mapped), {}};
         } catch (const std::exception&) {
-            return parse(readWholeFile(path, 256 * 1024 * 1024));
+            return parse(readWholeFile(path, kMaxIndexBytes));
         }
     }
 
@@ -131,17 +144,15 @@ public:
         writeU64Le(out, items.size());
         writeU64Le(out, 0);
         writeU64Le(out, 0);
+        std::vector<float> unit(dim);
         for (const auto& item : items) {
             writeU64Le(out, item.doc_id);
-            const float norm = lb_vec_norm_f32(item.vector.data(), dim);
-            if (norm == 0.0f) {
-                throw std::runtime_error("ZeroNorm");
-            }
+            const float unit_norm = normalizeUnitVector(item.vector, dim, unit.data());
             std::uint32_t norm_bits{};
-            std::memcpy(&norm_bits, &norm, sizeof(norm_bits));
+            std::memcpy(&norm_bits, &unit_norm, sizeof(norm_bits));
             writeU32Le(out, norm_bits);
             writeU32Le(out, 0);
-            const auto* bytes = reinterpret_cast<const std::uint8_t*>(item.vector.data());
+            const auto* bytes = reinterpret_cast<const std::uint8_t*>(unit.data());
             out.insert(out.end(), bytes, bytes + dim * sizeof(float));
         }
         return out;
@@ -374,16 +385,14 @@ private:
 
     void writeRecord(std::uint64_t doc_id, std::span<const float> vector) {
         writeU64(doc_id);
-        const float norm = lb_vec_norm_f32(vector.data(), dim_);
-        if (norm == 0.0f) {
-            throw std::runtime_error("ZeroNorm");
-        }
+        std::vector<float> unit(dim_);
+        const float unit_norm = normalizeUnitVector(vector, dim_, unit.data());
         std::uint32_t norm_bits{};
-        std::memcpy(&norm_bits, &norm, sizeof(norm_bits));
+        std::memcpy(&norm_bits, &unit_norm, sizeof(norm_bits));
         writeU32(norm_bits);
         writeU32(0);
         out_.write(
-            reinterpret_cast<const char*>(vector.data()),
+            reinterpret_cast<const char*>(unit.data()),
             static_cast<std::streamsize>(dim_ * sizeof(float)));
         if (!out_) {
             throw std::runtime_error("failed to write index record: " + path_.string());

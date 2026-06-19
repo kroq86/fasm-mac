@@ -46,6 +46,13 @@ clang++ -std=c++20 -O2 -arch x86_64 \
 "$ROOT/bin/fasm" "$ROOT/fasm/apps/logbus.asm" "$LOGBUS" >/dev/null
 
 "$PYTHON" "$ROOT/fasm/tests/logvec/write_search_fixture.py" "$FIXTURE_DIR"
+VEC_DOT_SMOKE="$OUT_DIR/vec_dot_smoke"
+clang++ -std=c++20 -O2 -arch x86_64 \
+    "$ROOT/fasm/tests/logvec/vec_dot_smoke.cpp" \
+    "$CORE_OBJ" \
+    -o "$VEC_DOT_SMOKE"
+arch -x86_64 "$VEC_DOT_SMOKE"
+
 OUT="$(arch -x86_64 "$LOGVEC" search \
     --index "$FIXTURE_DIR/search_smoke.lv" \
     --query "$FIXTURE_DIR/search_query.bin" \

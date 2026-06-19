@@ -3,6 +3,7 @@
 #include "doctor.hpp"
 #include "manifest.hpp"
 #include "ollama_client.hpp"
+#include "snippet.hpp"
 
 #include <cstring>
 #include <cstdlib>
@@ -26,13 +27,6 @@ std::vector<std::uint8_t> makePayload(
     out.insert(out.end(), bytes, bytes + dim * sizeof(float));
     logvec::writeU64Le(out, doc_id);
     return out;
-}
-
-std::string truncateSnippet(const std::string& text, std::size_t max_len) {
-    if (text.size() <= max_len) {
-        return text;
-    }
-    return text.substr(0, max_len);
 }
 
 std::string jsonEscapeOut(std::string_view s) {
@@ -67,7 +61,8 @@ void usage() {
     std::cerr
         << "usage:\n"
         << "  ragbox build --root PATH --out PATH [--manifest PATH]\n"
-        << "    [--chunk-size N] [--overlap N] [--ollama URL] [--model MODEL] [--dry-run]\n"
+        << "    [--chunk-size N] [--overlap N] [--ollama URL] [--model MODEL]\n"
+        << "    [--dry-run] [--embed-text]\n"
         << "  ragbox search --index PATH --query TEXT [--top K] [--json]\n"
         << "    [--manifest PATH] [--ollama URL] [--model MODEL] [--query-file PATH]\n"
         << "    [--snippet-len N]\n"
@@ -84,6 +79,7 @@ int runBuild(int argc, char** argv) {
     std::string ollama_url = "http://127.0.0.1:11434";
     std::string model = "nomic-embed-text";
     bool dry_run = false;
+    bool embed_text = false;
 
     for (int i = 2; i < argc; ++i) {
         const std::string arg = argv[i];
@@ -103,6 +99,8 @@ int runBuild(int argc, char** argv) {
             model = argv[++i];
         } else if (arg == "--dry-run") {
             dry_run = true;
+        } else if (arg == "--embed-text") {
+            embed_text = true;
         } else {
             throw std::runtime_error("Usage");
         }
@@ -123,7 +121,7 @@ int runBuild(int argc, char** argv) {
     if (dry_run) {
         const ragbox::Manifest manifest = ragbox::manifestFromChunks(
             chunks, 0, model, chunk_size, overlap, root);
-        ragbox::writeManifest(manifest_path, manifest);
+        ragbox::writeManifest(manifest_path, manifest, embed_text);
         std::cout << "dry-run chunks=" << chunks.size() << " manifest=" << manifest_path << '\n';
         return 0;
     }
@@ -149,7 +147,7 @@ int runBuild(int argc, char** argv) {
 
     const ragbox::Manifest manifest =
         ragbox::manifestFromChunks(chunks, dim, model, chunk_size, overlap, root);
-    ragbox::writeManifest(manifest_path, manifest);
+    ragbox::writeManifest(manifest_path, manifest, embed_text);
     std::cout << "built index=" << out_path << " chunks=" << chunks.size() << " dim=" << dim << '\n';
     return 0;
 }
@@ -228,7 +226,7 @@ int runSearch(int argc, char** argv) {
             if (rec != nullptr) {
                 path = rec->path;
                 offset = rec->offset;
-                snippet = truncateSnippet(rec->text, snippet_len);
+                snippet = ragbox::loadSnippet(manifest, *rec, snippet_len);
             }
             std::cout << "  {"
                       << "\"doc_id\":" << hit.doc_id << ","
