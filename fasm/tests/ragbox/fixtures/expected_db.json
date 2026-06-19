@@ -1,0 +1,9 @@
+[
+  {
+    "doc_id": 1,
+    "score": 1.0,
+    "path": "docs/db.md",
+    "offset": 0,
+    "snippet": "Postgres migrations and schema_migrations table for database deploys."
+  }
+]

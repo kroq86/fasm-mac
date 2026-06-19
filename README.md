@@ -464,6 +464,32 @@ scripts/check_logvec.sh
 scripts/check_logvec_cpp.sh
 ```
 
+## ragbox
+
+Local semantic snapshot for agents: chunk a repo, embed via Ollama, build a
+copyable `.lv` index + JSON manifest, search with exact cosine top-k. One
+x86_64 binary — no Python venv, no vector DB server. Spec: `docs/ragbox.md`.
+
+```sh
+fasm --emit=macho-obj fasm/apps/logvec_core.asm logvec_core.o
+clang++ -std=c++20 -O2 -arch x86_64 \
+  fasm/apps/ragbox/ragbox.cpp logvec_core.o -o ragbox
+arch -x86_64 ./ragbox build --root ./repo --out memory.lv
+arch -x86_64 ./ragbox search --index memory.lv --query "auth middleware" --json
+```
+
+Smoke test:
+
+```sh
+scripts/check_ragbox.sh
+```
+
+Optional live check (Ollama required):
+
+```sh
+scripts/check_ragbox_live.sh
+```
+
 ## macdbg
 
 AI-native LLDB snapshot debugger for macOS binaries. Its useful surface is the
