@@ -19,6 +19,9 @@ C++        same host responsibilities as Zig (`fasm/apps/logvec/`) — additive 
 `build-index` is a **one-shot snapshot builder**. It does not tail topics or
 refresh indexes in real time.
 
+System form (Level 4 — truth, projection, invariants):
+[`docs/system_form.md`](system_form.md).
+
 ## Metric (v0)
 
 - **Cosine similarity** on raw f32 vectors
@@ -120,15 +123,8 @@ scripts/bench_perf.sh      # layered bench + ragbox breakdown + CI gate
 
 This is **not** ANN. At 100k×768 (~300 MB index) scan time scales linearly.
 For large corpora use an external ANN index; logvec/ragbox target agent-scale
-snapshots (1k–50k chunks), not billion-vector search.
-
-Positioning:
-
-```text
-portable exact AVX2 snapshot search,
-fast enough for local agent memory (1k–50k chunks),
-without Python hot path / vector DB / server stack.
-```
+snapshots (1k–50k chunks), not billion-vector search. Product positioning:
+[`docs/system_form.md`](system_form.md).
 
 ## CRC32C
 

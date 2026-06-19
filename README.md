@@ -439,7 +439,8 @@ cosine top-k search. logbus stays dumb; FASM owns f32 dot/norm/top-k only;
 Zig wires protocol, files, ingest, and doc_id mapping (C++ host available in
 `fasm/apps/logvec/`). v0 metric: cosine similarity
 (`score = dot / (norm(q)*norm(v))`, higher is better). `build-index`
-is one-shot — it does not tail topics. Spec: `docs/logvec.md`.
+is one-shot — it does not tail topics. Spec: [`docs/logvec.md`](docs/logvec.md).
+System form (Level 4): [`docs/system_form.md`](docs/system_form.md).
 
 ```sh
 fasm --emit=macho-obj fasm/apps/logvec_core.asm logvec_core.o
@@ -475,7 +476,9 @@ linear scan — ~4.5 ms for 10k×768 single-thread, ~1.4 ms with 4 threads (see
 
 Local semantic snapshot for agents: chunk a repo, embed via Ollama, build a
 copyable `.lv` index + JSON manifest, search with exact cosine top-k. One
-x86_64 binary — no Python venv, no vector DB server. Spec: `docs/ragbox.md`.
+x86_64 binary — no Python venv, no vector DB server. Spec:
+[`docs/ragbox.md`](docs/ragbox.md). System form (Level 4):
+[`docs/system_form.md`](docs/system_form.md).
 
 ```sh
 fasm --emit=macho-obj fasm/apps/logvec_core.asm logvec_core.o

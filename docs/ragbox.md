@@ -13,6 +13,9 @@ ragbox wraps the existing logvec `.lv` snapshot format with:
 FASM owns dot/norm/top-k; C++ owns chunking, HTTP embed glue, mmap search, and
 CLI. Zig logvec remains unchanged.
 
+Why ragbox exists in the stack (Level 4):
+[`docs/system_form.md`](system_form.md).
+
 ## Build
 
 ```sh
@@ -186,5 +189,6 @@ scripts/bench_perf.sh   # includes ragbox lite-manifest bench on fixtures
 
 ## Related
 
+- [`docs/system_form.md`](system_form.md) — Level 4 architecture (truth, projection, invariants)
 - [`docs/logvec.md`](logvec.md) — `.lv` format and logvec hosts
 - [`fasm/apps/logvec/`](../../fasm/apps/logvec/) — C++ logvec host reused by ragbox
