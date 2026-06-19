@@ -79,4 +79,49 @@ arch -x86_64 "$RAGBOX" bench \
     --query-file "$FIXTURE_DIR/query_auth.bin" \
     --iters 5 >/dev/null
 
+INC_DIR="$FIXTURE_DIR/incremental"
+OUT="$(arch -x86_64 "$RAGBOX" search \
+    --index "$INC_DIR/base.lv" \
+    --manifest "$INC_DIR/manifest.json" \
+    --query-file "$INC_DIR/query_auth.bin" \
+    --top 1 \
+    --json)"
+if ! "$PYTHON" -c '
+import json
+import sys
+
+expected = json.load(open(sys.argv[1], encoding="utf-8"))
+actual = json.loads(sys.argv[2])
+assert actual == expected, f"expected={expected!r} actual={actual!r}"
+' "$INC_DIR/expected_auth.json" "$OUT"
+then
+    echo "FAIL incremental search" >&2
+    printf '%s\n' "$OUT" >&2
+    exit 1
+fi
+
+arch -x86_64 "$RAGBOX" doctor \
+    --skip-ollama \
+    --index "$INC_DIR/base.lv" \
+    --manifest "$INC_DIR/manifest.json"
+
+REFRESH_DIR="$OUT_DIR/refresh-smoke"
+mkdir -p "$REFRESH_DIR"
+cp "$INC_DIR/base.lv" "$REFRESH_DIR/memory.lv"
+cp "$INC_DIR/manifest.json" "$REFRESH_DIR/memory.lv.manifest.json"
+cp "$INC_DIR/refresh_state.json" "$REFRESH_DIR/memory.lv.state.json"
+REFRESH_OUT="$(arch -x86_64 "$RAGBOX" refresh \
+    --root "$TINY_REPO" \
+    --index "$REFRESH_DIR/memory.lv" \
+    --manifest "$REFRESH_DIR/memory.lv.manifest.json" \
+    --model "fixture-dim4" \
+    --dry-run 2>&1)"
+case "$REFRESH_OUT" in
+    *"dry-run"*) ;;
+    *)
+        echo "FAIL refresh dry-run output: $REFRESH_OUT" >&2
+        exit 1
+        ;;
+esac
+
 echo 'PASS ragbox check'

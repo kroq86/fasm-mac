@@ -1,11 +1,13 @@
 #pragma once
 
+#include "../logvec/vector_index.hpp"
 #include "chunker.hpp"
 
 #include <cctype>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -373,6 +375,39 @@ inline void validateManifestIndex(const Manifest& m, std::uint32_t index_dim, st
             throw std::runtime_error("ManifestDocIdGap");
         }
     }
+}
+
+inline void validateManifestSearch(
+    const Manifest& m,
+    const logvec::VectorIndex& base,
+    const logvec::VectorIndex* delta,
+    const std::set<std::uint64_t>& superseded) {
+    if (m.dim != base.dim()) {
+        throw std::runtime_error("ManifestDimMismatch");
+    }
+    if (delta != nullptr && delta->dim() != base.dim()) {
+        throw std::runtime_error("DimMismatch");
+    }
+    std::set<std::uint64_t> seen;
+    for (const auto& rec : m.records) {
+        if (superseded.find(rec.doc_id) != superseded.end()) {
+            throw std::runtime_error("ManifestSupersededDocId");
+        }
+        if (!seen.insert(rec.doc_id).second) {
+            throw std::runtime_error("ManifestDuplicateDocId");
+        }
+        const bool in_base = base.containsDocId(rec.doc_id);
+        const bool in_delta = delta != nullptr && delta->containsDocId(rec.doc_id);
+        if (!in_base && !in_delta) {
+            throw std::runtime_error("ManifestMissingDocId");
+        }
+    }
+}
+
+inline void writeManifestAtomic(const std::filesystem::path& path, const Manifest& m, bool embed_text) {
+    const auto tmp = path.string() + ".tmp";
+    writeManifest(tmp, m, embed_text);
+    std::filesystem::rename(tmp, path);
 }
 
 }  // namespace ragbox

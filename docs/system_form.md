@@ -94,7 +94,7 @@ These must stay true across v0.x unless explicitly versioned:
 | 4 | Exact cosine top-k: score desc, `doc_id` asc on ties | FASM kernel + C++ sort | `expected_search.txt`, ragbox expected JSON |
 | 5 | logbus stays a dumb durable log — no vector semantics in the broker | [`logvec.md`](logvec.md) Architecture | `scripts/check_logbus.sh` (broker only) |
 | 6 | Math backend is replaceable via C ABI (`lb_vec_*`) | [`vector_core.hpp`](../fasm/apps/logvec/vector_core.hpp) | `vec_dot_smoke`, `parallel_search_smoke` |
-| 7 | Snapshot build is one-shot — no realtime tail (for now) | logvec / ragbox CLI | absence of tail command; docs |
+| 7 | Batch build + incremental `refresh` (file-hash delta); no daemon tail | ragbox CLI | `scripts/check_ragbox.sh` incremental smoke |
 | 8 | ragbox = chunk → embed → artifacts, not a monolith server | [`ragbox.md`](ragbox.md) | single binary, no listen port in v0 |
 
 Safe to evolve without breaking the system **form**:
@@ -193,7 +193,7 @@ lb_logvec_payload_validate, lb_crc32c
 ## What we are not
 
 - Vector DB server or cloud ANN service
-- Realtime tailing / streaming index refresh (v0)
+- Realtime daemon / fsnotify tail (v0)
 - Distributed or multi-node search
 - Billion-vector corpora (exact scan target: agent-scale 1k–100k chunks)
 - MCP server, PDF/HTML pipeline (see [`ragbox.md`](ragbox.md) Not in v0)
@@ -211,7 +211,6 @@ Performance numbers and bench commands: [`logvec.md`](logvec.md) Performance.
 
 Future Level 4 work — not promised in v0.x:
 
-- **Incremental index** — delta `.lv` vs full rebuild only
 - **Manifest v2** — schema migrations, richer provenance
 - **Multi-snapshot** — repo memory vs session memory vs tool output as separate artifacts
 - **Optional ANN projection** — separate build mode; exact remains default and testable

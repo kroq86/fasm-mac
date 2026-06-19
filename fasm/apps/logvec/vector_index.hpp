@@ -15,6 +15,7 @@
 #include <functional>
 #include <limits>
 #include <memory>
+#include <set>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -229,6 +230,15 @@ public:
     [[nodiscard]] std::span<const std::uint8_t> bytes() const { return data_; }
     [[nodiscard]] const std::uint8_t* recordsPtr() const { return data_.data() + headerSize(); }
     [[nodiscard]] std::uint64_t recordStride() const { return recordSize(dim_); }
+
+    [[nodiscard]] bool containsDocId(std::uint64_t doc_id) const {
+        for (std::uint64_t i = 0; i < count_; ++i) {
+            if (entry(i).doc_id == doc_id) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     [[nodiscard]] float benchDotScan(
         std::span<const float> query,
@@ -536,6 +546,74 @@ private:
     std::uint64_t count_{};
 };
 
+inline void sortSearchHits(std::vector<SearchHit>& hits) {
+    std::sort(hits.begin(), hits.end(), [](const SearchHit& a, const SearchHit& b) {
+        if (a.score > b.score) {
+            return true;
+        }
+        if (a.score < b.score) {
+            return false;
+        }
+        return a.doc_id < b.doc_id;
+    });
+}
+
+inline std::vector<SearchHit> mergeTopKHits(
+    std::span<const SearchHit> a,
+    std::span<const SearchHit> b,
+    std::size_t top_k) {
+    std::vector<SearchHit> merged;
+    merged.reserve(a.size() + b.size());
+    merged.insert(merged.end(), a.begin(), a.end());
+    merged.insert(merged.end(), b.begin(), b.end());
+    sortSearchHits(merged);
+    if (merged.size() > top_k) {
+        merged.resize(top_k);
+    }
+    return merged;
+}
+
+inline std::vector<SearchHit> filterSuperseded(
+    std::span<const SearchHit> hits,
+    const std::set<std::uint64_t>& superseded) {
+    if (superseded.empty()) {
+        return {hits.begin(), hits.end()};
+    }
+    std::vector<SearchHit> out;
+    out.reserve(hits.size());
+    for (const auto& hit : hits) {
+        if (superseded.find(hit.doc_id) == superseded.end()) {
+            out.push_back(hit);
+        }
+    }
+    return out;
+}
+
+inline std::vector<SearchHit> searchMerged(
+    const VectorIndex& base,
+    const VectorIndex* delta,
+    std::span<const float> query,
+    std::size_t top_k,
+    const std::set<std::uint64_t>& superseded,
+    std::size_t threads = 1) {
+    if (delta != nullptr && delta->dim() != base.dim()) {
+        throw std::runtime_error("DimMismatch");
+    }
+    const std::size_t fetch_k = top_k + superseded.size();
+    const std::vector<SearchHit> base_hits =
+        filterSuperseded(base.search(query, fetch_k, threads), superseded);
+    if (delta == nullptr || delta->count() == 0) {
+        auto out = base_hits;
+        if (out.size() > top_k) {
+            out.resize(top_k);
+        }
+        return out;
+    }
+    const std::vector<SearchHit> delta_hits =
+        filterSuperseded(delta->search(query, fetch_k, threads), superseded);
+    return mergeTopKHits(base_hits, delta_hits, top_k);
+}
+
 inline ParsedPayload parsePayload(std::span<const std::uint8_t> payload) {
     std::uint32_t dim{};
     std::uint64_t doc_id{};
@@ -588,6 +666,37 @@ public:
         writeHeaderPlaceholder();
     }
 
+    void openAppend(const std::filesystem::path& path, std::uint32_t expected_dim) {
+        if (out_.is_open()) {
+            throw std::runtime_error("IndexBuilder already open");
+        }
+        path_ = path;
+        if (std::filesystem::exists(path)) {
+            const VectorIndex existing = VectorIndex::load(path);
+            if (existing.dim() != expected_dim) {
+                throw std::runtime_error("DimMismatch");
+            }
+            dim_ = existing.dim();
+            count_ = existing.count();
+            has_dim_ = true;
+            out_.open(path, std::ios::binary | std::ios::in | std::ios::out);
+            if (!out_) {
+                throw std::runtime_error("failed to open file for append: " + path.string());
+            }
+            seekEnd();
+        } else {
+            out_.open(path, std::ios::binary | std::ios::trunc);
+            if (!out_) {
+                throw std::runtime_error("failed to open file for write: " + path.string());
+            }
+            writeHeaderPlaceholder();
+            dim_ = expected_dim;
+            has_dim_ = true;
+            patchU32(kDimOffset, dim_);
+            count_ = 0;
+        }
+    }
+
     void append(const IngestRecord& rec) {
         if (!out_.is_open()) {
             throw std::runtime_error("IndexBuilder not open");
@@ -610,13 +719,15 @@ public:
         if (!out_.is_open()) {
             throw std::runtime_error("IndexBuilder not open");
         }
-        if (!has_dim_ || count_ == 0) {
+        if (!has_dim_) {
             throw std::runtime_error("EmptyInput");
         }
         patchU64(kCountOffset, count_);
         out_.close();
         finalized_ = true;
     }
+
+    [[nodiscard]] std::uint64_t count() const { return count_; }
 
 private:
     static constexpr std::size_t kDimOffset = VectorIndex::kMagic.size() + 4;

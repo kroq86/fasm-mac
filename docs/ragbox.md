@@ -70,6 +70,8 @@ Outputs:
 
 - `memory.lv` — logvec v1 index (mmap-friendly snapshot)
 - `memory.lv.manifest.json` — chunk metadata sidecar (default path)
+- `memory.lv.state.json` — file hashes + superseded doc_ids (written by `build`)
+- `memory.lv.delta` — append-only incremental vectors (written by `refresh`)
 
 ## Commands
 
@@ -92,6 +94,37 @@ Included extensions: `.md`, `.txt`, `.jsonl`, code sources (`.py`, `.go`, `.rs`,
 
 Skipped directories: dot dirs, `node_modules`, `__pycache__`.
 
+Writes `memory.lv`, manifest, and `memory.lv.state.json`. Removes any existing
+`.delta` sidecar (clean full snapshot).
+
+### refresh
+
+```text
+ragbox refresh --root PATH --index PATH [--manifest PATH]
+  [--chunk-size 800] [--overlap 100]
+  [--ollama http://127.0.0.1:11434] [--model nomic-embed-text]
+  [--dry-run]
+```
+
+Incremental update after `build`: compares SHA-256 file hashes in
+`memory.lv.state.json`, re-embeds only changed/new files, appends vectors to
+`memory.lv.delta`, and updates manifest/state. Unchanged files are skipped.
+Deleted files supersede their `doc_id`s (filtered at search). Chunk params and
+model must match the state file or refresh errors (run full `build` instead).
+
+`--dry-run` reports deleted/changed/added file counts without Ollama or writes.
+
+Workflow:
+
+```sh
+arch -x86_64 ragbox build --root ./my-repo --out memory.lv
+# edit files under ./my-repo ...
+arch -x86_64 ragbox refresh --root ./my-repo --index memory.lv
+arch -x86_64 ragbox search --index memory.lv --query "auth middleware" --json
+```
+
+Compaction (merge delta into base): run full `build` again.
+
 ### search
 
 ```text
@@ -101,7 +134,8 @@ ragbox search --index PATH --query TEXT [--top 8] [--json]
 ```
 
 Embeds the query (or reads raw f32 `--query-file` for offline checks), runs
-exact cosine top-k over the mmap index, joins manifest records:
+exact cosine top-k over the mmap index (base + optional `.delta` when state
+exists), joins manifest records:
 
 ```json
 [
@@ -125,7 +159,8 @@ ragbox doctor [--index PATH] [--manifest PATH]
 ```
 
 Checks: x86_64 note, Ollama reachability, model present, index magic/count,
-manifest dim/count/doc_id continuity.
+manifest validation (strict for full build; merged base+delta when state present),
+delta/state sidecars.
 
 Use `--skip-ollama` in CI (offline fixtures).
 

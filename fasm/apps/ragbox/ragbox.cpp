@@ -5,6 +5,7 @@
 #include "manifest.hpp"
 #include "ollama_client.hpp"
 #include "snippet.hpp"
+#include "state.hpp"
 
 #include <chrono>
 #include <cstring>
@@ -12,6 +13,9 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <map>
+#include <optional>
+#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -65,6 +69,9 @@ void usage() {
         << "  ragbox build --root PATH --out PATH [--manifest PATH]\n"
         << "    [--chunk-size N] [--overlap N] [--ollama URL] [--model MODEL]\n"
         << "    [--dry-run] [--embed-text]\n"
+        << "  ragbox refresh --root PATH --index PATH [--manifest PATH]\n"
+        << "    [--chunk-size N] [--overlap N] [--ollama URL] [--model MODEL]\n"
+        << "    [--dry-run]\n"
         << "  ragbox search --index PATH --query TEXT [--top K] [--json]\n"
         << "    [--manifest PATH] [--ollama URL] [--model MODEL] [--query-file PATH]\n"
         << "    [--snippet-len N]\n"
@@ -130,6 +137,12 @@ int runBuild(int argc, char** argv) {
         return 0;
     }
 
+    const auto delta_path = ragbox::defaultDeltaPath(out_path);
+    const auto state_path = ragbox::defaultStatePath(out_path);
+    std::error_code ec;
+    std::filesystem::remove(delta_path, ec);
+    std::filesystem::remove(state_path, ec);
+
     logvec::IndexBuilder builder;
     builder.open(out_path);
     std::uint32_t dim = 0;
@@ -152,7 +165,164 @@ int runBuild(int argc, char** argv) {
     const ragbox::Manifest manifest =
         ragbox::manifestFromChunks(chunks, dim, model, chunk_size, overlap, root);
     ragbox::writeManifest(manifest_path, manifest, embed_text);
+    const ragbox::IndexState state =
+        ragbox::stateFromChunks(chunks, root, model, chunk_size, overlap);
+    ragbox::writeStateAtomic(state_path, state);
     std::cout << "built index=" << out_path << " chunks=" << chunks.size() << " dim=" << dim << '\n';
+    return 0;
+}
+
+int runRefresh(int argc, char** argv) {
+    std::filesystem::path root;
+    std::filesystem::path index_path;
+    std::filesystem::path manifest_path;
+    std::size_t chunk_size = 800;
+    std::size_t overlap = 100;
+    std::string ollama_url = "http://127.0.0.1:11434";
+    std::string model = "nomic-embed-text";
+    bool dry_run = false;
+
+    for (int i = 2; i < argc; ++i) {
+        const std::string arg = argv[i];
+        if (arg == "--root" && i + 1 < argc) {
+            root = argv[++i];
+        } else if (arg == "--index" && i + 1 < argc) {
+            index_path = argv[++i];
+        } else if (arg == "--manifest" && i + 1 < argc) {
+            manifest_path = argv[++i];
+        } else if (arg == "--chunk-size" && i + 1 < argc) {
+            chunk_size = static_cast<std::size_t>(std::stoull(argv[++i]));
+        } else if (arg == "--overlap" && i + 1 < argc) {
+            overlap = static_cast<std::size_t>(std::stoull(argv[++i]));
+        } else if (arg == "--ollama" && i + 1 < argc) {
+            ollama_url = argv[++i];
+        } else if (arg == "--model" && i + 1 < argc) {
+            model = argv[++i];
+        } else if (arg == "--dry-run") {
+            dry_run = true;
+        } else {
+            throw std::runtime_error("Usage");
+        }
+    }
+    if (root.empty() || index_path.empty()) {
+        throw std::runtime_error("Usage");
+    }
+    if (manifest_path.empty()) {
+        manifest_path = ragbox::defaultManifestPath(index_path);
+    }
+
+    const auto state_path = ragbox::defaultStatePath(index_path);
+    const auto delta_path = ragbox::defaultDeltaPath(index_path);
+    if (!std::filesystem::exists(index_path)) {
+        throw std::runtime_error("IndexNotFound");
+    }
+    if (!std::filesystem::exists(state_path)) {
+        throw std::runtime_error("StateNotFound");
+    }
+
+    const logvec::VectorIndex base = logvec::VectorIndex::load(index_path);
+    ragbox::Manifest manifest = ragbox::loadManifest(manifest_path);
+    ragbox::IndexState state = ragbox::loadState(state_path);
+
+    const std::string abs_root = std::filesystem::absolute(root).string();
+    if (state.root != abs_root) {
+        throw std::runtime_error("RootMismatch");
+    }
+    if (state.chunk_size != chunk_size || state.overlap != overlap) {
+        throw std::runtime_error("ChunkParamsMismatch");
+    }
+    if (state.model != model) {
+        throw std::runtime_error("ModelMismatch");
+    }
+    if (manifest.dim != base.dim()) {
+        throw std::runtime_error("ManifestDimMismatch");
+    }
+
+    const std::map<std::string, std::string> current = ragbox::collectFilesWithHashes(root);
+    const ragbox::RefreshPlan plan = ragbox::planRefresh(state, current);
+    const std::size_t work_count = plan.deleted.size() + plan.changed.size() + plan.added.size();
+
+    if (dry_run) {
+        std::cout << "refresh dry-run deleted=" << plan.deleted.size() << " changed=" << plan.changed.size()
+                  << " added=" << plan.added.size() << '\n';
+        return 0;
+    }
+    if (work_count == 0) {
+        std::cout << "refresh up-to-date\n";
+        return 0;
+    }
+
+    auto process_path = [&](const std::string& rel_path, bool is_new) {
+        const auto abs_root_path = std::filesystem::path(state.root);
+        const auto file_path = abs_root_path / rel_path;
+        if (!is_new) {
+            const auto it = state.files.find(rel_path);
+            if (it != state.files.end()) {
+                ragbox::supersedeDocIds(state, it->second.doc_ids);
+                ragbox::removeManifestPath(manifest, rel_path);
+            }
+        }
+        std::vector<ragbox::Chunk> chunks;
+        std::uint64_t next_id = state.next_doc_id;
+        ragbox::splitFile(abs_root_path, file_path, chunk_size, overlap, next_id, chunks);
+        state.next_doc_id = next_id;
+
+        ragbox::FileState file_state{};
+        file_state.hash = current.at(rel_path);
+        file_state.doc_ids.reserve(chunks.size());
+        for (const auto& chunk : chunks) {
+            file_state.doc_ids.push_back(chunk.doc_id);
+            ragbox::ManifestRecord rec{};
+            rec.doc_id = chunk.doc_id;
+            rec.path = chunk.path;
+            rec.offset = chunk.offset;
+            rec.length = chunk.text.size();
+            rec.text = chunk.text;
+            manifest.records.push_back(std::move(rec));
+        }
+        state.files[rel_path] = std::move(file_state);
+        return chunks;
+    };
+
+    std::vector<ragbox::Chunk> to_embed;
+    for (const auto& path : plan.deleted) {
+        const auto it = state.files.find(path);
+        if (it != state.files.end()) {
+            ragbox::supersedeDocIds(state, it->second.doc_ids);
+            state.files.erase(it);
+        }
+        ragbox::removeManifestPath(manifest, path);
+    }
+    for (const auto& path : plan.changed) {
+        const auto chunks = process_path(path, false);
+        to_embed.insert(to_embed.end(), chunks.begin(), chunks.end());
+    }
+    for (const auto& path : plan.added) {
+        const auto chunks = process_path(path, true);
+        to_embed.insert(to_embed.end(), chunks.begin(), chunks.end());
+    }
+
+    if (!to_embed.empty()) {
+        logvec::IndexBuilder builder;
+        builder.openAppend(delta_path, base.dim());
+        for (const auto& chunk : to_embed) {
+            const std::vector<float> embedding = ragbox::ollamaEmbed(ollama_url, model, chunk.text);
+            if (embedding.size() != base.dim()) {
+                throw std::runtime_error("DimMismatch");
+            }
+            logvec::IngestRecord rec{};
+            rec.topic_record_offset = chunk.doc_id;
+            rec.payload = makePayload(base.dim(), embedding, chunk.doc_id);
+            builder.append(rec);
+        }
+        builder.finalize();
+    }
+
+    ragbox::writeManifestAtomic(manifest_path, manifest, false);
+    ragbox::writeStateAtomic(state_path, state);
+    std::cout << "refreshed index=" << index_path << " embedded=" << to_embed.size()
+              << " deleted=" << plan.deleted.size() << " changed=" << plan.changed.size()
+              << " added=" << plan.added.size() << '\n';
     return 0;
 }
 
@@ -200,24 +370,44 @@ int runSearch(int argc, char** argv) {
 
     const logvec::VectorIndex index = logvec::VectorIndex::load(index_path);
     const ragbox::Manifest manifest = ragbox::loadManifest(manifest_path);
-    ragbox::validateManifestIndex(manifest, index.dim(), index.count());
+
+    const auto state_path = ragbox::defaultStatePath(index_path);
+    const auto delta_path = ragbox::defaultDeltaPath(index_path);
+    const bool incremental = std::filesystem::exists(state_path);
+    std::optional<logvec::VectorIndex> delta_index;
+    const logvec::VectorIndex* delta_ptr = nullptr;
+    std::set<std::uint64_t> superseded;
+    if (incremental) {
+        const ragbox::IndexState state = ragbox::loadState(state_path);
+        superseded = ragbox::supersededSet(state);
+        if (std::filesystem::exists(delta_path)) {
+            delta_index = logvec::VectorIndex::load(delta_path);
+            delta_ptr = &*delta_index;
+        }
+        ragbox::validateManifestSearch(manifest, index, delta_ptr, superseded);
+    } else {
+        ragbox::validateManifestIndex(manifest, index.dim(), index.count());
+    }
 
     std::vector<float> query_vec;
+    const std::uint32_t query_dim = incremental && delta_ptr != nullptr ? index.dim() : index.dim();
     if (!query_file.empty()) {
         const auto qbytes = logvec::readWholeFile(query_file, 64 * 1024);
-        if (qbytes.size() != static_cast<std::size_t>(index.dim()) * 4) {
+        if (qbytes.size() != static_cast<std::size_t>(query_dim) * 4) {
             throw std::runtime_error("QueryDimMismatch");
         }
-        query_vec.resize(index.dim());
+        query_vec.resize(query_dim);
         std::memcpy(query_vec.data(), qbytes.data(), qbytes.size());
     } else {
         query_vec = ragbox::ollamaEmbed(ollama_url, model, query_text);
-        if (query_vec.size() != index.dim()) {
+        if (query_vec.size() != query_dim) {
             throw std::runtime_error("QueryDimMismatch");
         }
     }
 
-    const std::vector<logvec::SearchHit> hits = index.search(query_vec, top_k);
+    const std::vector<logvec::SearchHit> hits =
+        incremental ? logvec::searchMerged(index, delta_ptr, query_vec, top_k, superseded)
+                    : index.search(query_vec, top_k);
 
     if (json_out) {
         std::cout << "[\n";
@@ -424,6 +614,9 @@ int main(int argc, char** argv) {
         const std::string cmd = argv[1];
         if (cmd == "build") {
             return runBuild(argc, argv);
+        }
+        if (cmd == "refresh") {
+            return runRefresh(argc, argv);
         }
         if (cmd == "search") {
             return runSearch(argc, argv);

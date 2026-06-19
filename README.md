@@ -488,6 +488,7 @@ brew install ragbox
 arch -x86_64 ragbox doctor --skip-ollama
 ollama pull nomic-embed-text
 arch -x86_64 ragbox build --root ./repo --out memory.lv
+arch -x86_64 ragbox refresh --root ./repo --index memory.lv
 arch -x86_64 ragbox search --index memory.lv --query "auth middleware" --json
 ```
 
@@ -498,6 +499,7 @@ fasm --emit=macho-obj fasm/apps/logvec_core.asm logvec_core.o
 clang++ -std=c++20 -O2 -arch x86_64 -pthread \
   fasm/apps/ragbox/ragbox.cpp logvec_core.o -o ragbox
 arch -x86_64 ./ragbox build --root ./repo --out memory.lv
+arch -x86_64 ./ragbox refresh --root ./repo --index memory.lv
 arch -x86_64 ./ragbox search --index memory.lv --query "auth middleware" --json
 ```
 

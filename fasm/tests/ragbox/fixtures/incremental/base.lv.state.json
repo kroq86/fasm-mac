@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "next_doc_id": 4,
+  "chunk_size": 800,
+  "overlap": 100,
+  "model": "fixture-dim4",
+  "root": "/Users/kirill_ostapenko/fasm-mac/fasm/tests/ragbox/fixtures/tiny-repo",
+  "files": {
+    "docs/auth.md": {
+      "hash": "updated-auth-hash",
+      "doc_ids": [
+        3
+      ]
+    },
+    "docs/db.md": {
+      "hash": "db-hash",
+      "doc_ids": [
+        1
+      ]
+    },
+    "src/middleware.go": {
+      "hash": "middleware-hash",
+      "doc_ids": [
+        2
+      ]
+    }
+  },
+  "superseded_doc_ids": [
+    0
+  ]
+}

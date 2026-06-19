@@ -2,10 +2,12 @@
 
 #include "../logvec/vector_index.hpp"
 #include "manifest.hpp"
+#include "state.hpp"
 #include "ollama_client.hpp"
 
 #include <cstdio>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <sys/utsname.h>
 #include <vector>
@@ -64,9 +66,32 @@ inline int runDoctor(const DoctorOptions& opts) {
                 ok("index valid count=" + std::to_string(index.count()) + " dim=" + std::to_string(index.dim()));
             }
 
+            const std::filesystem::path delta_path = defaultDeltaPath(opts.index_path);
+            const std::filesystem::path state_path = defaultStatePath(opts.index_path);
+            if (std::filesystem::exists(delta_path)) {
+                const logvec::VectorIndex delta = logvec::VectorIndex::load(delta_path);
+                ok("delta count=" + std::to_string(delta.count()) + " dim=" + std::to_string(delta.dim()));
+            }
+            if (std::filesystem::exists(state_path)) {
+                const IndexState state = loadState(state_path);
+                ok("state files=" + std::to_string(state.files.size()) + " superseded=" +
+                   std::to_string(state.superseded_doc_ids.size()));
+            }
+
             if (!opts.manifest_path.empty()) {
                 const Manifest manifest = loadManifest(opts.manifest_path);
-                validateManifestIndex(manifest, index.dim(), index.count());
+                if (std::filesystem::exists(state_path)) {
+                    const IndexState state = loadState(state_path);
+                    std::optional<logvec::VectorIndex> delta_index;
+                    const logvec::VectorIndex* delta_ptr = nullptr;
+                    if (std::filesystem::exists(delta_path)) {
+                        delta_index = logvec::VectorIndex::load(delta_path);
+                        delta_ptr = &*delta_index;
+                    }
+                    validateManifestSearch(manifest, index, delta_ptr, supersededSet(state));
+                } else {
+                    validateManifestIndex(manifest, index.dim(), index.count());
+                }
                 ok("manifest matches index");
             }
         } catch (const std::exception& e) {

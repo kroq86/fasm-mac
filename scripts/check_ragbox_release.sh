@@ -63,8 +63,8 @@ then
   exit 1
 fi
 
-"$PYTHON" "$ROOT/fasm/tests/ragbox/write_fixture.py" "$OUT_DIR/fixtures" >/dev/null
-FIX="$OUT_DIR/fixtures"
+"$PYTHON" "$ROOT/fasm/tests/ragbox/write_fixture.py" "$FIXTURE_DIR" >/dev/null
+FIX="$FIXTURE_DIR"
 
 for query in auth db middleware; do
   OUT="$(run_ragbox "$RAGBOX" search \
@@ -87,5 +87,18 @@ assert actual == expected, f"expected={expected!r} actual={actual!r}"
     exit 1
   fi
 done
+
+INC_DIR="$FIX/incremental"
+REFRESH_DIR="$OUT_DIR/refresh-smoke"
+mkdir -p "$REFRESH_DIR"
+cp "$INC_DIR/base.lv" "$REFRESH_DIR/memory.lv"
+cp "$INC_DIR/manifest.json" "$REFRESH_DIR/memory.lv.manifest.json"
+cp "$INC_DIR/refresh_state.json" "$REFRESH_DIR/memory.lv.state.json"
+run_ragbox "$RAGBOX" refresh \
+  --root "$FIXTURE_DIR/tiny-repo" \
+  --index "$REFRESH_DIR/memory.lv" \
+  --manifest "$REFRESH_DIR/memory.lv.manifest.json" \
+  --model "fixture-dim4" \
+  --dry-run >/dev/null
 
 echo 'PASS ragbox release check'
