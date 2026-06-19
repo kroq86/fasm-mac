@@ -77,7 +77,7 @@ def write_lv(path: Path) -> None:
     path.write_bytes(out)
 
 
-def write_manifest(path: Path, root: str) -> None:
+def write_manifest(path: Path, root: str, *, lite: bool = False) -> None:
     manifest = {
         "version": 1,
         "dim": DIM,
@@ -91,7 +91,7 @@ def write_manifest(path: Path, root: str) -> None:
                 "path": rec["path"],
                 "offset": rec["offset"],
                 "length": len(rec["text"]),
-                "text": rec["text"],
+                **({} if lite else {"text": rec["text"]}),
             }
             for rec in RECORDS
         ],
@@ -129,6 +129,7 @@ def main() -> None:
 
     write_lv(fixture_dir / "fixture.lv")
     write_manifest(fixture_dir / "fixture.manifest.json", str(fixture_dir / "tiny-repo"))
+    write_manifest(fixture_dir / "fixture.manifest.lite.json", str(fixture_dir / "tiny-repo"), lite=True)
 
     for name, vec in QUERIES.items():
         (fixture_dir / f"query_{name}.bin").write_bytes(struct.pack("<" + "f" * DIM, *vec))

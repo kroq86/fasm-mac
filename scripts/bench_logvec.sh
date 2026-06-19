@@ -11,7 +11,7 @@ LOGVEC="$OUT_DIR/logvec_cpp"
 QUERY="$OUT_DIR/query.bin"
 
 "$ROOT/bin/fasm" --emit=macho-obj "$ROOT/fasm/apps/logvec_core.asm" "$CORE_OBJ" >/dev/null
-clang++ -std=c++20 -O2 -arch x86_64 \
+clang++ -std=c++20 -O2 -arch x86_64 -pthread \
     "$ROOT/fasm/apps/logvec/logvec.cpp" \
     "$CORE_OBJ" \
     -o "$LOGVEC"

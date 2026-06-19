@@ -1,7 +1,7 @@
 #include "logbus_client.hpp"
+#include "bench_util.hpp"
 
-#include <algorithm>
-#include <chrono>
+#include <cstring>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -101,6 +101,8 @@ void usage() {
         << "usage:\n"
         << "  logvec search --index PATH --query PATH --top K\n"
         << "  logvec bench --index PATH --query PATH [--top K] [--iters N]\n"
+        << "    [--layer dot|topk|search|io] [--simd auto|scalar|avx2]\n"
+        << "    [--cold] [--threads N] [--breakdown]\n"
         << "  logvec build-index --payload-dir DIR --out PATH\n"
         << "  logvec build-index --host H --port P --topic TOPIC --out PATH\n"
         << "  logvec build-index --dir DATA --topic TOPIC --out PATH\n";
@@ -139,11 +141,60 @@ int runSearch(int argc, char** argv) {
     return 0;
 }
 
+enum class BenchLayer {
+    Dot,
+    Topk,
+    Search,
+    Io,
+};
+
+BenchLayer parseLayer(const std::string& s) {
+    if (s == "dot") {
+        return BenchLayer::Dot;
+    }
+    if (s == "topk") {
+        return BenchLayer::Topk;
+    }
+    if (s == "io") {
+        return BenchLayer::Io;
+    }
+    return BenchLayer::Search;
+}
+
+logvec::SimdMode parseSimd(const std::string& s) {
+    if (s == "scalar") {
+        return logvec::SimdMode::Scalar;
+    }
+    if (s == "avx2") {
+        return logvec::SimdMode::Avx2;
+    }
+    return logvec::SimdMode::Auto;
+}
+
+std::span<const float> loadQuery(
+    const std::filesystem::path& query_path,
+    std::uint32_t dim,
+    std::vector<float>& storage) {
+    const auto qbytes = logvec::readWholeFile(query_path, 64 * 1024);
+    if (qbytes.size() != static_cast<std::size_t>(dim) * 4) {
+        throw std::runtime_error("QueryDimMismatch");
+    }
+    storage.resize(dim);
+    std::memcpy(storage.data(), qbytes.data(), qbytes.size());
+    return {storage.data(), dim};
+}
+
 int runBench(int argc, char** argv) {
     std::filesystem::path index_path;
     std::filesystem::path query_path;
     std::uint32_t top_k = 8;
-    std::uint32_t iters = 100;
+    std::uint32_t iters = 50;
+    std::uint32_t threads = 1;
+    BenchLayer layer = BenchLayer::Search;
+    logvec::SimdMode simd = logvec::SimdMode::Auto;
+    bool cold = false;
+    bool breakdown = false;
+
     for (int i = 2; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "--index" && i + 1 < argc) {
@@ -154,46 +205,161 @@ int runBench(int argc, char** argv) {
             top_k = static_cast<std::uint32_t>(std::stoul(argv[++i]));
         } else if (arg == "--iters" && i + 1 < argc) {
             iters = static_cast<std::uint32_t>(std::stoul(argv[++i]));
+        } else if (arg == "--layer" && i + 1 < argc) {
+            layer = parseLayer(argv[++i]);
+        } else if (arg == "--simd" && i + 1 < argc) {
+            simd = parseSimd(argv[++i]);
+        } else if (arg == "--threads" && i + 1 < argc) {
+            threads = static_cast<std::uint32_t>(std::stoul(argv[++i]));
+        } else if (arg == "--cold") {
+            cold = true;
+        } else if (arg == "--breakdown") {
+            breakdown = true;
         } else {
             throw std::runtime_error("Usage");
         }
     }
-    if (index_path.empty() || query_path.empty() || top_k == 0 || iters == 0) {
+    if (index_path.empty() || query_path.empty() || top_k == 0 || iters == 0 || threads == 0 || threads > 4) {
         throw std::runtime_error("Usage");
     }
-    const logvec::VectorIndex index = logvec::VectorIndex::load(index_path);
-    const auto qbytes = logvec::readWholeFile(query_path, 64 * 1024);
-    if (qbytes.size() != static_cast<std::size_t>(index.dim()) * 4) {
-        throw std::runtime_error("QueryDimMismatch");
-    }
-    const auto* qptr = reinterpret_cast<const float*>(qbytes.data());
-    const std::span<const float> query{qptr, index.dim()};
-
-    for (std::uint32_t i = 0; i < 5; ++i) {
-        (void)index.search(query, top_k);
+    if (layer == BenchLayer::Io && query_path.empty()) {
+        (void)query_path;
     }
 
-    std::vector<double> samples;
-    samples.reserve(iters);
-    for (std::uint32_t i = 0; i < iters; ++i) {
-        const auto t0 = std::chrono::steady_clock::now();
-        (void)index.search(query, top_k);
-        const auto t1 = std::chrono::steady_clock::now();
-        samples.push_back(
-            std::chrono::duration<double, std::milli>(t1 - t0).count());
+    logvec::applySimdMode(simd);
+
+    if (layer == BenchLayer::Io) {
+        const logvec::VectorIndex meta = logvec::VectorIndex::load(index_path);
+        const auto result = logvec::runTimed(
+            meta.dim(),
+            meta.count(),
+            "io",
+            0,
+            iters,
+            [&]() { (void)logvec::VectorIndex::load(index_path); });
+        logvec::BenchResult line = result;
+        line.extra = std::string("cold=") + (cold ? "1" : "0");
+        logvec::printBenchLine(line);
+        return 0;
     }
-    std::sort(samples.begin(), samples.end());
-    const double median = samples[samples.size() / 2];
-    const double min_ms = samples.front();
-    std::cout << std::fixed << std::setprecision(3)
-              << "bench count=" << index.count()
-              << " dim=" << index.dim()
-              << " top=" << top_k
-              << " iters=" << iters
-              << " avx2=" << logvec::lb_vec_has_avx2()
-              << " median_ms=" << median
-              << " min_ms=" << min_ms
-              << '\n';
+
+    std::vector<float> query_storage;
+    logvec::VectorIndex index = logvec::VectorIndex::load(index_path);
+    const auto query = loadQuery(query_path, index.dim(), query_storage);
+
+    const auto dot_fn = [&](const float* a, const float* b, std::uint64_t len) -> float {
+        switch (simd) {
+        case logvec::SimdMode::Scalar:
+            return logvec::lb_vec_dot_f32_scalar(a, b, len);
+        case logvec::SimdMode::Avx2:
+            return logvec::lb_vec_dot_f32_avx2(a, b, len);
+        case logvec::SimdMode::Auto:
+            return logvec::lb_vec_dot_f32(a, b, len);
+        }
+        return logvec::lb_vec_dot_f32(a, b, len);
+    };
+
+    if (layer == BenchLayer::Dot) {
+        const auto result = logvec::runTimed(
+            index.dim(),
+            index.count(),
+            "dot",
+            5,
+            iters,
+            [&]() {
+                if (cold) {
+                    index = logvec::VectorIndex::load(index_path);
+                }
+                (void)index.benchDotScan(query, dot_fn);
+            });
+        logvec::BenchResult line = result;
+        line.extra = std::string("simd=") + (simd == logvec::SimdMode::Scalar   ? "scalar"
+                                             : simd == logvec::SimdMode::Avx2 ? "avx2"
+                                                                              : "auto")
+                     + " avx2=" + std::to_string(logvec::lb_vec_has_avx2());
+        logvec::printBenchLine(line);
+        return 0;
+    }
+
+    if (layer == BenchLayer::Topk) {
+        std::vector<std::uint32_t> idx;
+        std::vector<float> scores;
+        const auto result = logvec::runTimed(
+            index.dim(),
+            index.count(),
+            "topk",
+            5,
+            iters,
+            [&]() {
+                if (cold) {
+                    index = logvec::VectorIndex::load(index_path);
+                }
+                if (index.benchTopk(query, top_k, threads, idx, scores) != 0) {
+                    throw std::runtime_error("BadIndexNorm");
+                }
+            });
+        logvec::BenchResult line = result;
+        line.extra = "top=" + std::to_string(top_k) + " threads=" + std::to_string(threads);
+        logvec::printBenchLine(line);
+        return 0;
+    }
+
+    if (breakdown) {
+        logvec::SearchBreakdown total{};
+        std::vector<double> qnorm_samples;
+        std::vector<double> topk_samples;
+        std::vector<double> resolve_samples;
+        qnorm_samples.reserve(iters);
+        topk_samples.reserve(iters);
+        resolve_samples.reserve(iters);
+        for (std::uint32_t w = 0; w < 5; ++w) {
+            if (cold) {
+                index = logvec::VectorIndex::load(index_path);
+            }
+            (void)index.searchWithBreakdown(query, top_k, threads);
+        }
+        for (std::uint32_t i = 0; i < iters; ++i) {
+            if (cold) {
+                index = logvec::VectorIndex::load(index_path);
+            }
+            const auto [hits, parts] = index.searchWithBreakdown(query, top_k, threads);
+            (void)hits;
+            qnorm_samples.push_back(parts.qnorm_ms);
+            topk_samples.push_back(parts.topk_ms);
+            resolve_samples.push_back(parts.resolve_ms);
+        }
+        logvec::BenchResult line{};
+        line.layer = "search";
+        line.count = static_cast<std::size_t>(index.count());
+        line.dim = index.dim();
+        line.median_ms = logvec::medianMs(qnorm_samples) + logvec::medianMs(topk_samples)
+                         + logvec::medianMs(resolve_samples);
+        line.min_ms = qnorm_samples.front() + topk_samples.front() + resolve_samples.front();
+        line.extra = "top=" + std::to_string(top_k) + " threads=" + std::to_string(threads)
+                     + " qnorm_ms=" + std::to_string(logvec::medianMs(qnorm_samples))
+                     + " topk_ms=" + std::to_string(logvec::medianMs(topk_samples))
+                     + " resolve_ms=" + std::to_string(logvec::medianMs(resolve_samples))
+                     + " cold=" + (cold ? "1" : "0");
+        logvec::printBenchLine(line);
+        return 0;
+    }
+
+    const auto result = logvec::runTimed(
+        index.dim(),
+        index.count(),
+        "search",
+        5,
+        iters,
+        [&]() {
+            if (cold) {
+                index = logvec::VectorIndex::load(index_path);
+            }
+            (void)index.search(query, top_k, threads);
+        });
+    logvec::BenchResult line = result;
+    line.extra = "top=" + std::to_string(top_k) + " threads=" + std::to_string(threads)
+                 + " avx2=" + std::to_string(logvec::lb_vec_has_avx2()) + " cold=" + (cold ? "1" : "0");
+    logvec::printBenchLine(line);
     return 0;
 }
 

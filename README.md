@@ -463,10 +463,12 @@ Smoke test:
 scripts/check_logvec.sh
 scripts/check_logvec_cpp.sh
 scripts/bench_logvec.sh   # in-process top-k regression (1k/10k/100k × dim=768)
+scripts/bench_perf.sh     # layered dot/topk/search/io + parallel + ragbox breakdown
 ```
 
-v0.1 adds AVX2 dot/norm, unit vectors at build time, and `logvec bench`.
-Exact linear scan — ~4–5 ms for 10k×768 in-process on x86_64 (see
+v0.2 adds layered bench (`--layer dot|topk|search|io`), scalar vs AVX2 dot A/B,
+parallel exact search (1–4 threads), and unit-vector top-k fast path. Exact
+linear scan — ~4.5 ms for 10k×768 single-thread, ~1.4 ms with 4 threads (see
 `docs/logvec.md`). Not ANN; agent-scale snapshots only.
 
 ## ragbox

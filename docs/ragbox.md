@@ -154,11 +154,27 @@ Fixtures: `fasm/tests/ragbox/fixtures/` (dim=4 synthetic index + `tiny-repo/`).
 
 ragbox search is **exact linear scan** over a mmap'd logvec index — same path as
 `logvec bench`. Typical agent repo (hundreds to low thousands of chunks at
-dim=768) completes in single-digit milliseconds in-process on x86_64 with AVX2.
+dim=768) completes in single-digit milliseconds in-process on x86_64 with AVX2;
+4 threads reach ~1–2 ms at 10k×768.
 
 Ollama embedding dominates `build` and query latency (network + model), not the
 FASM top-k pass. See [`docs/logvec.md`](logvec.md) for bench numbers and limits
 (512 MB max index size).
+
+Offline perf path (no Ollama):
+
+```sh
+ragbox bench --index memory.lv --manifest memory.lv.manifest.json \
+  --query-file query.bin --breakdown
+```
+
+Breakdown reports `manifest_load_ms`, `search_ms`, `join_ms`, `snippet_ms`.
+Lite manifests (no embedded `text`) load snippets from `--root` on demand;
+snippet I/O shows up in `snippet_ms`.
+
+```sh
+scripts/bench_perf.sh   # includes ragbox lite-manifest bench on fixtures
+```
 
 ## Not in v0
 

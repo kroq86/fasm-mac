@@ -18,7 +18,7 @@ CORE_OBJ="$OUT_DIR/logvec_core.o"
 RAGBOX="$OUT_DIR/ragbox"
 
 "$ROOT/bin/fasm" --emit=macho-obj "$ROOT/fasm/apps/logvec_core.asm" "$CORE_OBJ" >/dev/null
-clang++ -std=c++20 -O2 -arch x86_64 \
+clang++ -std=c++20 -O2 -arch x86_64 -pthread \
     "$ROOT/fasm/apps/ragbox/ragbox.cpp" \
     "$CORE_OBJ" \
     -o "$RAGBOX"
@@ -72,5 +72,11 @@ then
     echo 'FAIL dry-run build did not produce expected chunks' >&2
     exit 1
 fi
+
+arch -x86_64 "$RAGBOX" bench \
+    --index "$FIXTURE_DIR/fixture.lv" \
+    --manifest "$FIXTURE_DIR/fixture.manifest.lite.json" \
+    --query-file "$FIXTURE_DIR/query_auth.bin" \
+    --iters 5 >/dev/null
 
 echo 'PASS ragbox check'

@@ -5,17 +5,20 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace logvec {
@@ -24,6 +27,47 @@ struct SearchHit {
     std::uint64_t doc_id{};
     float score{};
 };
+
+struct SearchBreakdown {
+    double qnorm_ms{};
+    double topk_ms{};
+    double resolve_ms{};
+};
+
+enum class SimdMode {
+    Auto,
+    Scalar,
+    Avx2,
+};
+
+inline void applySimdMode(SimdMode mode) {
+    switch (mode) {
+    case SimdMode::Scalar:
+        lb_vec_set_simd_mode(1);
+        break;
+    case SimdMode::Avx2:
+        lb_vec_set_simd_mode(2);
+        break;
+    case SimdMode::Auto:
+        lb_vec_set_simd_mode(0);
+        break;
+    }
+}
+
+inline bool sameHits(const std::vector<SearchHit>& a, const std::vector<SearchHit>& b, float tol = 1e-5f) {
+    if (a.size() != b.size()) {
+        return false;
+    }
+    for (std::size_t i = 0; i < a.size(); ++i) {
+        if (a[i].doc_id != b[i].doc_id) {
+            return false;
+        }
+        if (std::fabs(a[i].score - b[i].score) > tol) {
+            return false;
+        }
+    }
+    return true;
+}
 
 struct IndexItem {
     std::uint64_t doc_id{};
@@ -182,46 +226,128 @@ public:
         return {ptr, dim_};
     }
 
-    [[nodiscard]] std::vector<SearchHit> search(std::span<const float> query, std::size_t top_k) const {
+    [[nodiscard]] std::span<const std::uint8_t> bytes() const { return data_; }
+    [[nodiscard]] const std::uint8_t* recordsPtr() const { return data_.data() + headerSize(); }
+    [[nodiscard]] std::uint64_t recordStride() const { return recordSize(dim_); }
+
+    [[nodiscard]] float benchDotScan(
+        std::span<const float> query,
+        const std::function<float(const float*, const float*, std::uint64_t)>& dot_fn) const {
+        if (query.size() != dim_) {
+            throw std::runtime_error("QueryDimMismatch");
+        }
+        if (count_ == 0) {
+            return 0.0f;
+        }
+        const auto* records = recordsPtr();
+        const std::uint64_t stride = recordStride();
+        volatile float acc = 0.0f;
+        for (std::uint64_t i = 0; i < count_; ++i) {
+            const auto* rec = records + static_cast<std::size_t>(i) * stride;
+            const auto* vec = reinterpret_cast<const float*>(rec + 16);
+            acc += dot_fn(query.data(), vec, dim_);
+        }
+        return acc;
+    }
+
+    [[nodiscard]] int benchTopk(
+        std::span<const float> query,
+        std::size_t top_k,
+        std::size_t threads,
+        std::vector<std::uint32_t>& idx_out,
+        std::vector<float>& score_out) const {
         if (query.size() != dim_) {
             throw std::runtime_error("QueryDimMismatch");
         }
         const float qnorm = lb_vec_norm_f32(query.data(), dim_);
-        volatile float touch = lb_vec_dot_f32(query.data(), query.data(), dim_);
-        (void)touch;
         if (qnorm == 0.0f) {
             throw std::runtime_error("ZeroNorm");
         }
         if (count_ == 0) {
-            return {};
+            return 0;
         }
         const std::uint64_t k = std::min(static_cast<std::uint64_t>(top_k), count_);
-        std::vector<std::uint32_t> idx_out(k);
-        std::vector<float> score_out(k);
-        const auto* records = data_.data() + headerSize();
-        const std::uint64_t record_stride = recordSize(dim_);
-
-        if (lb_vec_topk_cosine_lv(
+        if (threads <= 1) {
+            idx_out.resize(static_cast<std::size_t>(k));
+            score_out.resize(static_cast<std::size_t>(k));
+            return lb_vec_topk_cosine_lv(
                 query.data(),
-                records,
+                recordsPtr(),
                 count_,
                 dim_,
                 k,
-                record_stride,
+                recordStride(),
                 idx_out.data(),
-                score_out.data()) != 0) {
-            throw std::runtime_error("BadIndexNorm");
+                score_out.data());
+        }
+        const auto partial = runTopkParallel(query, k, threads);
+        idx_out = partial.first;
+        score_out = partial.second;
+        return 0;
+    }
+
+    [[nodiscard]] std::vector<SearchHit> search(
+        std::span<const float> query,
+        std::size_t top_k,
+        std::size_t threads = 1) const {
+        if (threads <= 1) {
+            return searchSerial(query, top_k);
+        }
+        return searchParallel(query, top_k, threads);
+    }
+
+    [[nodiscard]] std::pair<std::vector<SearchHit>, SearchBreakdown> searchWithBreakdown(
+        std::span<const float> query,
+        std::size_t top_k,
+        std::size_t threads = 1) const {
+        SearchBreakdown breakdown{};
+        if (query.size() != dim_) {
+            throw std::runtime_error("QueryDimMismatch");
+        }
+        const auto t0 = std::chrono::steady_clock::now();
+        const float qnorm = lb_vec_norm_f32(query.data(), dim_);
+        volatile float touch = lb_vec_dot_f32(query.data(), query.data(), dim_);
+        (void)touch;
+        const auto t1 = std::chrono::steady_clock::now();
+        if (qnorm == 0.0f) {
+            throw std::runtime_error("ZeroNorm");
+        }
+        if (count_ == 0) {
+            return {{}, breakdown};
         }
 
-        std::vector<SearchHit> hits(k);
+        const std::uint64_t k = std::min(static_cast<std::uint64_t>(top_k), count_);
+        std::vector<std::uint32_t> idx_out(static_cast<std::size_t>(k));
+        std::vector<float> score_out(static_cast<std::size_t>(k));
+
+        const auto t2 = std::chrono::steady_clock::now();
+        if (threads <= 1) {
+            if (lb_vec_topk_cosine_lv(
+                    query.data(),
+                    recordsPtr(),
+                    count_,
+                    dim_,
+                    k,
+                    recordStride(),
+                    idx_out.data(),
+                    score_out.data()) != 0) {
+                throw std::runtime_error("BadIndexNorm");
+            }
+        } else {
+            const auto partial = runTopkParallel(query, k, threads);
+            idx_out = partial.first;
+            score_out = partial.second;
+        }
+        const auto t3 = std::chrono::steady_clock::now();
+
+        std::vector<SearchHit> hits(static_cast<std::size_t>(k));
         for (std::uint64_t i = 0; i < k; ++i) {
-            const std::uint32_t row = idx_out[i];
+            const std::uint32_t row = idx_out[static_cast<std::size_t>(i)];
             if (row >= count_) {
                 throw std::runtime_error("TopkFailed");
             }
-            hits[i] = {entry(row).doc_id, score_out[i]};
+            hits[static_cast<std::size_t>(i)] = {entry(row).doc_id, score_out[static_cast<std::size_t>(i)]};
         }
-
         std::sort(hits.begin(), hits.end(), [](const SearchHit& a, const SearchHit& b) {
             if (a.score > b.score) {
                 return true;
@@ -231,10 +357,132 @@ public:
             }
             return a.doc_id < b.doc_id;
         });
-        return hits;
+        const auto t4 = std::chrono::steady_clock::now();
+
+        breakdown.qnorm_ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
+        breakdown.topk_ms = std::chrono::duration<double, std::milli>(t3 - t2).count();
+        breakdown.resolve_ms = std::chrono::duration<double, std::milli>(t4 - t3).count();
+        return {hits, breakdown};
     }
 
 private:
+    [[nodiscard]] std::vector<SearchHit> searchSerial(std::span<const float> query, std::size_t top_k) const {
+        return searchWithBreakdown(query, top_k, 1).first;
+    }
+
+    [[nodiscard]] std::vector<SearchHit> searchParallel(
+        std::span<const float> query,
+        std::size_t top_k,
+        std::size_t threads) const {
+        return searchWithBreakdown(query, top_k, threads).first;
+    }
+
+    [[nodiscard]] std::pair<std::vector<std::uint32_t>, std::vector<float>> runTopkParallel(
+        std::span<const float> query,
+        std::uint64_t k,
+        std::size_t threads) const {
+        const std::size_t tcount = std::min<std::size_t>(std::max<std::size_t>(threads, 1), 4);
+        if (tcount == 1 || count_ == 0) {
+            std::vector<std::uint32_t> idx(static_cast<std::size_t>(k));
+            std::vector<float> scores(static_cast<std::size_t>(k));
+            if (lb_vec_topk_cosine_lv(
+                    query.data(),
+                    recordsPtr(),
+                    count_,
+                    dim_,
+                    k,
+                    recordStride(),
+                    idx.data(),
+                    scores.data()) != 0) {
+                throw std::runtime_error("BadIndexNorm");
+            }
+            return {idx, scores};
+        }
+
+        struct Partial {
+            std::uint64_t start{};
+            std::uint64_t len{};
+            std::vector<std::uint32_t> idx;
+            std::vector<float> scores;
+            int status{0};
+        };
+
+        const std::uint64_t base = count_ / tcount;
+        const std::uint64_t rem = count_ % tcount;
+        std::vector<Partial> parts(tcount);
+        std::vector<std::thread> workers;
+        workers.reserve(tcount);
+
+        std::uint64_t offset = 0;
+        for (std::size_t t = 0; t < tcount; ++t) {
+            const std::uint64_t len = base + (t < rem ? 1 : 0);
+            parts[t].start = offset;
+            parts[t].len = len;
+            parts[t].idx.resize(static_cast<std::size_t>(k));
+            parts[t].scores.resize(static_cast<std::size_t>(k));
+            offset += len;
+        }
+
+        for (std::size_t t = 0; t < tcount; ++t) {
+            workers.emplace_back([this, &query, k, t, &parts]() {
+                auto& part = parts[t];
+                if (part.len == 0) {
+                    part.status = 0;
+                    return;
+                }
+                const auto* rec = recordsPtr() + static_cast<std::size_t>(part.start) * recordStride();
+                part.status = lb_vec_topk_cosine_lv(
+                    query.data(),
+                    rec,
+                    part.len,
+                    dim_,
+                    k,
+                    recordStride(),
+                    part.idx.data(),
+                    part.scores.data());
+                for (auto& idx : part.idx) {
+                    idx += static_cast<std::uint32_t>(part.start);
+                }
+            });
+        }
+        for (auto& worker : workers) {
+            worker.join();
+        }
+        for (const auto& part : parts) {
+            if (part.status != 0) {
+                throw std::runtime_error("BadIndexNorm");
+            }
+        }
+
+        std::vector<std::pair<float, std::uint32_t>> merged;
+        merged.reserve(static_cast<std::size_t>(k) * tcount);
+        for (const auto& part : parts) {
+            for (std::uint64_t i = 0; i < k && i < part.len; ++i) {
+                merged.emplace_back(part.scores[static_cast<std::size_t>(i)], part.idx[static_cast<std::size_t>(i)]);
+            }
+        }
+        std::sort(merged.begin(), merged.end(), [](const auto& a, const auto& b) {
+            if (a.first > b.first) {
+                return true;
+            }
+            if (a.first < b.first) {
+                return false;
+            }
+            return a.second < b.second;
+        });
+        if (merged.size() > static_cast<std::size_t>(k)) {
+            merged.resize(static_cast<std::size_t>(k));
+        }
+
+        std::vector<std::uint32_t> idx(merged.size());
+        std::vector<float> scores(merged.size());
+        for (std::size_t i = 0; i < merged.size(); ++i) {
+            scores[i] = merged[i].first;
+            idx[i] = merged[i].second;
+        }
+        return {idx, scores};
+    }
+
     struct HeaderInfo {
         std::uint32_t dim{};
         std::uint64_t count{};

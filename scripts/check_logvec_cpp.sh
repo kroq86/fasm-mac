@@ -39,7 +39,7 @@ PY
 )"
 
 "$ROOT/bin/fasm" --emit=macho-obj "$ROOT/fasm/apps/logvec_core.asm" "$CORE_OBJ" >/dev/null
-clang++ -std=c++20 -O2 -arch x86_64 \
+clang++ -std=c++20 -O2 -arch x86_64 -pthread \
     "$ROOT/fasm/apps/logvec/logvec.cpp" \
     "$CORE_OBJ" \
     -o "$LOGVEC"
@@ -52,6 +52,13 @@ clang++ -std=c++20 -O2 -arch x86_64 \
     "$CORE_OBJ" \
     -o "$VEC_DOT_SMOKE"
 arch -x86_64 "$VEC_DOT_SMOKE"
+
+PARALLEL_SMOKE="$OUT_DIR/parallel_search_smoke"
+clang++ -std=c++20 -O2 -arch x86_64 -pthread \
+    "$ROOT/fasm/tests/logvec/parallel_search_smoke.cpp" \
+    "$CORE_OBJ" \
+    -o "$PARALLEL_SMOKE"
+arch -x86_64 "$PARALLEL_SMOKE" "$FIXTURE_DIR/search_smoke.lv"
 
 OUT="$(arch -x86_64 "$LOGVEC" search \
     --index "$FIXTURE_DIR/search_smoke.lv" \

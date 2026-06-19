@@ -15,6 +15,21 @@ lb_vec_has_avx2:
 	mov	eax, 1
 	ret
 
+; void lb_vec_set_simd_mode(int mode) — rdi: 0=auto, 1=scalar, 2=avx2
+lb_vec_set_simd_mode:
+	cmp	edi, VEC_CPU_AVX2
+	je	.v32set_avx2
+	cmp	edi, VEC_CPU_SCALAR
+	je	.v32set_scalar
+	mov	dword [lb_vec_cpu_flags], VEC_CPU_UNINIT
+	ret
+.v32set_avx2:
+	mov	dword [lb_vec_cpu_flags], VEC_CPU_AVX2
+	ret
+.v32set_scalar:
+	mov	dword [lb_vec_cpu_flags], VEC_CPU_SCALAR
+	ret
+
 ; void lb_vec_init_cpu_flags(void)
 lb_vec_init_cpu_flags:
 	push	rbx
@@ -385,6 +400,16 @@ lb_vec_topk_cosine_lv:
 	jp	.v32tlv_bad
 	movss	xmm6, dword [lb_vec_one_f32]
 	divss	xmm6, xmm0
+	mov	byte [rbp - 9], 0
+	movss	xmm5, dword [r14 + 8]
+	movss	xmm7, dword [lb_vec_one_m_eps]
+	ucomiss	xmm7, xmm5
+	ja	.v32tlv_unit_no
+	movss	xmm7, dword [lb_vec_one_p_eps]
+	ucomiss	xmm5, xmm7
+	ja	.v32tlv_unit_no
+	mov	byte [rbp - 9], 1
+.v32tlv_unit_no:
 	mov	rax, r13
 	shl	rax, 3
 	add	rax, 15
@@ -406,8 +431,7 @@ lb_vec_topk_cosine_lv:
 	movaps	xmm2, xmm5
 	ucomiss	xmm5, xmm2
 	jp	.v32tlv_bad
-	mulss	xmm0, xmm6
-	divss	xmm0, xmm5
+	call	.v32tlv_score
 	movss	dword [r12 + rax * 8], xmm0
 	mov	dword [r12 + rax * 8 + 4], eax
 	inc	rax
@@ -429,8 +453,7 @@ lb_vec_topk_cosine_lv:
 	movaps	xmm2, xmm5
 	ucomiss	xmm5, xmm2
 	jp	.v32tlv_bad
-	mulss	xmm0, xmm6
-	divss	xmm0, xmm5
+	call	.v32tlv_score
 	movaps	xmm7, xmm0
 	movss	xmm8, dword [r12]
 	xor	r9d, r9d
@@ -485,4 +508,14 @@ lb_vec_topk_cosine_lv:
 	pop	r12
 	pop	rbx
 	pop	rbp
+	ret
+
+; xmm0 = dot, xmm5 = row norm, xmm6 = inv_qnorm; byte [rbp-9] = unit vectors
+.v32tlv_score:
+	mulss	xmm0, xmm6
+	cmp	byte [rbp - 9], 0
+	je	.v32tlv_score_div
+	ret
+.v32tlv_score_div:
+	divss	xmm0, xmm5
 	ret

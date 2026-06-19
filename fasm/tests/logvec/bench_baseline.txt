@@ -1,0 +1,5 @@
+# Synthetic x86_64 Rosetta medians (ms). CI gate: search_10k must stay within +10%.
+search_10k=4.600
+dot_10k_avx2=4.700
+search_100k=46.000
+search_100k_x4=12.500

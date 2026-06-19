@@ -80,32 +80,55 @@ logvec build-index --dir DATA --topic TOPIC --out PATH
 
 ```text
 logvec bench --index PATH --query PATH [--top K] [--iters N]
+  [--layer dot|topk|search|io] [--simd auto|scalar|avx2]
+  [--cold] [--threads N] [--breakdown]
 ```
 
 `bench` loads the index once and times in-process exact top-k (median over
-`--iters`, default 50). Use for regression checks, not as a FAISS comparison.
+`--iters`, default 50). Layers isolate SIMD dot scan, FASM top-k, full search
+(including doc_id resolve), and mmap load. Use for regression checks, not as a
+FAISS comparison.
 
-## Performance (v0.1, Apple Silicon via Rosetta x86_64)
+```text
+ragbox bench --index PATH --manifest PATH --query-file PATH
+  [--top K] [--iters N] [--threads N] [--snippet-len N] [--breakdown]
+```
 
-Exact brute-force cosine over mmap'd unit vectors. FASM AVX2 dot/norm when the
-host reports AVX2 (currently always enabled on x86_64 builds; CPUID gate is
-Rosetta-safe stub).
+Offline ragbox bench (no Ollama): times search + manifest join + snippet load.
 
-| Vectors | dim | median top-8 (in-process) |
-|--------:|----:|--------------------------:|
-| 1k      | 768 | ~0.4 ms                   |
-| 10k     | 768 | ~4–5 ms                   |
+## Performance (v0.2, Apple Silicon via Rosetta x86_64)
+
+Exact brute-force cosine over mmap'd unit vectors. FASM AVX2 dot/norm; parallel
+search partitions records across 1–4 threads and merges partial top-k heaps.
+
+| Layer | 10k×768 | 100k×768 | Notes |
+|-------|--------:|---------:|-------|
+| dot (AVX2) | ~4.6 ms | ~45 ms | dot-only, no heap |
+| search (1 thread) | ~4.5 ms | ~46 ms | full path |
+| search (4 threads) | ~1.4 ms | ~12 ms | parallel merge top-k |
+| top-k kernel | ~4.4 ms | ~44 ms | FASM heap only |
+
+v0 scalar (~44 ms) → v0.1 AVX2 (~4.5 ms) → v0.2 parallel 4t (~1.4 ms at 10k).
 
 Subprocess `search` adds ~25–40 ms process spawn overhead per query — not
 representative of in-process use (ragbox embeds search in-process).
 
 ```sh
-scripts/bench_logvec.sh
+scripts/bench_logvec.sh    # quick end-to-end table
+scripts/bench_perf.sh      # layered bench + ragbox breakdown + CI gate
 ```
 
 This is **not** ANN. At 100k×768 (~300 MB index) scan time scales linearly.
 For large corpora use an external ANN index; logvec/ragbox target agent-scale
-snapshots (thousands of chunks), not billion-vector search.
+snapshots (1k–50k chunks), not billion-vector search.
+
+Positioning:
+
+```text
+portable exact AVX2 snapshot search,
+fast enough for local agent memory (1k–50k chunks),
+without Python hot path / vector DB / server stack.
+```
 
 ## CRC32C
 
