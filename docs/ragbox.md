@@ -16,13 +16,37 @@ CLI. Zig logvec remains unchanged.
 Why ragbox exists in the stack (Level 4):
 [`docs/system_form.md`](system_form.md).
 
+## Install (Homebrew)
+
+```sh
+brew tap kroq86/fasm-mac https://github.com/kroq86/fasm-mac
+brew install ragbox
+arch -x86_64 ragbox doctor --skip-ollama
+```
+
+On Apple Silicon, ragbox runs through Rosetta (`arch -x86_64`). Text
+`build`/`search` requires [Ollama](https://ollama.com) with an embedding model:
+
+```sh
+brew install ollama
+ollama pull nomic-embed-text
+arch -x86_64 ragbox build --root ./my-repo --out memory.lv
+arch -x86_64 ragbox search --index memory.lv --query "auth middleware" --json
+```
+
+Release tarball: `scripts/build-ragbox-release.sh 0.3.0` →
+`dist/ragbox-0.3.0-macos-x86_64.tar.gz`. Pre-release check:
+`scripts/check_ragbox_release.sh`.
+
 ## Build
 
 ```sh
 fasm --emit=macho-obj fasm/apps/logvec_core.asm logvec_core.o
-clang++ -std=c++20 -O2 -arch x86_64 \
+clang++ -std=c++20 -O2 -arch x86_64 -pthread \
   fasm/apps/ragbox/ragbox.cpp logvec_core.o -o ragbox
 ```
+
+Contributor build from source (same binary as Homebrew release):
 
 On Apple Silicon:
 
@@ -185,7 +209,6 @@ scripts/bench_perf.sh   # includes ragbox lite-manifest bench on fixtures
 - PDF / HTML parsing
 - ANN / HNSW
 - MCP server
-- Homebrew formula (see `Formula/fscan.rb` as template for v0.1)
 
 ## Related
 

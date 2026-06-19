@@ -480,18 +480,39 @@ x86_64 binary — no Python venv, no vector DB server. Spec:
 [`docs/ragbox.md`](docs/ragbox.md). System form (Level 4):
 [`docs/system_form.md`](docs/system_form.md).
 
+Homebrew:
+
+```sh
+brew tap kroq86/fasm-mac https://github.com/kroq86/fasm-mac
+brew install ragbox
+arch -x86_64 ragbox doctor --skip-ollama
+ollama pull nomic-embed-text
+arch -x86_64 ragbox build --root ./repo --out memory.lv
+arch -x86_64 ragbox search --index memory.lv --query "auth middleware" --json
+```
+
+Manual build (from source):
+
 ```sh
 fasm --emit=macho-obj fasm/apps/logvec_core.asm logvec_core.o
-clang++ -std=c++20 -O2 -arch x86_64 \
+clang++ -std=c++20 -O2 -arch x86_64 -pthread \
   fasm/apps/ragbox/ragbox.cpp logvec_core.o -o ragbox
 arch -x86_64 ./ragbox build --root ./repo --out memory.lv
 arch -x86_64 ./ragbox search --index memory.lv --query "auth middleware" --json
+```
+
+Release packaging:
+
+```sh
+scripts/build-ragbox-release.sh 0.3.0
+scripts/check_ragbox_release.sh
 ```
 
 Smoke test:
 
 ```sh
 scripts/check_ragbox.sh
+scripts/check_ragbox_release.sh
 ```
 
 Optional live check (Ollama required):
