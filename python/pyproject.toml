@@ -1,0 +1,40 @@
+[build-system]
+requires = ["scikit-build-core>=0.10", "pybind11>=2.12"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "eml-sr"
+version = "0.1.0"
+description = "EML symbolic regression — pip-installable search over eml(x,y)=exp(x)-ln(y) trees"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "eml-sr contributors" }]
+keywords = ["symbolic-regression", "eml", "exp-minus-log"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: C++",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = ["numpy>=1.20"]
+
+[project.urls]
+Homepage = "https://github.com/kroq86/fasm-mac/tree/main/python"
+Documentation = "https://github.com/kroq86/fasm-mac/blob/main/docs/eml_sr.md"
+Paper = "https://arxiv.org/abs/2603.21852"
+Reference = "https://github.com/VA00/SymbolicRegressionPackage"
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[tool.scikit-build]
+wheel.packages = ["eml_sr"]
+cmake.version = ">=3.18"
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: depth-4 poly fit (~30s)",
+]

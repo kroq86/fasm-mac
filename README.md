@@ -140,6 +140,7 @@ without data-segment declarations and follow the System V AMD64 ABI.
 | [`fasm/core/mem.inc`](fasm/core/mem.inc) | `memcpy`, `memset`, `memcmp`, `memmove`, `memxor` |
 | [`fasm/core/base64.inc`](fasm/core/base64.inc) | `base64_encode(rdi,rsi,rdx)→rax`, `base64_decode(rdi,rsi,rdx)→rax` |
 | [`fasm/core/math_fp.inc`](fasm/core/math_fp.inc) | `fp_isnan`, `fp_isinfinite`, `fp_isfinite`, `fp_floor`, `fp_ceil`, `fp_fmod`, `fp_frexp` |
+| [`fasm/core/eml.inc`](fasm/core/eml.inc) | `lb_eml_f64` — EML operator leaf `exp(x)-log(y)` ([arXiv:2603.21852](https://arxiv.org/abs/2603.21852)); export via [`eml_core.asm`](fasm/apps/eml_core.asm) |
 
 Examples:
 

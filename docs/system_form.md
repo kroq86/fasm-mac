@@ -216,6 +216,13 @@ Future Level 4 work — not promised in v0.x:
 - **Optional ANN projection** — separate build mode; exact remains default and testable
 - **Replay guarantees** — formal spec for embed nondeterminism vs deterministic chunking
 
+## Related experiments (not core)
+
+- [`eml_sr.md`](eml_sr.md) — standalone EML symbolic regression research tool
+  ([arXiv:2603.21852](https://arxiv.org/abs/2603.21852)); FASM leaf
+  `lb_eml_f64` in [`fasm/core/eml.inc`](../fasm/core/eml.inc); not in the
+  ragbox brew/check stack.
+
 ## Related
 
 - [`logvec.md`](logvec.md) — `.lv` wire format, ingest, bench
