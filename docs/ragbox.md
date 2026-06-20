@@ -1,14 +1,39 @@
 # ragbox
 
-**SQLite-style local semantic index for agents** — not a vector DB server, a
-file you can copy, version, and test.
+**Local-first codebase memory for AI agents.** Build a searchable semantic
+snapshot of your repo, query it from the terminal, and keep it local.
+Ollama-compatible, single binary, no vector DB server.
 
-ragbox wraps the existing logvec `.lv` snapshot format with:
+Use ragbox when Codex, Claude, Gemini, or another agent needs fast context from
+your repository and plain keyword search is not enough.
+
+```sh
+brew tap kroq86/fasm-mac https://github.com/kroq86/fasm-mac
+brew install ragbox
+brew install ollama
+ollama pull nomic-embed-text
+
+arch -x86_64 ragbox build --root . --out memory.lv
+arch -x86_64 ragbox search --index memory.lv --query "where is auth handled?" --json
+```
+
+On Apple Silicon, ragbox runs through Rosetta (`arch -x86_64`). The generated
+index is a set of local files you can copy, version, test, and rebuild.
+
+| Alternative | ragbox difference |
+|-------------|-------------------|
+| `ripgrep` | semantic search, not lexical search |
+| vector DB server | copyable file snapshot, not a running service |
+| RAG platform | local CLI for repo memory, not a web platform |
+
+## What it builds
+
+ragbox wraps the logvec `.lv` snapshot format with:
 
 - deterministic chunking over text/code files
 - Ollama HTTP embeddings (v0 glue — no embedded model)
 - a JSON manifest sidecar for path/offset/snippet metadata
-- `build`, `search`, and `doctor` commands in one x86_64 binary
+- `build`, `refresh`, `search`, and `doctor` commands in one x86_64 binary
 
 FASM owns dot/norm/top-k; C++ owns chunking, HTTP embed glue, mmap search, and
 CLI. Zig logvec remains unchanged.
@@ -24,8 +49,8 @@ brew install ragbox
 arch -x86_64 ragbox doctor --skip-ollama
 ```
 
-On Apple Silicon, ragbox runs through Rosetta (`arch -x86_64`). Text
-`build`/`search` requires [Ollama](https://ollama.com) with an embedding model:
+Text `build`/`search` requires [Ollama](https://ollama.com) with an embedding
+model:
 
 ```sh
 brew install ollama
@@ -54,7 +79,7 @@ On Apple Silicon:
 arch -x86_64 ./ragbox doctor
 ```
 
-## Quick start
+## Quick start from a source build
 
 Requires [Ollama](https://ollama.com) with an embedding model (default:
 `nomic-embed-text`):

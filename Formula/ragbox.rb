@@ -1,6 +1,6 @@
 class Ragbox < Formula
-  desc "Local semantic snapshot CLI for agents (exact cosine search over .lv indexes)"
-  homepage "https://github.com/kroq86/fasm-mac"
+  desc "Local-first codebase memory CLI for AI agents"
+  homepage "https://kroq86.github.io/fasm-mac/"
   url "https://github.com/kroq86/fasm-mac/releases/download/v0.3.0/ragbox-0.3.0-macos-x86_64.tar.gz"
   sha256 "b7443175638b1ab0ad59a1b85c773f7820e1830f95ba4f72a0c2d953debe6ad9"
   license "BSD-2-Clause"

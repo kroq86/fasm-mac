@@ -1,9 +1,56 @@
 # fasm-mac
 
-Experimental macOS bridge for **flat assembler classic 1.73.35**.
+**ragbox is the flagship tool here:** local-first codebase memory for AI
+agents. Build a searchable semantic snapshot of your repo, query it from the
+terminal, and keep it local. Ollama-compatible, single binary, no vector DB
+server.
 
-The goal is practical CLI compatibility for small x86_64 fasm programs on
-macOS:
+This repository is the engineering monorepo behind ragbox and a small set of
+macOS developer tools built on a reusable FASM runtime.
+
+| Tool | Promise |
+|------|---------|
+| [`ragbox`](docs/ragbox.md) | Local codebase memory for Codex, Claude, Gemini, and other AI agents |
+| `machodoctor` | Explain why a macOS binary does not run |
+| `fasm-mac` | Assembly/runtime foundation for x86_64 FASM tools on macOS |
+
+Product page: <https://kroq86.github.io/fasm-mac/>
+
+## ragbox quick start
+
+Use ragbox when `ripgrep` is too literal, a vector DB is too much machinery,
+and you want a local semantic index your AI agent can query.
+
+```sh
+brew tap kroq86/fasm-mac https://github.com/kroq86/fasm-mac
+brew install ragbox
+brew install ollama
+ollama pull nomic-embed-text
+
+arch -x86_64 ragbox build --root . --out memory.lv
+arch -x86_64 ragbox search --index memory.lv --query "where is auth handled?" --json
+```
+
+On Apple Silicon, ragbox runs through Rosetta (`arch -x86_64`). The index stays
+in local files: `memory.lv`, `memory.lv.manifest.json`, optional refresh state,
+and optional delta sidecar.
+
+Why not the obvious alternatives?
+
+| Alternative | ragbox difference |
+|-------------|-------------------|
+| `ripgrep` | semantic search, not lexical search |
+| vector DB server | copyable file snapshot, not a running service |
+| RAG platform | local CLI for repo memory, not a web platform |
+
+More: [`docs/ragbox.md`](docs/ragbox.md). Release check:
+`scripts/check_ragbox_release.sh`.
+
+## fasm-mac foundation
+
+fasm-mac is also an experimental macOS bridge for **flat assembler classic
+1.73.35**. The goal is practical CLI compatibility for small x86_64 fasm
+programs on macOS:
 
 ```sh
 fasm file.asm
@@ -475,9 +522,9 @@ linear scan — ~4.5 ms for 10k×768 single-thread, ~1.4 ms with 4 threads (see
 
 ## ragbox
 
-Local semantic snapshot for agents: chunk a repo, embed via Ollama, build a
-copyable `.lv` index + JSON manifest, search with exact cosine top-k. One
-x86_64 binary — no Python venv, no vector DB server. Spec:
+Local-first codebase memory for AI agents: chunk a repo, embed via Ollama,
+build a copyable `.lv` index + JSON manifest, and search it from the terminal.
+One x86_64 binary — no Python venv, no vector DB server, no web platform. More:
 [`docs/ragbox.md`](docs/ragbox.md). System form (Level 4):
 [`docs/system_form.md`](docs/system_form.md).
 
@@ -486,12 +533,21 @@ Homebrew:
 ```sh
 brew tap kroq86/fasm-mac https://github.com/kroq86/fasm-mac
 brew install ragbox
-arch -x86_64 ragbox doctor --skip-ollama
+brew install ollama
 ollama pull nomic-embed-text
+arch -x86_64 ragbox doctor --skip-ollama
 arch -x86_64 ragbox build --root ./repo --out memory.lv
 arch -x86_64 ragbox refresh --root ./repo --index memory.lv
-arch -x86_64 ragbox search --index memory.lv --query "auth middleware" --json
+arch -x86_64 ragbox search --index memory.lv --query "where is auth handled?" --json
 ```
+
+Why not the obvious alternatives?
+
+| Alternative | ragbox difference |
+|-------------|-------------------|
+| `ripgrep` | semantic search, not lexical search |
+| vector DB server | copyable file snapshot, not a running service |
+| RAG platform | local CLI for repo memory, not a web platform |
 
 Manual build (from source):
 

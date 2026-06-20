@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ragbox - Local codebase memory for AI agents</title>
+  <meta name="description" content="ragbox builds a local semantic snapshot of your codebase for Codex, Claude, Gemini, and other AI agents. Ollama-compatible, single binary, no vector DB server.">
+  <meta name="keywords" content="ragbox, local rag, codebase memory, AI agents, Codex, Claude, Gemini, Ollama, semantic search, developer tools, macOS CLI">
+  <link rel="canonical" href="https://kroq86.github.io/fasm-mac/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="ragbox - Local codebase memory for AI agents">
+  <meta property="og:description" content="Build a searchable semantic snapshot of your repo, query it from the terminal, and keep it local.">
+  <meta property="og:url" content="https://kroq86.github.io/fasm-mac/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="ragbox - Local codebase memory for AI agents">
+  <meta name="twitter:description" content="Ollama-compatible semantic repo memory. Single binary. Local files. No vector DB server.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "ragbox",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "macOS",
+    "description": "Local-first codebase memory CLI for AI agents.",
+    "url": "https://kroq86.github.io/fasm-mac/",
+    "codeRepository": "https://github.com/kroq86/fasm-mac",
+    "programmingLanguage": ["C++", "FASM"],
+    "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}
+  }
+  </script>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0d1117;
+      --panel: #161b22;
+      --text: #e6edf3;
+      --muted: #9da7b3;
+      --line: #30363d;
+      --accent: #2f81f7;
+      --accent-2: #3fb950;
+      --code: #0b1220;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+    a { color: #79c0ff; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    .wrap { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
+    header {
+      border-bottom: 1px solid var(--line);
+      background: rgba(13, 17, 23, 0.86);
+      position: sticky;
+      top: 0;
+      backdrop-filter: blur(12px);
+      z-index: 2;
+    }
+    nav {
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .brand { font-weight: 760; letter-spacing: 0; font-size: 18px; color: var(--text); text-decoration: none; }
+    .navlinks { display: flex; gap: 18px; flex-wrap: wrap; font-size: 14px; }
+    main { padding: 72px 0 56px; }
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+      gap: 38px;
+      align-items: center;
+    }
+    .eyebrow { color: var(--accent-2); font-weight: 700; margin: 0 0 12px; }
+    h1 {
+      font-size: clamp(42px, 7vw, 78px);
+      line-height: 0.98;
+      margin: 0 0 22px;
+      letter-spacing: 0;
+    }
+    .lead { color: var(--muted); font-size: 20px; max-width: 680px; margin: 0 0 28px; }
+    .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 16px;
+      border: 1px solid var(--line);
+      color: var(--text);
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 700;
+      background: var(--panel);
+    }
+    .button.primary { border-color: var(--accent); background: var(--accent); color: white; }
+    .terminal {
+      background: var(--code);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+    }
+    .chrome {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      height: 38px;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--line);
+      background: #111827;
+    }
+    .dot { width: 10px; height: 10px; border-radius: 999px; background: #f85149; }
+    .dot:nth-child(2) { background: #d29922; }
+    .dot:nth-child(3) { background: #3fb950; }
+    pre { margin: 0; padding: 20px; overflow-x: auto; font: 14px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 56px; }
+    .card { border: 1px solid var(--line); border-radius: 8px; padding: 20px; background: var(--panel); }
+    .card h2, .card h3 { margin: 0 0 8px; letter-spacing: 0; }
+    .card p { margin: 0; color: var(--muted); }
+    section { margin-top: 56px; }
+    .compare { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .compare strong { display: block; margin-bottom: 8px; color: var(--text); }
+    footer { border-top: 1px solid var(--line); color: var(--muted); padding: 28px 0; }
+    @media (max-width: 860px) {
+      .hero, .grid, .compare { grid-template-columns: 1fr; }
+      main { padding-top: 42px; }
+      .navlinks { justify-content: flex-end; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <nav class="wrap" aria-label="Primary">
+      <a class="brand" href="./">ragbox</a>
+      <div class="navlinks">
+        <a href="https://github.com/kroq86/fasm-mac">GitHub</a>
+        <a href="ragbox.md">Docs</a>
+        <a href="#install">Install</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Local-first codebase memory for AI agents</p>
+        <h1>Give your agent searchable memory over your repo.</h1>
+        <p class="lead">
+          ragbox builds a semantic snapshot of local code and docs, then lets
+          Codex, Claude, Gemini, or your own scripts ask where things live.
+          Ollama-compatible, terminal-native, and no vector DB server.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="https://github.com/kroq86/fasm-mac">Star on GitHub</a>
+          <a class="button" href="ragbox.md">Read the docs</a>
+        </div>
+      </div>
+      <div class="terminal" id="install">
+        <div class="chrome"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+        <pre><code>brew tap kroq86/fasm-mac https://github.com/kroq86/fasm-mac
+brew install ragbox
+brew install ollama
+ollama pull nomic-embed-text
+
+arch -x86_64 ragbox build --root . --out memory.lv
+arch -x86_64 ragbox search --index memory.lv \
+  --query "where is auth handled?" --json</code></pre>
+      </div>
+    </section>
+
+    <section class="grid" aria-label="Highlights">
+      <div class="card">
+        <h2>Local files</h2>
+        <p>Indexes are copyable `.lv` snapshots plus JSON manifests. Keep them in your workspace, CI, or release artifacts.</p>
+      </div>
+      <div class="card">
+        <h2>Agent-ready</h2>
+        <p>Use semantic search to feed repo context into coding agents without deploying a web platform.</p>
+      </div>
+      <div class="card">
+        <h2>Fast native core</h2>
+        <p>FASM owns dot/norm/top-k kernels; C++ owns chunking, Ollama glue, mmap search, and the CLI.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Why not the obvious alternatives?</h2>
+      <div class="compare">
+        <div class="card">
+          <strong>vs ripgrep</strong>
+          <p>ragbox is semantic search, not lexical search.</p>
+        </div>
+        <div class="card">
+          <strong>vs a vector DB</strong>
+          <p>ragbox is a file snapshot, not a running service.</p>
+        </div>
+        <div class="card">
+          <strong>vs a RAG platform</strong>
+          <p>ragbox is a local CLI for repo memory, not a web app.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>ragbox lives in the fasm-mac monorepo.</span>
+      <span> </span>
+      <a href="https://github.com/kroq86/fasm-mac">github.com/kroq86/fasm-mac</a>
+    </div>
+  </footer>
+</body>
+</html>
