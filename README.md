@@ -140,6 +140,7 @@ without data-segment declarations and follow the System V AMD64 ABI.
 | [`fasm/core/mem.inc`](fasm/core/mem.inc) | `memcpy`, `memset`, `memcmp`, `memmove`, `memxor` |
 | [`fasm/core/base64.inc`](fasm/core/base64.inc) | `base64_encode(rdi,rsi,rdx)→rax`, `base64_decode(rdi,rsi,rdx)→rax` |
 | [`fasm/core/math_fp.inc`](fasm/core/math_fp.inc) | `fp_isnan`, `fp_isinfinite`, `fp_isfinite`, `fp_floor`, `fp_ceil`, `fp_fmod`, `fp_frexp` |
+| [`fasm/core/rational.inc`](fasm/core/rational.inc), [`fasm/core/polynomial.inc`](fasm/core/polynomial.inc) | exact `Rational` arithmetic and caller-owned polynomial operations |
 
 Examples:
 
@@ -329,6 +330,38 @@ Smoke test:
 
 ```sh
 scripts/check_hexpeek.sh
+```
+
+## fmath
+
+Tiny exact math CLI for rational numbers and polynomials. Coefficients are
+passed low-to-high: `1 3 2` means `2x^2 + 3x + 1`.
+
+```sh
+fasm fasm/apps/fmath.asm
+arch -x86_64 ./fasm/apps/fmath frac add 1/3 1/6
+arch -x86_64 ./fasm/apps/fmath poly-derive 1 3 2
+arch -x86_64 ./fasm/apps/fmath poly-integrate 1 3 2
+arch -x86_64 ./fasm/apps/fmath poly-eval 2 1 3 2
+```
+
+Homebrew:
+
+```sh
+brew install kroq86/fasm-mac/fmath
+fmath frac add 1/3 1/6
+```
+
+Release packaging:
+
+```sh
+scripts/build-fmath-release.sh 0.1.0
+```
+
+Smoke test:
+
+```sh
+scripts/check_fmath.sh
 ```
 
 ## raymaze

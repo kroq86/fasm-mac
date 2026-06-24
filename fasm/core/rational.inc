@@ -21,6 +21,7 @@ RATIONAL_DEN_OFF equ 8
 
 RATIONAL_OK equ 0
 RATIONAL_ERR_ZERO_DEN equ -1
+RATIONAL_ERR_PARSE equ -2
 
 ; rdi = signed int64 value
 ; returns: rax = abs(value)
@@ -104,6 +105,103 @@ rational_set:
 	mov	[rdi + RATIONAL_NUM_OFF], rsi
 	mov	[rdi + RATIONAL_DEN_OFF], rdx
 	jmp	rational_normalize
+
+; rdi = Rational*, rsi = null-terminated string: int64 or int64/int64
+; returns: rax = RATIONAL_OK or RATIONAL_ERR_*
+; clobbers: rax, rcx, rdx, rsi, rdi, r8-r11
+rational_parse_cstr:
+	push	rbx
+	push	r12
+	push	r13
+	push	r14
+	push	r15
+	mov	rbx, rdi
+	mov	r12, rsi
+	mov	r14, 1
+	xor	r13, r13
+	xor	r15, r15
+	movzx	ecx, byte [r12]
+	cmp	cl, '-'
+	jne	.rpc_num_plus
+	mov	r14, -1
+	inc	r12
+	jmp	.rpc_num_loop
+.rpc_num_plus:
+	cmp	cl, '+'
+	jne	.rpc_num_loop
+	inc	r12
+.rpc_num_loop:
+	movzx	ecx, byte [r12]
+	cmp	cl, '0'
+	jb	.rpc_num_end
+	cmp	cl, '9'
+	ja	.rpc_num_end
+	imul	r13, r13, 10
+	sub	cl, '0'
+	add	r13, rcx
+	mov	r15, 1
+	inc	r12
+	jmp	.rpc_num_loop
+.rpc_num_end:
+	test	r15, r15
+	jz	.rpc_parse_err
+	imul	r13, r14
+	cmp	byte [r12], 0
+	je	.rpc_int
+	cmp	byte [r12], '/'
+	jne	.rpc_parse_err
+	inc	r12
+	mov	r14, 1
+	xor	r8, r8
+	xor	r15, r15
+	movzx	ecx, byte [r12]
+	cmp	cl, '-'
+	jne	.rpc_den_plus
+	mov	r14, -1
+	inc	r12
+	jmp	.rpc_den_loop
+.rpc_den_plus:
+	cmp	cl, '+'
+	jne	.rpc_den_loop
+	inc	r12
+.rpc_den_loop:
+	movzx	ecx, byte [r12]
+	cmp	cl, '0'
+	jb	.rpc_den_end
+	cmp	cl, '9'
+	ja	.rpc_den_end
+	imul	r8, r8, 10
+	sub	cl, '0'
+	add	r8, rcx
+	mov	r15, 1
+	inc	r12
+	jmp	.rpc_den_loop
+.rpc_den_end:
+	test	r15, r15
+	jz	.rpc_parse_err
+	cmp	byte [r12], 0
+	jne	.rpc_parse_err
+	imul	r8, r14
+	mov	rdi, rbx
+	mov	rsi, r13
+	mov	rdx, r8
+	call	rational_set
+	jmp	.rpc_done
+.rpc_int:
+	mov	rdi, rbx
+	mov	rsi, r13
+	mov	rdx, 1
+	call	rational_set
+	jmp	.rpc_done
+.rpc_parse_err:
+	mov	rax, RATIONAL_ERR_PARSE
+.rpc_done:
+	pop	r15
+	pop	r14
+	pop	r13
+	pop	r12
+	pop	rbx
+	ret
 
 ; rdi = dst Rational*, rsi = a Rational*, rdx = b Rational*
 ; returns: rax = RATIONAL_OK or RATIONAL_ERR_ZERO_DEN
