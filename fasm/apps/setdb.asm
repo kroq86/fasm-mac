@@ -214,6 +214,21 @@ start:
 	call	str_eq
 	test	rax, rax
 	jnz	cmd_tags_run
+	mov	rdi, [rbx + 16]
+	lea	rsi, [cmd_store_domain]
+	call	str_eq
+	test	rax, rax
+	jnz	cmd_store_domain_run
+	mov	rdi, [rbx + 16]
+	lea	rsi, [cmd_store_range]
+	call	str_eq
+	test	rax, rax
+	jnz	cmd_store_range_run
+	mov	rdi, [rbx + 16]
+	lea	rsi, [cmd_store_inverse]
+	call	str_eq
+	test	rax, rax
+	jnz	cmd_store_inverse_run
 	jmp	usage
 
 help_run:
@@ -681,6 +696,102 @@ cmd_tags_run:
 	call	build_select
 	call	print_tmp_atoms_sorted
 	exit	EXIT_SUCCESS
+
+cmd_store_domain_run:
+	cmp	qword [argc], 5
+	jne	usage
+	call	load_db_from_argv
+	call	setdb_tmp_clear
+	mov	rbx, [argv_base]
+	mov	rdi, [rbx + 32]
+	call	build_domain
+	mov	rbx, [argv_base]
+	mov	rdi, [rbx + 40]
+	call	store_tmp_atoms_into_set
+	exit	EXIT_SUCCESS
+
+cmd_store_range_run:
+	cmp	qword [argc], 5
+	jne	usage
+	call	load_db_from_argv
+	call	setdb_tmp_clear
+	mov	rbx, [argv_base]
+	mov	rdi, [rbx + 32]
+	call	build_range
+	mov	rbx, [argv_base]
+	mov	rdi, [rbx + 40]
+	call	store_tmp_atoms_into_set
+	exit	EXIT_SUCCESS
+
+cmd_store_inverse_run:
+	cmp	qword [argc], 5
+	jne	usage
+	call	load_db_from_argv
+	call	setdb_tmp_clear
+	mov	rbx, [argv_base]
+	mov	rdi, [rbx + 32]
+	call	build_inverse
+	mov	rbx, [argv_base]
+	mov	rdi, [rbx + 40]
+	call	store_tmp_pairs_into_rel
+	exit	EXIT_SUCCESS
+
+; rdi = target set name
+store_tmp_atoms_into_set:
+	push	rbx
+	push	r12
+	push	r13
+	mov	r12, rdi
+	mov	r13, [setdb_tmp_head]
+.loop:
+	test	r13, r13
+	jz	.done
+	mov	rdi, r12
+	mov	rsi, [r13 + SETDB_TMP_LEFT_OFF]
+	call	setdb_set_add
+	cmp	rax, 0
+	jl	usage
+	lea	rdi, [op_sadd]
+	mov	rsi, r12
+	mov	rdx, [r13 + SETDB_TMP_LEFT_OFF]
+	xor	rcx, rcx
+	call	append3
+	mov	r13, [r13 + SETDB_TMP_NEXT_OFF]
+	jmp	.loop
+.done:
+	pop	r13
+	pop	r12
+	pop	rbx
+	ret
+
+; rdi = target relation name
+store_tmp_pairs_into_rel:
+	push	rbx
+	push	r12
+	push	r13
+	mov	r12, rdi
+	mov	r13, [setdb_tmp_head]
+.loop:
+	test	r13, r13
+	jz	.done
+	mov	rdi, r12
+	mov	rsi, [r13 + SETDB_TMP_LEFT_OFF]
+	mov	rdx, [r13 + SETDB_TMP_RIGHT_OFF]
+	call	setdb_rel_add
+	cmp	rax, 0
+	jl	usage
+	lea	rdi, [op_radd]
+	mov	rsi, r12
+	mov	rdx, [r13 + SETDB_TMP_LEFT_OFF]
+	mov	rcx, [r13 + SETDB_TMP_RIGHT_OFF]
+	call	append4
+	mov	r13, [r13 + SETDB_TMP_NEXT_OFF]
+	jmp	.loop
+.done:
+	pop	r13
+	pop	r12
+	pop	rbx
+	ret
 
 load_db_from_argv:
 	mov	rbx, [argv_base]
@@ -1822,6 +1933,9 @@ cmd_pairs db 'pairs', 0
 cmd_tag db 'tag', 0
 cmd_files db 'files', 0
 cmd_tags db 'tags', 0
+cmd_store_domain db 'store-domain', 0
+cmd_store_range db 'store-range', 0
+cmd_store_inverse db 'store-inverse', 0
 cmd_help db 'help', 0
 opt_help db '--help', 0
 opt_h db '-h', 0
@@ -1877,12 +1991,15 @@ help_msg db 'setdb - pure set-theoretic database CLI', 10
 	db '  setdb tag DB FILE TAG...', 10
 	db '  setdb files DB TAG', 10
 	db '  setdb tags DB FILE', 10
+	db '  setdb store-domain DB REL NAME', 10
+	db '  setdb store-range DB REL NAME', 10
+	db '  setdb store-inverse DB REL NAME', 10
 	db 10
 	db 'Model:', 10
 	db '  DB is a directory bundle with ops.log and ops.idx.', 10
 	db '  Sets contain unique atoms. Relations contain unique ordered pairs.', 10
 	db '  There is no SQL, no NULL, no duplicate rows, and no multiset semantics.', 10
-	db '  Names may contain letters, digits, underscore, dash, and dot.', 10
+	db '  Names may contain letters, digits, underscore, dash, dot, and slash.', 10
 	db 10
 	db 'Commands:', 10
 	db '  new         Create DB directory and empty append-only operation log.', 10
@@ -1914,6 +2031,12 @@ help_msg db 'setdb - pure set-theoretic database CLI', 10
 	db '  tag         Tag FILE with one or more TAGs (files/tags/has_tag sugar).', 10
 	db '  files       Print all files tagged TAG, sorted.', 10
 	db '  tags        Print all tags on FILE, sorted.', 10
+	db '  store-domain', 10
+	db '              Compute domain(REL), then SADD each atom into set NAME.', 10
+	db '  store-range', 10
+	db '              Compute range(REL), then SADD each atom into set NAME.', 10
+	db '  store-inverse', 10
+	db '              Compute inverse(REL), then RADD each pair into relation NAME.', 10
 	db 10
 	db 'Examples:', 10
 	db '  setdb new universe.db', 10

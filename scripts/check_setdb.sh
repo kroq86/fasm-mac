@@ -31,7 +31,7 @@ expect() {
 }
 
 help_out="$(run help)"
-for word in new add remove relation unrelation members member union intersect diff subset select join domain range inverse rdiff runion rintersect transitive-closure sets relations contains pairs tag files tags; do
+for word in new add remove relation unrelation members member union intersect diff subset select join domain range inverse rdiff runion rintersect transitive-closure sets relations contains pairs tag files tags store-domain store-range store-inverse; do
   if ! grep -q "  $word" <<< "$help_out"; then
     echo "FAIL help missing command: $word" >&2
     exit 1
@@ -86,6 +86,18 @@ expect contains-alice $'admins\nusers' contains "$DB" alice
 expect contains-bob 'users' contains "$DB" bob
 expect contains-missing '' contains "$DB" nobody
 
+run store-domain "$DB" follows follows_domain
+expect store-domain $'alice\nbob\ncarol' members "$DB" follows_domain
+run store-range "$DB" follows follows_range
+expect store-range $'bob\ncarol\ndana' members "$DB" follows_range
+run store-inverse "$DB" follows follows_inv
+expect store-inverse $'(bob,alice)\n(carol,bob)\n(dana,carol)' pairs "$DB" follows_inv
+
+# The materialize-then-diff workflow this exists for: a plain `diff` against
+# a stored query result, entirely inside setdb, no shell-level set math.
+run add "$DB" all_people alice bob carol dana eve
+expect diff-after-store $'dana\neve' diff "$DB" all_people follows_domain
+
 EMPTY_DB="$OUT_DIR/empty.db"
 run new "$EMPTY_DB"
 expect sets-empty '' sets "$EMPTY_DB"
@@ -107,16 +119,22 @@ expect remove $'alice\nbob' members "$DB" users
 run unrelation "$DB" follows bob carol
 expect unrelation '' rintersect "$DB" follows blocked
 
-if run add "$DB" 'bad/name' alice >/dev/null 2>"$OUT_DIR/bad.err"; then
+if run add "$DB" 'bad name' alice >/dev/null 2>"$OUT_DIR/bad.err"; then
   echo 'FAIL invalid set name should exit non-zero' >&2
   exit 1
 fi
+run add "$DB" 'path/like/name' alice
+expect slash-in-name 'alice' members "$DB" 'path/like/name'
 if run relation "$DB" follows only-one >/dev/null 2>"$OUT_DIR/arity.err"; then
   echo 'FAIL invalid relation arity should exit non-zero' >&2
   exit 1
 fi
 if run tag "$DB" song3.mp3 >/dev/null 2>"$OUT_DIR/tag-arity.err"; then
   echo 'FAIL tag with no tags should exit non-zero' >&2
+  exit 1
+fi
+if run store-domain "$DB" follows >/dev/null 2>"$OUT_DIR/store-arity.err"; then
+  echo 'FAIL store-domain with no target name should exit non-zero' >&2
   exit 1
 fi
 

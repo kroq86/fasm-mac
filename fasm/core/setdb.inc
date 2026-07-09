@@ -74,6 +74,8 @@ setdb_name_valid:
 	je	.next
 	cmp	al, '.'
 	je	.next
+	cmp	al, '/'
+	je	.next
 	xor	rax, rax
 	jmp	.out
 .next:

@@ -715,6 +715,17 @@ arch -x86_64 ./setdb files files.db music
 arch -x86_64 ./setdb tags files.db song1.mp3
 ```
 
+Names may contain letters, digits, `_`, `-`, `.`, and `/`, so real filesystem
+paths work as atoms directly. `store-domain`/`store-range`/`store-inverse`
+persist a query result as a named set or relation (an `SADD`/`RADD` per
+result row) instead of only printing it, so it can feed a later query —
+`domain`/`range`/`inverse` alone only ever print to stdout:
+
+```sh
+arch -x86_64 ./setdb store-domain universe.db follows leaders
+arch -x86_64 ./setdb diff universe.db users leaders
+```
+
 Output examples:
 
 ```text
