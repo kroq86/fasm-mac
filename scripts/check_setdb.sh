@@ -31,7 +31,7 @@ expect() {
 }
 
 help_out="$(run help)"
-for word in new add remove relation unrelation members member union intersect diff subset select join domain range inverse rdiff runion rintersect transitive-closure; do
+for word in new add remove relation unrelation members member union intersect diff subset select join domain range inverse rdiff runion rintersect transitive-closure sets relations contains pairs tag files tags; do
   if ! grep -q "  $word" <<< "$help_out"; then
     echo "FAIL help missing command: $word" >&2
     exit 1
@@ -78,6 +78,29 @@ expect rdiff $'(alice,bob)\n(carol,dana)' rdiff "$DB" follows blocked
 expect runion $'(alice,bob)\n(bob,carol)\n(carol,dana)' runion "$DB" follows blocked
 expect rintersect '(bob,carol)' rintersect "$DB" follows blocked
 expect transitive-closure $'(alice,bob)\n(alice,carol)\n(alice,dana)\n(bob,carol)\n(bob,dana)\n(carol,dana)' transitive-closure "$DB" follows
+expect sets $'admins\nusers' sets "$DB"
+expect relations $'blocked\nfollows' relations "$DB"
+expect pairs $'(alice,bob)\n(bob,carol)\n(carol,dana)' pairs "$DB" follows
+expect pairs-missing-rel '' pairs "$DB" nosuchrel
+expect contains-alice $'admins\nusers' contains "$DB" alice
+expect contains-bob 'users' contains "$DB" bob
+expect contains-missing '' contains "$DB" nobody
+
+EMPTY_DB="$OUT_DIR/empty.db"
+run new "$EMPTY_DB"
+expect sets-empty '' sets "$EMPTY_DB"
+expect relations-empty '' relations "$EMPTY_DB"
+
+run tag "$DB" song1.mp3 music jazz
+run tag "$DB" song2.mp3 music
+expect files-music $'song1.mp3\nsong2.mp3' files "$DB" music
+expect files-jazz 'song1.mp3' files "$DB" jazz
+expect files-missing-tag '' files "$DB" nosuchtag
+expect tags-song1 $'jazz\nmusic' tags "$DB" song1.mp3
+expect tags-song2 'music' tags "$DB" song2.mp3
+expect pairs-has-tag $'(song1.mp3,jazz)\n(song1.mp3,music)\n(song2.mp3,music)' pairs "$DB" has_tag
+run tag "$DB" song1.mp3 jazz
+expect tag-idempotent 'song1.mp3' files "$DB" jazz
 
 run remove "$DB" users carol
 expect remove $'alice\nbob' members "$DB" users
@@ -90,6 +113,10 @@ if run add "$DB" 'bad/name' alice >/dev/null 2>"$OUT_DIR/bad.err"; then
 fi
 if run relation "$DB" follows only-one >/dev/null 2>"$OUT_DIR/arity.err"; then
   echo 'FAIL invalid relation arity should exit non-zero' >&2
+  exit 1
+fi
+if run tag "$DB" song3.mp3 >/dev/null 2>"$OUT_DIR/tag-arity.err"; then
+  echo 'FAIL tag with no tags should exit non-zero' >&2
   exit 1
 fi
 

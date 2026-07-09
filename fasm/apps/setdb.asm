@@ -82,6 +82,16 @@ start:
 	call	str_eq
 	test	rax, rax
 	jnz	cmd_new_run
+	mov	rdi, [rbx + 16]
+	lea	rsi, [cmd_sets]
+	call	str_eq
+	test	rax, rax
+	jnz	cmd_sets_run
+	mov	rdi, [rbx + 16]
+	lea	rsi, [cmd_relations]
+	call	str_eq
+	test	rax, rax
+	jnz	cmd_relations_run
 	cmp	qword [argc], 4
 	jb	usage
 	mov	rdi, [rbx + 16]
@@ -179,6 +189,31 @@ start:
 	call	str_eq
 	test	rax, rax
 	jnz	cmd_transitive_closure_run
+	mov	rdi, [rbx + 16]
+	lea	rsi, [cmd_contains]
+	call	str_eq
+	test	rax, rax
+	jnz	cmd_contains_run
+	mov	rdi, [rbx + 16]
+	lea	rsi, [cmd_pairs]
+	call	str_eq
+	test	rax, rax
+	jnz	cmd_pairs_run
+	mov	rdi, [rbx + 16]
+	lea	rsi, [cmd_tag]
+	call	str_eq
+	test	rax, rax
+	jnz	cmd_tag_run
+	mov	rdi, [rbx + 16]
+	lea	rsi, [cmd_files]
+	call	str_eq
+	test	rax, rax
+	jnz	cmd_files_run
+	mov	rdi, [rbx + 16]
+	lea	rsi, [cmd_tags]
+	call	str_eq
+	test	rax, rax
+	jnz	cmd_tags_run
 	jmp	usage
 
 help_run:
@@ -489,6 +524,162 @@ cmd_transitive_closure_run:
 	cmp	rax, 0
 	jl	io_error
 	call	print_tmp_pairs_sorted
+	exit	EXIT_SUCCESS
+
+cmd_sets_run:
+	cmp	qword [argc], 3
+	jne	usage
+	call	load_db_from_argv
+	call	setdb_tmp_clear
+	xor	rbx, rbx
+.loop:
+	cmp	rbx, [setdb_set_count]
+	jae	.done
+	mov	rdi, [setdb_set_names + rbx * 8]
+	call	setdb_tmp_add_atom
+	cmp	rax, 0
+	jl	io_error
+	inc	rbx
+	jmp	.loop
+.done:
+	call	print_tmp_atoms_sorted
+	exit	EXIT_SUCCESS
+
+cmd_relations_run:
+	cmp	qword [argc], 3
+	jne	usage
+	call	load_db_from_argv
+	call	setdb_tmp_clear
+	xor	rbx, rbx
+.loop:
+	cmp	rbx, [setdb_rel_count]
+	jae	.done
+	mov	rdi, [setdb_rel_names + rbx * 8]
+	call	setdb_tmp_add_atom
+	cmp	rax, 0
+	jl	io_error
+	inc	rbx
+	jmp	.loop
+.done:
+	call	print_tmp_atoms_sorted
+	exit	EXIT_SUCCESS
+
+cmd_contains_run:
+	cmp	qword [argc], 4
+	jne	usage
+	call	load_db_from_argv
+	call	setdb_tmp_clear
+	mov	rbx, [argv_base]
+	mov	rdi, [rbx + 32]
+	call	setdb_intern
+	test	rax, rax
+	jz	.done
+	mov	r13, rax
+	xor	r12, r12
+.loop:
+	cmp	r12, [setdb_set_count]
+	jae	.done
+	mov	rdi, r12
+	mov	rsi, r13
+	call	setdb_set_find_member
+	cmp	rax, SETDB_MISSING
+	je	.next
+	mov	rdi, [setdb_set_names + r12 * 8]
+	call	setdb_tmp_add_atom
+	cmp	rax, 0
+	jl	io_error
+.next:
+	inc	r12
+	jmp	.loop
+.done:
+	call	print_tmp_atoms_sorted
+	exit	EXIT_SUCCESS
+
+cmd_pairs_run:
+	cmp	qword [argc], 4
+	jne	usage
+	call	load_db_from_argv
+	call	setdb_tmp_clear
+	mov	rbx, [argv_base]
+	mov	rdi, [rbx + 32]
+	call	add_rel_to_tmp
+	call	print_tmp_pairs_sorted
+	exit	EXIT_SUCCESS
+
+cmd_tag_run:
+	cmp	qword [argc], 5
+	jb	usage
+	call	load_db_from_argv
+	mov	rbx, [argv_base]
+	lea	rdi, [tag_set_files]
+	mov	rsi, [rbx + 32]
+	call	setdb_set_add
+	cmp	rax, 0
+	jl	usage
+	lea	rdi, [op_sadd]
+	lea	rsi, [tag_set_files]
+	mov	rdx, [rbx + 32]
+	xor	rcx, rcx
+	call	append3
+	mov	qword [arg_index], 4
+.loop:
+	mov	rax, [arg_index]
+	cmp	rax, [argc]
+	jae	.done
+	mov	rbx, [argv_base]
+	mov	r12, [rbx + 8 + rax * 8]
+	lea	rdi, [tag_set_tags]
+	mov	rsi, r12
+	call	setdb_set_add
+	cmp	rax, 0
+	jl	usage
+	lea	rdi, [op_sadd]
+	lea	rsi, [tag_set_tags]
+	mov	rdx, r12
+	xor	rcx, rcx
+	call	append3
+	mov	rbx, [argv_base]
+	lea	rdi, [tag_rel_has_tag]
+	mov	rsi, [rbx + 32]
+	mov	rdx, r12
+	call	setdb_rel_add
+	cmp	rax, 0
+	jl	usage
+	lea	rdi, [op_radd]
+	lea	rsi, [tag_rel_has_tag]
+	mov	rbx, [argv_base]
+	mov	rdx, [rbx + 32]
+	mov	rcx, r12
+	call	append4
+	inc	qword [arg_index]
+	jmp	.loop
+.done:
+	exit	EXIT_SUCCESS
+
+cmd_files_run:
+	cmp	qword [argc], 4
+	jne	usage
+	call	load_db_from_argv
+	call	setdb_tmp_clear
+	mov	rbx, [argv_base]
+	lea	rdi, [tag_rel_has_tag]
+	lea	rsi, [kw_second]
+	mov	rdx, [rbx + 32]
+	call	build_select
+	call	print_tmp_atoms_sorted
+	exit	EXIT_SUCCESS
+
+cmd_tags_run:
+	cmp	qword [argc], 4
+	jne	usage
+	call	load_db_from_argv
+	call	setdb_tmp_clear
+	mov	rbx, [argv_base]
+	lea	rdi, [tag_rel_has_tag]
+	lea	rsi, [kw_first]
+	mov	rdx, [rbx + 32]
+	call	build_select
+	call	print_tmp_atoms_sorted
 	exit	EXIT_SUCCESS
 
 load_db_from_argv:
@@ -1624,6 +1815,13 @@ cmd_rdiff db 'rdiff', 0
 cmd_runion db 'runion', 0
 cmd_rintersect db 'rintersect', 0
 cmd_transitive_closure db 'transitive-closure', 0
+cmd_sets db 'sets', 0
+cmd_relations db 'relations', 0
+cmd_contains db 'contains', 0
+cmd_pairs db 'pairs', 0
+cmd_tag db 'tag', 0
+cmd_files db 'files', 0
+cmd_tags db 'tags', 0
 cmd_help db 'help', 0
 opt_help db '--help', 0
 opt_h db '-h', 0
@@ -1634,6 +1832,9 @@ op_radd db 'RADD', 0
 op_rrem db 'RREM', 0
 kw_first db 'first', 0
 kw_second db 'second', 0
+tag_set_files db 'files', 0
+tag_set_tags db 'tags', 0
+tag_rel_has_tag db 'has_tag', 0
 
 ops_log_suffix db '/ops.log', 0
 ops_idx_suffix db '/ops.idx', 0
@@ -1669,6 +1870,13 @@ help_msg db 'setdb - pure set-theoretic database CLI', 10
 	db '  setdb runion DB REL_A REL_B', 10
 	db '  setdb rintersect DB REL_A REL_B', 10
 	db '  setdb transitive-closure DB REL', 10
+	db '  setdb sets DB', 10
+	db '  setdb relations DB', 10
+	db '  setdb contains DB ATOM', 10
+	db '  setdb pairs DB REL', 10
+	db '  setdb tag DB FILE TAG...', 10
+	db '  setdb files DB TAG', 10
+	db '  setdb tags DB FILE', 10
 	db 10
 	db 'Model:', 10
 	db '  DB is a directory bundle with ops.log and ops.idx.', 10
@@ -1699,6 +1907,13 @@ help_msg db 'setdb - pure set-theoretic database CLI', 10
 	db '  rintersect  Print relation intersection.', 10
 	db '  transitive-closure', 10
 	db '              Print reachable pairs over one or more REL steps.', 10
+	db '  sets        Print all set names in DB, sorted.', 10
+	db '  relations   Print all relation names in DB, sorted.', 10
+	db '  contains    Print all sets that contain ATOM, sorted.', 10
+	db '  pairs       Print every pair in REL, sorted.', 10
+	db '  tag         Tag FILE with one or more TAGs (files/tags/has_tag sugar).', 10
+	db '  files       Print all files tagged TAG, sorted.', 10
+	db '  tags        Print all tags on FILE, sorted.', 10
 	db 10
 	db 'Examples:', 10
 	db '  setdb new universe.db', 10

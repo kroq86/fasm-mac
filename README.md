@@ -697,6 +697,22 @@ arch -x86_64 ./setdb domain universe.db follows
 arch -x86_64 ./setdb range universe.db follows
 arch -x86_64 ./setdb inverse universe.db follows
 arch -x86_64 ./setdb transitive-closure universe.db follows
+arch -x86_64 ./setdb sets universe.db
+arch -x86_64 ./setdb relations universe.db
+arch -x86_64 ./setdb contains universe.db alice
+arch -x86_64 ./setdb pairs universe.db follows
+```
+
+Tag-sugar layer (`tag`/`files`/`tags`) is a thin convenience wrapper over
+`add`/`relation`/`select`, fixed to the sets `files`/`tags` and relation
+`has_tag`:
+
+```sh
+arch -x86_64 ./setdb new files.db
+arch -x86_64 ./setdb tag files.db song1.mp3 music jazz
+arch -x86_64 ./setdb tag files.db song2.mp3 music
+arch -x86_64 ./setdb files files.db music
+arch -x86_64 ./setdb tags files.db song1.mp3
 ```
 
 Output examples:
@@ -718,6 +734,21 @@ carol
 (bob,carol)
 (bob,dana)
 (carol,dana)
+```
+
+```text
+admins
+users
+```
+
+```text
+song1.mp3
+song2.mp3
+```
+
+```text
+jazz
+music
 ```
 
 Homebrew:
