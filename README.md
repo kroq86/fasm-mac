@@ -673,6 +673,72 @@ Smoke test:
 scripts/check_pathsum.sh
 ```
 
+## setdb
+
+Tiny pure set-theoretic database CLI. A database is a `universe.db` directory
+with an append-only operation log; the model is only sets and binary relations:
+no SQL, no NULL, no duplicate rows, and no multisets.
+Query results use the reusable [`arena.inc`](fasm/core/arena.inc) region
+allocator: a command allocates temporary set/relation results in one arena, then
+the process exits and the whole invocation lifetime is reclaimed at once.
+
+```sh
+fasm fasm/apps/setdb.asm setdb
+arch -x86_64 ./setdb new universe.db
+arch -x86_64 ./setdb add universe.db users alice bob carol
+arch -x86_64 ./setdb add universe.db admins alice
+arch -x86_64 ./setdb relation universe.db follows alice bob
+arch -x86_64 ./setdb relation universe.db follows bob carol
+arch -x86_64 ./setdb relation universe.db follows carol dana
+arch -x86_64 ./setdb diff universe.db users admins
+arch -x86_64 ./setdb select universe.db follows first alice
+arch -x86_64 ./setdb join universe.db follows follows
+arch -x86_64 ./setdb domain universe.db follows
+arch -x86_64 ./setdb range universe.db follows
+arch -x86_64 ./setdb inverse universe.db follows
+arch -x86_64 ./setdb transitive-closure universe.db follows
+```
+
+Output examples:
+
+```text
+bob
+carol
+```
+
+```text
+(alice,carol)
+(bob,dana)
+```
+
+```text
+(alice,bob)
+(alice,carol)
+(alice,dana)
+(bob,carol)
+(bob,dana)
+(carol,dana)
+```
+
+Homebrew:
+
+```sh
+brew install kroq86/fasm-mac/setdb
+setdb new universe.db
+```
+
+Release packaging:
+
+```sh
+scripts/build-setdb-release.sh 0.1.0
+```
+
+Smoke test:
+
+```sh
+scripts/check_setdb.sh
+```
+
 ## machodoctor
 
 Standalone macOS Mach-O inspector intended to ship as its own Homebrew formula
