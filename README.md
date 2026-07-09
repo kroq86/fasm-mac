@@ -726,6 +726,24 @@ arch -x86_64 ./setdb store-domain universe.db follows leaders
 arch -x86_64 ./setdb diff universe.db users leaders
 ```
 
+`load` bulk-applies facts from a file instead of one `setdb` process per
+fact — each line is `SADD`/`SREM`/`RADD`/`RREM`, the same wire format
+already used for `ops.log`; `#` and blank lines are ignored, and a bad
+line stops the load without rolling back lines already applied. `dump`
+prints the current state back out in that same format, so `dump | load`
+round-trips:
+
+```sh
+arch -x86_64 ./setdb load universe.db data/fasm_mac_readiness.setdb
+arch -x86_64 ./setdb dump universe.db > snapshot.setdb
+arch -x86_64 ./setdb new copy.db
+arch -x86_64 ./setdb load copy.db snapshot.setdb
+```
+
+`scripts/dogfood_setdb_fasm_mac.sh` uses `data/fasm_mac_readiness.setdb`
+to self-audit this repo with setdb: which apps lack a check/release
+script or Homebrew formula, which core headers have no app consumer.
+
 Output examples:
 
 ```text

@@ -26,6 +26,8 @@ include "fasm/core/platform.inc"
 SETDB_PATH_MAX equ 4096
 SETDB_PAYLOAD_MAX equ 1024
 SETDB_TEMP_ARENA_SIZE equ 65536
+LOAD_READ_BUF_SIZE equ 8192
+LOAD_LINE_BUF_SIZE equ 1024
 
 segment readable executable
 
@@ -34,6 +36,8 @@ include "fasm/core/str.inc"
 include "fasm/core/mem.inc"
 include "fasm/core/arena.inc"
 include "fasm/core/log_segment.inc"
+include "fasm/core/file.inc"
+include "fasm/core/scanner.inc"
 include "fasm/core/setdb.inc"
 
 entry start
@@ -92,6 +96,11 @@ start:
 	call	str_eq
 	test	rax, rax
 	jnz	cmd_relations_run
+	mov	rdi, [rbx + 16]
+	lea	rsi, [cmd_dump]
+	call	str_eq
+	test	rax, rax
+	jnz	cmd_dump_run
 	cmp	qword [argc], 4
 	jb	usage
 	mov	rdi, [rbx + 16]
@@ -229,6 +238,11 @@ start:
 	call	str_eq
 	test	rax, rax
 	jnz	cmd_store_inverse_run
+	mov	rdi, [rbx + 16]
+	lea	rsi, [cmd_load]
+	call	str_eq
+	test	rax, rax
+	jnz	cmd_load_run
 	jmp	usage
 
 help_run:
@@ -579,6 +593,78 @@ cmd_relations_run:
 	call	print_tmp_atoms_sorted
 	exit	EXIT_SUCCESS
 
+cmd_dump_run:
+	cmp	qword [argc], 3
+	jne	usage
+	call	load_db_from_argv
+	xor	rbx, rbx
+.set_loop:
+	cmp	rbx, [setdb_set_count]
+	jae	.rel_loop_init
+	mov	r12, rbx
+	imul	r12, SETDB_MAX_SET_MEMBERS
+	xor	r13, r13
+.member_loop:
+	cmp	r13, [setdb_set_counts + rbx * 8]
+	jae	.set_next
+	lea	rdi, [op_sadd]
+	call	print_cstr
+	mov	al, ' '
+	call	print_char
+	mov	rdi, [setdb_set_names + rbx * 8]
+	call	print_cstr
+	mov	al, ' '
+	call	print_char
+	mov	rax, r12
+	add	rax, r13
+	mov	rdi, [setdb_set_members + rax * 8]
+	call	print_cstr
+	mov	al, 10
+	call	print_char
+	inc	r13
+	jmp	.member_loop
+.set_next:
+	inc	rbx
+	jmp	.set_loop
+.rel_loop_init:
+	xor	rbx, rbx
+.rel_loop:
+	cmp	rbx, [setdb_rel_count]
+	jae	.done
+	mov	r12, rbx
+	imul	r12, SETDB_MAX_REL_PAIRS
+	xor	r13, r13
+.pair_loop:
+	cmp	r13, [setdb_rel_counts + rbx * 8]
+	jae	.rel_next
+	lea	rdi, [op_radd]
+	call	print_cstr
+	mov	al, ' '
+	call	print_char
+	mov	rdi, [setdb_rel_names + rbx * 8]
+	call	print_cstr
+	mov	al, ' '
+	call	print_char
+	mov	rax, r12
+	add	rax, r13
+	mov	rdi, [setdb_rel_left + rax * 8]
+	call	print_cstr
+	mov	al, ' '
+	call	print_char
+	mov	rax, r12
+	add	rax, r13
+	mov	rdi, [setdb_rel_right + rax * 8]
+	call	print_cstr
+	mov	al, 10
+	call	print_char
+	inc	r13
+	jmp	.pair_loop
+.rel_next:
+	inc	rbx
+	jmp	.rel_loop
+.done:
+	exit	EXIT_SUCCESS
+
 cmd_contains_run:
 	cmp	qword [argc], 4
 	jne	usage
@@ -791,6 +877,61 @@ store_tmp_pairs_into_rel:
 	pop	r13
 	pop	r12
 	pop	rbx
+	ret
+
+; Facts file: one op per line, same wire format as an ops.log payload
+; (SADD/SREM/RADD/RREM), '#'-prefixed and blank lines ignored. Each line is
+; applied to memory first (apply_payload, reusing the exact replay parser)
+; and only appended to ops.log if that succeeds, matching every other
+; mutating command's validate-then-append order.
+cmd_load_run:
+	cmp	qword [argc], 4
+	jne	usage
+	call	load_db_from_argv
+	mov	rbx, [argv_base]
+	mov	rdi, [rbx + 32]
+	lea	rsi, [load_read_buf]
+	mov	rdx, LOAD_READ_BUF_SIZE
+	lea	rcx, [load_line_buf]
+	mov	r8, LOAD_LINE_BUF_SIZE
+	lea	r9, [load_line_cb]
+	call	scanner_scan_file
+	cmp	rax, SCANNER_OK
+	jne	io_error
+	exit	EXIT_SUCCESS
+
+; rdi = line ptr (scanner's buffer, not null-terminated), rsi = line len,
+; rdx = line number (unused)
+; scanner_emit_line calls [scanner_callback] without saving r12/r13/r14 --
+; scanner_scan_file's own byte loop keeps live state in those registers
+; across the call. This callback must not touch them; stash rdi/rsi into
+; memory immediately instead of caching them in registers.
+load_line_cb:
+	mov	[load_cb_line_ptr], rdi
+	mov	[load_cb_line_len], rsi
+	test	rsi, rsi
+	jz	.done
+	mov	al, [rdi]
+	cmp	al, '#'
+	je	.done
+	mov	byte [rdi + rsi], 0
+	lea	rdi, [load_line_copy]
+	mov	rsi, [load_cb_line_ptr]
+	mov	rdx, [load_cb_line_len]
+	inc	rdx
+	call	memcpy
+	lea	rdi, [load_line_copy]
+	call	apply_payload
+	cmp	rax, 0
+	jl	usage
+	lea	rdi, [ops_log_path]
+	lea	rsi, [ops_idx_path]
+	mov	rdx, [load_cb_line_ptr]
+	mov	rcx, [load_cb_line_len]
+	call	log_segment_append
+	cmp	rax, LOGSEG_ERR
+	je	io_error
+.done:
 	ret
 
 load_db_from_argv:
@@ -1936,6 +2077,8 @@ cmd_tags db 'tags', 0
 cmd_store_domain db 'store-domain', 0
 cmd_store_range db 'store-range', 0
 cmd_store_inverse db 'store-inverse', 0
+cmd_load db 'load', 0
+cmd_dump db 'dump', 0
 cmd_help db 'help', 0
 opt_help db '--help', 0
 opt_h db '-h', 0
@@ -1994,6 +2137,8 @@ help_msg db 'setdb - pure set-theoretic database CLI', 10
 	db '  setdb store-domain DB REL NAME', 10
 	db '  setdb store-range DB REL NAME', 10
 	db '  setdb store-inverse DB REL NAME', 10
+	db '  setdb load DB FACTS_FILE', 10
+	db '  setdb dump DB', 10
 	db 10
 	db 'Model:', 10
 	db '  DB is a directory bundle with ops.log and ops.idx.', 10
@@ -2037,6 +2182,9 @@ help_msg db 'setdb - pure set-theoretic database CLI', 10
 	db '              Compute range(REL), then SADD each atom into set NAME.', 10
 	db '  store-inverse', 10
 	db '              Compute inverse(REL), then RADD each pair into relation NAME.', 10
+	db '  load        Apply each op line (SADD/SREM/RADD/RREM) from FACTS_FILE.', 10
+	db '              # and blank lines are ignored. One bad line stops the load.', 10
+	db '  dump        Print every set/relation as SADD/RADD lines; load-able.', 10
 	db 10
 	db 'Examples:', 10
 	db '  setdb new universe.db', 10
@@ -2084,8 +2232,14 @@ tok2 dq ?
 tok3 dq ?
 setdb_temp_arena rb ARENA_SIZE
 setdb_temp_storage rb SETDB_TEMP_ARENA_SIZE
+load_read_buf rb LOAD_READ_BUF_SIZE
+load_line_buf rb LOAD_LINE_BUF_SIZE + 1
+load_line_copy rb LOAD_LINE_BUF_SIZE + 1
+load_cb_line_ptr dq ?
+load_cb_line_len dq ?
 
 include "fasm/core/runtime_bss.inc"
 runtime_print_bss
 log_segment_bss
 setdb_bss
+scanner_bss

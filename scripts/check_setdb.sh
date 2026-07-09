@@ -31,7 +31,7 @@ expect() {
 }
 
 help_out="$(run help)"
-for word in new add remove relation unrelation members member union intersect diff subset select join domain range inverse rdiff runion rintersect transitive-closure sets relations contains pairs tag files tags store-domain store-range store-inverse; do
+for word in new add remove relation unrelation members member union intersect diff subset select join domain range inverse rdiff runion rintersect transitive-closure sets relations contains pairs tag files tags store-domain store-range store-inverse load dump; do
   if ! grep -q "  $word" <<< "$help_out"; then
     echo "FAIL help missing command: $word" >&2
     exit 1
@@ -98,10 +98,53 @@ expect store-inverse $'(bob,alice)\n(carol,bob)\n(dana,carol)' pairs "$DB" follo
 run add "$DB" all_people alice bob carol dana eve
 expect diff-after-store $'dana\neve' diff "$DB" all_people follows_domain
 
+# load: bulk-apply SADD/SREM/RADD/RREM lines from a facts file in one
+# invocation, instead of one setdb process per fact.
+FACTS="$OUT_DIR/facts.setdb"
+cat >"$FACTS" <<'FACTSEOF'
+# comment and blank lines are ignored
+
+SADD load_apps setdb
+SADD load_apps logvec
+RADD load_has_check setdb scripts/check_setdb.sh
+FACTSEOF
+LOAD_DB="$OUT_DIR/load.db"
+run new "$LOAD_DB"
+run load "$LOAD_DB" "$FACTS"
+expect load-set $'logvec\nsetdb' members "$LOAD_DB" load_apps
+expect load-rel '(setdb,scripts/check_setdb.sh)' pairs "$LOAD_DB" load_has_check
+
+# dump: round trip through dump -> load must reproduce the same state.
+DUMPED="$OUT_DIR/dumped.setdb"
+run dump "$LOAD_DB" >"$DUMPED"
+LOAD_DB2="$OUT_DIR/load2.db"
+run new "$LOAD_DB2"
+run load "$LOAD_DB2" "$DUMPED"
+if [[ "$(run dump "$LOAD_DB" | sort)" != "$(run dump "$LOAD_DB2" | sort)" ]]; then
+  echo 'FAIL dump/load round trip mismatch' >&2
+  exit 1
+fi
+
+# a bad line stops the load but does not roll back lines already applied
+BAD_FACTS="$OUT_DIR/bad_facts.setdb"
+cat >"$BAD_FACTS" <<'BADEOF'
+SADD partial_set atom1
+BOGUS not a real opcode
+SADD partial_set atom2
+BADEOF
+BAD_DB="$OUT_DIR/bad.db"
+run new "$BAD_DB"
+if run load "$BAD_DB" "$BAD_FACTS" >/dev/null 2>"$OUT_DIR/load-bad.err"; then
+  echo 'FAIL load with a bad line should exit non-zero' >&2
+  exit 1
+fi
+expect load-partial 'atom1' members "$BAD_DB" partial_set
+
 EMPTY_DB="$OUT_DIR/empty.db"
 run new "$EMPTY_DB"
 expect sets-empty '' sets "$EMPTY_DB"
 expect relations-empty '' relations "$EMPTY_DB"
+expect dump-empty '' dump "$EMPTY_DB"
 
 run tag "$DB" song1.mp3 music jazz
 run tag "$DB" song2.mp3 music
@@ -135,6 +178,10 @@ if run tag "$DB" song3.mp3 >/dev/null 2>"$OUT_DIR/tag-arity.err"; then
 fi
 if run store-domain "$DB" follows >/dev/null 2>"$OUT_DIR/store-arity.err"; then
   echo 'FAIL store-domain with no target name should exit non-zero' >&2
+  exit 1
+fi
+if run load "$DB" "$OUT_DIR/no-such-facts-file.setdb" >/dev/null 2>"$OUT_DIR/load-missing.err"; then
+  echo 'FAIL load with a missing facts file should exit non-zero' >&2
   exit 1
 fi
 
