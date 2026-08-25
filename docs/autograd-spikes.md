@@ -401,3 +401,25 @@ allocation detect writes beyond the declared tensor ranges.
 ```sh
 scripts/check_tensor_volume_stress.sh
 ```
+
+## setdb ML projection spike
+
+The tensor runtime is kept outside `setdb`. A facts file supplies an `entities`
+set plus `feature(entity, name)` and optional `label(entity, class)` relations.
+The projection converts four symbolic features into a multi-hot matrix, trains
+a compiled `4 → 6 → 1` MLP on six labelled entities, and emits ordinary
+load-compatible facts for two unlabelled entities:
+
+```text
+RADD ml/class/v1 eta safe
+RADD ml/class/v1 theta risky
+```
+
+The regression loads both the source facts and generated predictions through
+the real `setdb` CLI and verifies the materialized relation. Thus setdb remains
+the deterministic source of truth while neural output is an explicitly
+versioned, disposable projection.
+
+```sh
+scripts/check_setdb_ml_spike.sh
+```

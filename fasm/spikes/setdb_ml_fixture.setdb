@@ -1,0 +1,31 @@
+SADD entities alpha
+SADD entities beta
+SADD entities gamma
+SADD entities delta
+SADD entities epsilon
+SADD entities zeta
+SADD entities eta
+SADD entities theta
+RADD feature alpha check
+RADD feature alpha release
+RADD feature alpha docs
+RADD feature alpha tests
+RADD feature beta check
+RADD feature beta docs
+RADD feature beta tests
+RADD feature gamma check
+RADD feature delta release
+RADD feature epsilon release
+RADD feature epsilon docs
+RADD feature epsilon tests
+RADD feature zeta docs
+RADD feature eta check
+RADD feature eta docs
+RADD feature eta tests
+RADD feature theta docs
+RADD label alpha safe
+RADD label beta safe
+RADD label gamma risky
+RADD label delta risky
+RADD label epsilon safe
+RADD label zeta risky

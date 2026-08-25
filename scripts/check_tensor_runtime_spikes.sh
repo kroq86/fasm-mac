@@ -22,6 +22,7 @@ checks=(
   check_mlp_f32.sh
   check_xor_tensor.sh
   check_digits_tensor.sh
+  check_setdb_ml_spike.sh
 )
 
 for check in "${checks[@]}"; do
