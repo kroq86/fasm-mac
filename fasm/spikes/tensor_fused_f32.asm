@@ -8,10 +8,14 @@ public tensor_plan_matmul_bias_forward_f32
 public tensor_plan_matmul_bias_backward_f32
 public tensor_plan_matmul_bias_relu_forward_f32
 public tensor_plan_matmul_bias_relu_backward_f32
+public tensor_plan_mse_backward_zero_lhs_f32
 extrn tensor_matmul_forward_f32
 extrn tensor_matmul_backward_f32
+extrn tensor_matmul_backward_lhs_f32
+extrn tensor_matmul_backward_rhs_f32
 extrn tensor_bias_add_forward_f32
 extrn tensor_bias_add_backward_f32
 extrn tensor_relu_forward_f32
 extrn tensor_relu_backward_f32
+extrn tensor_mse_backward_f32
 include 'fasm/core/tensor_fused_f32.inc'

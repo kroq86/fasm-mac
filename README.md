@@ -208,6 +208,22 @@ A complete two-layer XOR training example consumes those helpers:
 scripts/check_xor_tensor.sh
 ```
 
+Build a persistent experimental training executable (x86_64 macOS; Rosetta is
+used when running it on Apple Silicon):
+
+```sh
+scripts/build-xor-tensor.sh
+arch -x86_64 fasm/build/out/xor-tensor-train
+```
+
+A larger experimental classifier learns all ten decimal digits from their
+seven-segment display patterns with a `7 → 16 → 10` network:
+
+```sh
+scripts/build-digits-tensor.sh
+arch -x86_64 fasm/build/out/digits-tensor-train
+```
+
 | Command | Problem / approach | Output |
 |---------|--------------------|--------|
 | `best_time_to_buy_sell_stock.asm` | LC 121 via `dp.inc` | `5` |

@@ -13,6 +13,9 @@ typedef struct {
 
 extern int tensor_matmul_forward_f32(const Tensor *, const Tensor *, Tensor *);
 extern int tensor_matmul_backward_f32(Tensor *, Tensor *, const Tensor *);
+extern int tensor_matmul_backward_lhs_f32(Tensor *, Tensor *, const Tensor *);
+extern int tensor_matmul_backward_rhs_f32(Tensor *, Tensor *, const Tensor *);
+extern int tensor_matmul_backward_both_f32(Tensor *, Tensor *, const Tensor *);
 
 static float loss(const Tensor *out, const float *seed) {
     float sum = 0.0f;
@@ -86,11 +89,27 @@ static int check_shared_operand(void) {
     return 0;
 }
 
+static int check_selective(void) {
+    float ad[6]={1,2,3,4,5,6},bd[6]={.5f,-1,2,.25f,-.5f,3};
+    float full_ag[6]={0},full_bg[6]={0},lhs_ag[6]={0},rhs_bg[6]={0};
+    float od[4]={0},og[4]={1,-2,.5f,3};
+    Tensor af={ad,full_ag,2,3},bf={bd,full_bg,3,2},out={od,og,2,2};
+    if(tensor_matmul_forward_f32(&af,&bf,&out)||tensor_matmul_backward_both_f32(&af,&bf,&out))return 1;
+    Tensor al={ad,lhs_ag,2,3},b_no_grad={bd,0,3,2};
+    if(tensor_matmul_backward_lhs_f32(&al,&b_no_grad,&out))return 1;
+    Tensor a_no_grad={ad,0,2,3},br={bd,rhs_bg,3,2};
+    if(tensor_matmul_backward_rhs_f32(&a_no_grad,&br,&out))return 1;
+    for(int i=0;i<6;i++)if(fabsf(lhs_ag[i]-full_ag[i])>1e-6f||fabsf(rhs_bg[i]-full_bg[i])>1e-6f)return 1;
+    if(tensor_matmul_backward_lhs_f32(&a_no_grad,&br,&out)!=-1)return 1;
+    if(tensor_matmul_backward_rhs_f32(&al,&b_no_grad,&out)!=-1)return 1;
+    return 0;
+}
+
 int main(void) {
     const uint64_t cases[][3] = {{1,1,1}, {2,7,3}, {2,8,3}, {2,9,3}, {3,2,4}};
     for (size_t i = 0; i < sizeof(cases)/sizeof(cases[0]); ++i)
         if (check_case(cases[i][0], cases[i][1], cases[i][2])) return 1;
-    if (check_accumulation() || check_shared_operand()) return 1;
+    if (check_accumulation() || check_shared_operand() || check_selective()) return 1;
 
     float x = 1.0f, g = 0.0f;
     Tensor a = {&x, &g, 1, 1}, b = {&x, &g, 2, 1}, out = {&x, &g, 1, 1};
@@ -98,6 +117,6 @@ int main(void) {
         fputs("shape mismatch was accepted\n", stderr);
         return 1;
     }
-    puts("tensor matmul spike passed: gradients/tails/shapes/accumulation/sharing");
+    puts("tensor matmul spike passed: gradients/tails/shapes/accumulation/sharing/selective-lhs-rhs-both");
     return 0;
 }

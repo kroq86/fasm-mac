@@ -63,10 +63,11 @@ main:
 	jne	.context_failed
 	mov	r12, 1500
 .train:
-	; Static liveness plan: clear the one shared 384-byte scratch arena before
+	; Four-slot static liveness plan. Fused backward kernels execute zero-grad
+	; actions exactly when an accumulating destination starts a reused lifetime.
 	; forward. Saved forward values then remain intact until their backward use.
 	lea	rdi, [scratch]
-	mov	rcx, 48
+	mov	rcx, 32
 	xor	eax, eax
 	rep stosq
 	lea	rdi, [x_grad]
@@ -97,7 +98,7 @@ main:
 	jnz	.train
 
 	lea	rdi, [scratch]
-	mov	rcx, 48
+	mov	rcx, 32
 	xor	eax, eax
 	rep stosq
 	lea	rdi, [plan_steps]
@@ -191,7 +192,7 @@ low_limit dd 0.1
 high_limit dd 0.9
 loss_limit dd 0.01
 thousand dd 1000.0
-result_format db 'xor trained plan_steps=3 fused_contexts=2 scratch_bytes=384 loss_milli=%d predictions_milli=%d %d %d %d',10,0
+result_format db 'xor trained plan_steps=3 fused_contexts=2 matmul_masks=rhs,both scratch_zero_actions=5 remat_actions=1 scratch_bytes=256 loss_milli=%d predictions_milli=%d %d %d %d',10,0
 
 x_data dd 0.0,0.0, 0.0,1.0, 1.0,0.0, 1.0,1.0
 x_grad rd 8
@@ -207,17 +208,17 @@ target_data dd 0.0,1.0,1.0,0.0
 loss_grad dd 1.0
 
 align 64
-scratch rb 384
+scratch rb 256
 z1_data = scratch + 0
-z1_grad = scratch + 160
+z1_grad = scratch + 64
 z1b_data = scratch + 64
-z1b_grad = scratch + 224
+z1b_grad = scratch + 0
 h_data = scratch + 0
-h_grad = scratch + 288
+h_grad = scratch + 128
 z2_data = scratch + 128
-z2_grad = scratch + 352
-pred_data = scratch + 144
-pred_grad = scratch + 368
+z2_grad = scratch + 192
+pred_data = scratch + 192
+pred_grad = scratch + 128
 loss_data = scratch + 128
 
 align 8
@@ -243,7 +244,7 @@ align 8
 plan_count dq 0
 context_count dq 0
 plan_steps rb 3 * 40
-fusion_contexts rb 2 * 48
+fusion_contexts rb 2 * 56
 
 macro node op,lhs,rhs,flags,tensor,slot
 {

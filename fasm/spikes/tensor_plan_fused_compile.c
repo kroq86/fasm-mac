@@ -4,8 +4,9 @@
 typedef struct { float *data,*grad; uint64_t rows,cols; } Tensor;
 typedef struct { uint32_t op,lhs,rhs,flags; Tensor *tensor; uint32_t slot,gen; } Node;
 typedef struct { void *forward,*backward; Tensor *lhs,*rhs,*out; } Step;
-typedef struct { Tensor *a,*w,*bias,*matmul_out,*bias_out,*out; } FusionContext;
+typedef struct { Tensor *a,*w,*bias,*matmul_out,*bias_out,*out; uint64_t action_flags; } FusionContext;
 enum { LEAF, MATMUL, RELU, MSE, BIAS };
+enum { PARAM=1, CONSTANT=2, INPUT=4, TEMP=8 };
 
 extern int tensor_matmul_forward_f32(Tensor*,Tensor*,Tensor*);
 extern int tensor_matmul_backward_f32(Tensor*,Tensor*,Tensor*);
@@ -13,6 +14,7 @@ extern int tensor_relu_forward_f32(Tensor*,Tensor*);
 extern int tensor_relu_backward_f32(Tensor*,Tensor*);
 extern int tensor_mse_forward_f32(Tensor*,Tensor*,Tensor*);
 extern int tensor_mse_backward_f32(Tensor*,Tensor*,Tensor*);
+extern int tensor_plan_mse_backward_zero_lhs_f32(Tensor*,Tensor*,Tensor*);
 extern int tensor_bias_add_forward_f32(Tensor*,Tensor*,Tensor*);
 extern int tensor_bias_add_backward_f32(Tensor*,Tensor*,Tensor*);
 extern int tensor_plan_matmul_bias_forward_f32(void*,void*,void*);
@@ -33,7 +35,7 @@ static void plain_step(const Node*base,const Node*node,Step*s){
  switch(node->op){
   case MATMUL:s->forward=(void*)tensor_matmul_forward_f32;s->backward=(void*)tensor_matmul_backward_f32;break;
   case RELU:s->forward=(void*)tensor_relu_forward_f32;s->backward=(void*)tensor_relu_backward_f32;break;
-  case MSE:s->forward=(void*)tensor_mse_forward_f32;s->backward=(void*)tensor_mse_backward_f32;break;
+  case MSE:s->forward=(void*)tensor_mse_forward_f32;s->backward=(void*)tensor_plan_mse_backward_zero_lhs_f32;break;
   default:s->forward=(void*)tensor_bias_add_forward_f32;s->backward=(void*)tensor_bias_add_backward_f32;break;
  }
 }
@@ -43,15 +45,24 @@ int tensor_plan_compile_fused_f32(const Node*n,uint64_t count,Step*steps,uint64_
                                   FusionContext*contexts,uint64_t context_cap,
                                   uint64_t*out_count,uint64_t*out_context_count){
  if(!n||!count||!steps||!contexts||!out_count||!out_context_count)return -1;
+ uint8_t depends[256]={0},edge_mask[256]={0};
+ if(count>256)return -2;
+ for(uint64_t j=0;j<count;j++){
+  if(n[j].op==LEAF){depends[j]=n[j].flags==PARAM;continue;}
+  edge_mask[j]=(depends[n[j].lhs]?1:0)|((n[j].op!=RELU&&depends[n[j].rhs])?2:0);
+  depends[j]=edge_mask[j]!=0;
+ }
  uint64_t pc=0,cc=0;
  for(uint64_t i=0;i<count;){
   if(n[i].op==LEAF){i++;continue;}
-  if(n[i].op==MATMUL&&i+1<count&&n[i+1].op==BIAS&&n[i+1].lhs==i&&consumers(n,count,(uint32_t)i)==1){
+  if(n[i].op==MATMUL&&i+1<count&&n[i+1].op==BIAS&&n[i+1].lhs==i&&
+     consumers(n,count,(uint32_t)i)==1&&consumers(n,count,n[i].lhs)==1){
    int with_relu=i+2<count&&n[i+2].op==RELU&&n[i+2].lhs==i+1&&consumers(n,count,(uint32_t)(i+1))==1;
    if(pc==cap||cc==context_cap)return -3;
    FusionContext*c=&contexts[cc++];
    c->a=n[n[i].lhs].tensor;c->w=n[n[i].rhs].tensor;c->bias=n[n[i+1].rhs].tensor;
    c->matmul_out=n[i].tensor;c->bias_out=n[i+1].tensor;c->out=with_relu?n[i+2].tensor:n[i+1].tensor;
+   c->action_flags=(with_relu?1u:0u)|((uint64_t)edge_mask[i]<<8);
    steps[pc].lhs=(Tensor*)c;steps[pc].rhs=0;steps[pc].out=c->out;
    if(with_relu){steps[pc].forward=(void*)tensor_plan_matmul_bias_relu_forward_f32;steps[pc].backward=(void*)tensor_plan_matmul_bias_relu_backward_f32;i+=3;}
    else{steps[pc].forward=(void*)tensor_plan_matmul_bias_forward_f32;steps[pc].backward=(void*)tensor_plan_matmul_bias_backward_f32;i+=2;}

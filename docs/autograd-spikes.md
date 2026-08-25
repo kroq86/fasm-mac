@@ -296,26 +296,24 @@ for example `z1.data` lives at events 0-1 while `z1.grad` lives at 10-11.
 Inclusive interval coloring gives a 256-byte theoretical lower bound (four
 64-byte slots). Intervals must be processed by first use; declaration order
 produced a needlessly large five-slot plan in the initial spike. The executable
-plan must additionally respect the current kernels' accumulation contract:
-backward destinations use `grad += ...`, so a recycled gradient slot requires
-an explicit zero-init step at the start of its new lifetime. That step is not in
-the plan ABI yet. The safe plan therefore reuses saved-data ranges but keeps the
-five gradient ranges unique: data peak 160 bytes plus 224 gradient bytes equals
-384 bytes. The raw all-buffer live peak is 208 bytes.
+plan must additionally respect the kernels' accumulation contract: backward
+destinations use `grad += ...`, so a recycled gradient slot requires an explicit
+zero action at the start of its new lifetime. The runtime now schedules five
+such scratch actions at the exact internal fused-kernel boundaries and safely
+uses the four-slot, 256-byte plan. The prior conservative layout was 384 bytes;
+the raw all-buffer live peak is 208 bytes.
 
 ```sh
 scripts/check_tensor_liveness_spike.sh
 ```
 
-The XOR executable now applies the conservative offsets to one real 384-byte
+The XOR executable now applies the four-slot offsets to one real 256-byte
 scratch block. Automatic lowering recognizes both single-consumer chains and
 executes three direct-call steps (`MBR`, `MB`, `MSE`) instead of six. Its eleven
 former distinct buffers contain 452 payload bytes (704 bytes if every allocation
-is independently rounded to 64 bytes), so the currently executable reuse saves
-68 payload bytes, about 15%. Reaching the 256-byte lower bound requires compiler-
-inserted zero-init steps or overwrite-mode backward kernels. Plan integration
-also required a unary ReLU thunk so every direct step can use the common
-`(lhs, rhs, out)` call shape.
+is independently rounded to 64 bytes), so executable reuse saves 196 payload
+bytes, about 43%. Plan integration also required a unary ReLU thunk so every
+direct step can use the common `(lhs, rhs, out)` call shape.
 
 ## Execution-fusion kernel spike
 
@@ -325,7 +323,7 @@ operations. The semantic operations and their intermediate tensors remain
 present; fusion is only an alternative compiled execution step.
 
 The existing 40-byte `PlanStep` is unchanged. A fused step stores a pointer to
-a 48-byte `FusionContext` in its `lhs` field; a thunk expands that context into
+a 56-byte `FusionContext` in its `lhs` field; a thunk expands that context into
 `A`, `W`, bias, saved matmul output, saved bias output, and final output. The
 context is owned by and must live as long as the compiled plan. The spike proves
 three semantic operations execute as one PlanStep with identical forward values
@@ -347,13 +345,59 @@ blocks the affected fusion.
 
 The same pass produces nine edge-level gradient requirements, per-step save
 masks, one explicit rematerialization action that trades a saved 64-byte
-pre-ReLU value for recomputation, and four zero-init actions required by the
+pre-ReLU value for recomputation, and the zero-init actions required by the
 256-byte scratch lower-bound plan. Freezing every parameter produces an empty
 backward plan. The assembly XOR executable now consumes the fused contexts and
 locks the former unfused result (`loss=0`, predictions `0 999 999 0`) as its
-exact regression baseline. Emission of zero-init and rematerialization action
-kinds remains necessary before switching runtime scratch from 384 to 256 bytes.
+exact regression baseline. It now executes five scratch-zero actions and one
+real rematerialization action, reducing runtime scratch from 384 to 256 bytes.
 
 ```sh
 scripts/check_tensor_compiler_planner_spike.sh
+```
+
+## Selective matmul backward spike
+
+Scalar matmul now exposes `lhs-only`, `rhs-only`, and `both` backward
+entrypoints under the same three-Tensor calling convention. An unrequested
+operand may have `grad=NULL`; requested gradients match the full scalar
+reference and retain accumulation semantics. The fused compiler stores the
+matmul edge mask in `FusionContext` rather than widening `PlanStep`.
+
+On XOR, the first layer selects `rhs-only` (compute `dW1`, prune `dX`) and the
+second selects `both` (compute `dH` and `dW2`). The three-step, 256-byte runtime
+still matches the unfused baseline exactly. A frozen second-layer parameter is
+covered analytically by the needs-grad planner and selects `lhs-only`; SIMD
+specializations for the selective entrypoints remain a separate performance
+spike.
+
+## Seven-segment digit classifier
+
+`digits_tensor_train.c` is the first workload beyond XOR. It embeds the ten
+canonical seven-segment patterns and trains a `7 → 16 → 10` classifier with a
+ten-column one-hot target. The unchanged compiler lowers its six semantic
+operations to three fused PlanSteps and reaches deterministic 10/10 training
+accuracy. Width seven also exercises a non-vector-width input shape. This
+example intentionally retains distinct temporary buffers, providing the next
+larger graph on which to validate generated liveness offsets instead of copying
+the XOR-specific static layout.
+
+Before training, the digits executable runs the complete batch through both the
+six-step unfused plan and the three-step fused plan. All 100 predictions and all
+298 parameter gradients must match exactly.
+
+```sh
+scripts/check_digits_tensor.sh
+```
+
+## Volume and guard stress
+
+The matmul stress gate runs 144 deterministic shapes drawn from dimensions
+`1,2,3,7,8,9,15,16,17,31,32,33`. Every forward is compared with a C scalar
+reference, and `lhs-only`/`rhs-only` gradients are compared with `both`.
+Eight-float canaries on both sides of every data, output, seed, and gradient
+allocation detect writes beyond the declared tensor ranges.
+
+```sh
+scripts/check_tensor_volume_stress.sh
 ```

@@ -4,7 +4,7 @@
 #include <string.h>
 typedef struct { float *data,*grad; uint64_t rows,cols; } Tensor;
 typedef struct { void *forward,*backward; Tensor *lhs,*rhs,*out; } Step;
-typedef struct { Tensor *a,*w,*bias,*matmul_out,*bias_out,*out; } FusionContext;
+typedef struct { Tensor *a,*w,*bias,*matmul_out,*bias_out,*out; uint64_t action_flags; } FusionContext;
 extern int tensor_matmul_forward_f32(Tensor*,Tensor*,Tensor*);
 extern int tensor_matmul_backward_f32(Tensor*,Tensor*,Tensor*);
 extern int tensor_bias_add_forward_f32(Tensor*,Tensor*,Tensor*);
@@ -41,5 +41,5 @@ int main(void){
  Step fused={(void*)tensor_plan_matmul_bias_relu_forward_f32,(void*)tensor_plan_matmul_bias_relu_backward_f32,(Tensor*)&context,0,0};
  if(tensor_plan_forward_f32(&fused,1)||tensor_plan_backward_f32(&fused,1))return 1;
  if(!closev(o0,o1,4)||!closev(ag0,ag1,6)||!closev(wg0,wg1,6)||!closev(bg0,bg1,2))return 1;
- puts("tensor fusion spike passed: semantic_ops=3 lowered_steps=1 PlanStep=40 context=48 scalar-reference");return 0;
+ puts("tensor fusion spike passed: semantic_ops=3 lowered_steps=1 PlanStep=40 context=56 scalar-reference");return 0;
 }

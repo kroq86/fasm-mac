@@ -17,9 +17,11 @@ checks=(
   check_tensor_liveness_spike.sh
   check_tensor_sgd_spike.sh
   check_tensor_simd_spike.sh
+  check_tensor_volume_stress.sh
   check_autograd_f32.sh
   check_mlp_f32.sh
   check_xor_tensor.sh
+  check_digits_tensor.sh
 )
 
 for check in "${checks[@]}"; do

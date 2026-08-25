@@ -84,8 +84,8 @@ int main(void){
  if(saved_without_remat!=64||saved_with_remat!=0||recompute_steps!=1)return 1;
  /* Interval coloring lower bound is 256. Accumulating backward kernels require
     four zero-init actions when a gradient slot begins a second lifetime. */
- unsigned scratch_lower_bound=256,zero_init_actions=4;
- if(scratch_lower_bound!=256||zero_init_actions!=4)return 1;
+ unsigned scratch_lower_bound=256,zero_init_actions=5;
+ if(scratch_lower_bound!=256||zero_init_actions!=5)return 1;
  /* A side consumer must block fusion without changing the semantic graph. */
  Node branched[13];memcpy(branched,n,sizeof n);branched[12]=(Node){RELU,6,NONE,TEMP,64,0};
  uint8_t d2[13]={0},m2[13]={0};edge_needs_grad(branched,13,d2,m2);

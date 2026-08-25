@@ -177,6 +177,138 @@ tensor_matmul_backward_f32:
 	mov	eax, -1
 	ret
 
+; Selective backward ABI. The unrequested operand may have grad=NULL.
+; lhs: dA only, rhs: dB only, both: compatibility alias for the full kernel.
+tensor_matmul_backward_lhs_f32:
+	mov	ecx, 1
+	jmp	tensor_matmul_backward_selective_f32
+tensor_matmul_backward_rhs_f32:
+	mov	ecx, 2
+	jmp	tensor_matmul_backward_selective_f32
+tensor_matmul_backward_both_f32:
+	jmp	tensor_matmul_backward_f32
+
+tensor_matmul_backward_selective_f32:
+	push	rbp
+	mov	rbp, rsp
+	push	rbx
+	push	r12
+	push	r13
+	push	r14
+	push	r15
+	sub	rsp, 40
+	mov	[rbp - 48], rcx
+	mov	r12, rdi
+	mov	r13, rsi
+	mov	r14, rdx
+	call	tensor_matmul_validate
+	test	eax, eax
+	jnz	.tms_out
+	cmp	qword [r14 + TENSOR_GRAD], 0
+	je	.tms_bad
+	test	qword [rbp - 48], 1
+	jz	.tms_check_rhs
+	cmp	qword [r12 + TENSOR_GRAD], 0
+	je	.tms_bad
+.tms_check_rhs:
+	test	qword [rbp - 48], 2
+	jz	.tms_load
+	cmp	qword [r13 + TENSOR_GRAD], 0
+	je	.tms_bad
+.tms_load:
+	mov	rax, [r14 + TENSOR_GRAD]
+	mov	[rbp - 56], rax
+	mov	rax, [r12 + TENSOR_ROWS]
+	mov	[rbp - 64], rax
+	mov	rbx, [r12 + TENSOR_COLS]
+	mov	rax, [r13 + TENSOR_COLS]
+	mov	[rbp - 72], rax
+	test	qword [rbp - 48], 1
+	jz	.tms_rhs
+	mov	r13, [r12 + TENSOR_GRAD]
+	mov	r14, [rsi + TENSOR_DATA]
+	xor	r8, r8
+.tms_ai:
+	xor	r9, r9
+.tms_ak:
+	xorps	xmm0, xmm0
+	xor	rcx, rcx
+.tms_aj:
+	mov	r10, r8
+	imul	r10, [rbp - 72]
+	add	r10, rcx
+	mov	r11, [rbp - 56]
+	movss	xmm1, [r11 + r10 * 4]
+	mov	r10, r9
+	imul	r10, [rbp - 72]
+	add	r10, rcx
+	mulss	xmm1, [r14 + r10 * 4]
+	addss	xmm0, xmm1
+	inc	rcx
+	cmp	rcx, [rbp - 72]
+	jb	.tms_aj
+	mov	r10, r8
+	imul	r10, rbx
+	add	r10, r9
+	addss	xmm0, [r13 + r10 * 4]
+	movss	[r13 + r10 * 4], xmm0
+	inc	r9
+	cmp	r9, rbx
+	jb	.tms_ak
+	inc	r8
+	cmp	r8, [rbp - 64]
+	jb	.tms_ai
+.tms_rhs:
+	test	qword [rbp - 48], 2
+	jz	.tms_ok
+	mov	r12, [rdi + TENSOR_DATA]
+	mov	r15, [rsi + TENSOR_GRAD]
+	xor	r8, r8
+.tms_bk:
+	xor	r9, r9
+.tms_bj:
+	xorps	xmm0, xmm0
+	xor	rcx, rcx
+.tms_bi:
+	mov	r10, rcx
+	imul	r10, rbx
+	add	r10, r8
+	movss	xmm1, [r12 + r10 * 4]
+	mov	r10, rcx
+	imul	r10, [rbp - 72]
+	add	r10, r9
+	mov	r11, [rbp - 56]
+	mulss	xmm1, [r11 + r10 * 4]
+	addss	xmm0, xmm1
+	inc	rcx
+	cmp	rcx, [rbp - 64]
+	jb	.tms_bi
+	mov	r10, r8
+	imul	r10, [rbp - 72]
+	add	r10, r9
+	addss	xmm0, [r15 + r10 * 4]
+	movss	[r15 + r10 * 4], xmm0
+	inc	r9
+	cmp	r9, [rbp - 72]
+	jb	.tms_bj
+	inc	r8
+	cmp	r8, rbx
+	jb	.tms_bk
+.tms_ok:
+	xor	eax, eax
+	jmp	.tms_out
+.tms_bad:
+	mov	eax, -1
+.tms_out:
+	add	rsp, 40
+	pop	r15
+	pop	r14
+	pop	r13
+	pop	r12
+	pop	rbx
+	pop	rbp
+	ret
+
 ; Shared descriptor validation. Preserves rdi/rsi/rdx; returns eax.
 tensor_matmul_validate:
 	test	rdi, rdi
