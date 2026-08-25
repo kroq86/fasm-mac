@@ -1,0 +1,10 @@
+format ELF64
+section '.text' executable
+public tensor_relu_forward_f32
+public tensor_relu_backward_f32
+public tensor_mse_forward_f32
+public tensor_mse_backward_f32
+public tensor_bias_add_forward_f32
+public tensor_bias_add_backward_f32
+extrn tensor_shape_validate_f32
+include 'fasm/core/tensor_ops_f32.inc'

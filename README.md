@@ -178,6 +178,36 @@ thin wrappers around reusable helpers in `fasm/core`.
 scripts/check_leetcode_examples.sh
 ```
 
+### MLP primitives
+
+`fasm/core/mlp_f32.inc` provides composable C-ABI primitives for an affine
+dense layer (`Wx+b`) and an independent ReLU activation. The two-layer
+`fasm/examples/mlp_forward.asm` example keeps model weights and wiring outside
+core, leaving the operations suitable for a future autograd tape.
+
+```sh
+scripts/check_mlp_f32.sh
+```
+
+`fasm/core/autograd_f32.inc` is an experimental caller-owned scalar computation
+tape with reverse-mode gradients for leaf values, addition, multiplication,
+and ReLU. It is a correctness/reference spike, not the tensor training model;
+the constraints and pre-XOR gates are recorded in `docs/autograd-spikes.md`.
+
+```sh
+scripts/check_autograd_f32.sh
+```
+
+The experimental scalar tensor ABI lives in `fasm/core/tensor_runtime_f32.inc`
+with matmul, bias-add, ReLU, MSE, indexed-tape execution, lifetime validation,
+and SGD implementations in focused `tensor_*_f32.inc` modules. Kernel calling
+conventions are under test; planner, action, and ownership ABIs are not frozen.
+A complete two-layer XOR training example consumes those helpers:
+
+```sh
+scripts/check_xor_tensor.sh
+```
+
 | Command | Problem / approach | Output |
 |---------|--------------------|--------|
 | `best_time_to_buy_sell_stock.asm` | LC 121 via `dp.inc` | `5` |

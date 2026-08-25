@@ -1,0 +1,16 @@
+format ELF64
+section '.text' executable
+public tensor_tape_forward_f32
+public tensor_tape_backward_f32
+extrn tensor_tape_validate_f32
+extrn tensor_tape_lifetime_validate_f32
+extrn tensor_shape_validate_f32
+extrn tensor_matmul_forward_f32
+extrn tensor_matmul_backward_f32
+extrn tensor_relu_forward_f32
+extrn tensor_relu_backward_f32
+extrn tensor_mse_forward_f32
+extrn tensor_mse_backward_f32
+extrn tensor_bias_add_forward_f32
+extrn tensor_bias_add_backward_f32
+include 'fasm/core/tensor_tape_exec_f32.inc'
