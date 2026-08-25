@@ -1,0 +1,9 @@
+[
+  {
+    "doc_id": 2,
+    "score": 1.0,
+    "path": "src/middleware.go",
+    "offset": 0,
+    "snippet": "HTTP middleware AuthMiddleware wraps handlers for authorization checks."
+  }
+]

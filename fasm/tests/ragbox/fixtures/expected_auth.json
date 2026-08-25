@@ -1,0 +1,9 @@
+[
+  {
+    "doc_id": 0,
+    "score": 1.0,
+    "path": "docs/auth.md",
+    "offset": 0,
+    "snippet": "JWT authentication and login middleware validate bearer tokens."
+  }
+]

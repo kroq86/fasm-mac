@@ -1,0 +1,248 @@
+# fasm-mac product readiness facts, loaded by:
+#   setdb load DB data/fasm_mac_readiness.setdb
+# Regenerate by re-running the discovery loop this file was built from
+# (see scripts/dogfood_setdb_fasm_mac.sh git history) against a fresh
+# repo state; this is a snapshot, not derived automatically at load time.
+
+SADD apps fscan
+SADD apps hexpeek
+SADD apps httpmini
+SADD apps logbus
+SADD apps logknife
+SADD apps macdbg
+SADD apps machodoctor
+SADD apps miniredis_server
+SADD apps miniredis
+SADD apps pathsum
+SADD apps raymaze
+SADD apps setdb
+SADD apps shipcheck
+SADD apps eml_sr
+SADD apps logvec
+SADD apps ragbox
+
+RADD has_check fscan scripts/check_fscan.sh
+RADD has_release fscan scripts/build-fscan-release.sh
+RADD has_formula fscan Formula/fscan.rb
+RADD has_check hexpeek scripts/check_hexpeek.sh
+RADD has_release hexpeek scripts/build-hexpeek-release.sh
+RADD has_formula hexpeek Formula/hexpeek.rb
+RADD has_check httpmini scripts/check_httpmini.sh
+RADD has_release httpmini scripts/build-httpmini-release.sh
+RADD has_formula httpmini Formula/httpmini.rb
+RADD has_check logbus scripts/check_logbus.sh
+RADD has_release logbus scripts/build-logbus-release.sh
+RADD has_check logknife scripts/check_logknife.sh
+RADD has_release logknife scripts/build-logknife-release.sh
+RADD has_formula logknife Formula/logknife.rb
+RADD has_check macdbg scripts/check_macdbg.sh
+RADD has_release macdbg scripts/build-macdbg-release.sh
+RADD has_formula macdbg Formula/macdbg.rb
+RADD has_check machodoctor scripts/check_machodoctor.sh
+RADD has_release machodoctor scripts/build-machodoctor-release.sh
+RADD has_formula machodoctor Formula/machodoctor.rb
+RADD has_check miniredis_server scripts/check_miniredis_server.sh
+RADD has_check miniredis scripts/check_miniredis_server.sh
+RADD has_check pathsum scripts/check_pathsum.sh
+RADD has_release pathsum scripts/build-pathsum-release.sh
+RADD has_formula pathsum Formula/pathsum.rb
+RADD has_check raymaze scripts/check_raymaze.sh
+RADD has_release raymaze scripts/build-raymaze-release.sh
+RADD has_formula raymaze Formula/raymaze.rb
+RADD has_check setdb scripts/check_setdb.sh
+RADD has_release setdb scripts/build-setdb-release.sh
+RADD has_formula setdb Formula/setdb.rb
+RADD has_check shipcheck scripts/check_shipcheck.sh
+RADD has_release shipcheck scripts/build-shipcheck-release.sh
+RADD has_formula shipcheck Formula/shipcheck.rb
+RADD has_check eml_sr scripts/check_eml_sr_fast.sh
+RADD has_check logvec scripts/check_logvec_cpp.sh
+RADD has_check ragbox scripts/check_ragbox_full.sh
+RADD has_release ragbox scripts/build-ragbox-release.sh
+RADD has_formula ragbox Formula/ragbox.rb
+
+RADD uses_core fscan file.inc
+RADD uses_core fscan platform.inc
+RADD uses_core fscan print_io.inc
+RADD uses_core fscan runtime_bss.inc
+RADD uses_core fscan scanner.inc
+RADD uses_core fscan search.inc
+RADD uses_core fscan str.inc
+RADD uses_core hexpeek file.inc
+RADD uses_core hexpeek hex.inc
+RADD uses_core hexpeek platform.inc
+RADD uses_core hexpeek print_io.inc
+RADD uses_core hexpeek runtime_bss.inc
+RADD uses_core hexpeek str.inc
+RADD uses_core httpmini ccall64.inc
+RADD uses_core httpmini coro.inc
+RADD uses_core httpmini file.inc
+RADD uses_core httpmini http_response.inc
+RADD uses_core httpmini http.inc
+RADD uses_core httpmini path_real.inc
+RADD uses_core httpmini platform.inc
+RADD uses_core httpmini sendfile.inc
+RADD uses_core httpmini socket_async.inc
+RADD uses_core httpmini socket.inc
+RADD uses_core httpmini str.inc
+RADD uses_core logbus coro.inc
+RADD uses_core logbus log_segment.inc
+RADD uses_core logbus platform.inc
+RADD uses_core logbus print_io.inc
+RADD uses_core logbus runtime_bss.inc
+RADD uses_core logbus sendfile.inc
+RADD uses_core logbus socket_async.inc
+RADD uses_core logbus socket.inc
+RADD uses_core logbus str.inc
+RADD uses_core logbus topic_store.inc
+RADD uses_core logknife file.inc
+RADD uses_core logknife json.inc
+RADD uses_core logknife platform.inc
+RADD uses_core logknife print_io.inc
+RADD uses_core logknife runtime_bss.inc
+RADD uses_core logknife scanner.inc
+RADD uses_core logknife search.inc
+RADD uses_core logknife str.inc
+RADD uses_core macdbg ccall64.inc
+RADD uses_core macdbg file.inc
+RADD uses_core macdbg json_emit.inc
+RADD uses_core macdbg lldb_batch.inc
+RADD uses_core macdbg platform.inc
+RADD uses_core macdbg process.inc
+RADD uses_core machodoctor file.inc
+RADD uses_core machodoctor macho.inc
+RADD uses_core machodoctor platform.inc
+RADD uses_core machodoctor print_io.inc
+RADD uses_core machodoctor runtime_bss.inc
+RADD uses_core machodoctor str.inc
+RADD uses_core miniredis_server coro.inc
+RADD uses_core miniredis_server hashmap_str.inc
+RADD uses_core miniredis_server heap.inc
+RADD uses_core miniredis_server mmap.inc
+RADD uses_core miniredis_server platform.inc
+RADD uses_core miniredis_server print_io.inc
+RADD uses_core miniredis_server runtime_bss.inc
+RADD uses_core miniredis_server socket_async.inc
+RADD uses_core miniredis_server socket.inc
+RADD uses_core miniredis_server str.inc
+RADD uses_core miniredis_server value.inc
+RADD uses_core miniredis hashmap_str.inc
+RADD uses_core miniredis heap.inc
+RADD uses_core miniredis mmap.inc
+RADD uses_core miniredis platform.inc
+RADD uses_core miniredis print_io.inc
+RADD uses_core miniredis repl.inc
+RADD uses_core miniredis runtime_bss.inc
+RADD uses_core miniredis str.inc
+RADD uses_core miniredis value.inc
+RADD uses_core pathsum dirwalk.inc
+RADD uses_core pathsum file.inc
+RADD uses_core pathsum platform.inc
+RADD uses_core pathsum print_io.inc
+RADD uses_core pathsum runtime_bss.inc
+RADD uses_core pathsum str.inc
+RADD uses_core raymaze ccall64.inc
+RADD uses_core raymaze platform.inc
+RADD uses_core raymaze raycast.inc
+RADD uses_core setdb arena.inc
+RADD uses_core setdb file.inc
+RADD uses_core setdb log_segment.inc
+RADD uses_core setdb mem.inc
+RADD uses_core setdb platform.inc
+RADD uses_core setdb print_io.inc
+RADD uses_core setdb runtime_bss.inc
+RADD uses_core setdb scanner.inc
+RADD uses_core setdb setdb.inc
+RADD uses_core setdb str.inc
+RADD uses_core shipcheck file.inc
+RADD uses_core shipcheck formula.inc
+RADD uses_core shipcheck macho.inc
+RADD uses_core shipcheck platform.inc
+RADD uses_core shipcheck print_io.inc
+RADD uses_core shipcheck runtime_bss.inc
+RADD uses_core shipcheck sha256.inc
+RADD uses_core shipcheck str.inc
+
+SADD core_incs arena.inc
+SADD core_incs base64.inc
+SADD core_incs ccall64.inc
+SADD core_incs control.inc
+SADD core_incs coro.inc
+SADD core_incs crc32c.inc
+SADD core_incs dirwalk.inc
+SADD core_incs dp.inc
+SADD core_incs dynvec.inc
+SADD core_incs eml.inc
+SADD core_incs file.inc
+SADD core_incs for.inc
+SADD core_incs formula.inc
+SADD core_incs grid.inc
+SADD core_incs hashmap_str.inc
+SADD core_incs hashmap.inc
+SADD core_incs heap.inc
+SADD core_incs hex.inc
+SADD core_incs http_response.inc
+SADD core_incs http.inc
+SADD core_incs json_emit.inc
+SADD core_incs json.inc
+SADD core_incs leetcode.inc
+SADD core_incs linux.inc
+SADD core_incs listnode.inc
+SADD core_incs lldb_batch.inc
+SADD core_incs log_segment.inc
+SADD core_incs logvec_payload.inc
+SADD core_incs macho.inc
+SADD core_incs macos.inc
+SADD core_incs math_fp.inc
+SADD core_incs mem.inc
+SADD core_incs mmap.inc
+SADD core_incs oop.inc
+SADD core_incs path_real.inc
+SADD core_incs platform.inc
+SADD core_incs print_io.inc
+SADD core_incs print_value.inc
+SADD core_incs process.inc
+SADD core_incs raycast.inc
+SADD core_incs repl.inc
+SADD core_incs resp.inc
+SADD core_incs runtime_bss.inc
+SADD core_incs scanner.inc
+SADD core_incs search.inc
+SADD core_incs sendfile.inc
+SADD core_incs setdb.inc
+SADD core_incs sha256.inc
+SADD core_incs socket_async.inc
+SADD core_incs socket.inc
+SADD core_incs sort.inc
+SADD core_incs stack.inc
+SADD core_incs str.inc
+SADD core_incs topic_store.inc
+SADD core_incs tree.inc
+SADD core_incs value.inc
+SADD core_incs vec_f32.inc
+
+SADD all_benchmarks bench_eml_sr_compare.sh
+SADD all_benchmarks bench_logvec.sh
+SADD all_benchmarks bench_perf.sh
+SADD tags avx2
+SADD tags scalar
+SADD tags x86_64
+SADD files bench_logvec.sh
+RADD has_tag bench_logvec.sh avx2
+RADD has_tag bench_logvec.sh scalar
+RADD has_tag bench_logvec.sh x86_64
+SADD files bench_perf.sh
+RADD has_tag bench_perf.sh x86_64
+SADD files bench_eml_sr_compare.sh
+RADD has_tag bench_eml_sr_compare.sh x86_64
+
+SADD all_docs core_contracts.md
+SADD all_docs eml_sr_benchmarks.md
+SADD all_docs eml_sr.md
+SADD all_docs logvec.md
+SADD all_docs ragbox.md
+SADD all_docs system_form.md
+RADD doc_covers eml_sr_benchmarks.md eml_sr
+RADD doc_covers eml_sr.md eml_sr
+RADD doc_covers logvec.md logvec
+RADD doc_covers ragbox.md ragbox

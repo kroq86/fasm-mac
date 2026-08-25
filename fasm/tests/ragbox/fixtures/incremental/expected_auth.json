@@ -1,0 +1,9 @@
+[
+  {
+    "doc_id": 3,
+    "score": 0.993884,
+    "path": "docs/auth.md",
+    "offset": 0,
+    "snippet": "# Authentication\n\nThis document describes JWT authentication and"
+  }
+]

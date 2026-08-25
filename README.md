@@ -1,9 +1,56 @@
 # fasm-mac
 
-Experimental macOS bridge for **flat assembler classic 1.73.35**.
+**ragbox is the flagship tool here:** local-first codebase memory for AI
+agents. Build a searchable semantic snapshot of your repo, query it from the
+terminal, and keep it local. Ollama-compatible, single binary, no vector DB
+server.
 
-The goal is practical CLI compatibility for small x86_64 fasm programs on
-macOS:
+This repository is the engineering monorepo behind ragbox and a small set of
+macOS developer tools built on a reusable FASM runtime.
+
+| Tool | Promise |
+|------|---------|
+| [`ragbox`](docs/ragbox.md) | Local codebase memory for Codex, Claude, Gemini, and other AI agents |
+| `machodoctor` | Explain why a macOS binary does not run |
+| `fasm-mac` | Assembly/runtime foundation for x86_64 FASM tools on macOS |
+
+Product page: <https://kroq86.github.io/fasm-mac/>
+
+## ragbox quick start
+
+Use ragbox when `ripgrep` is too literal, a vector DB is too much machinery,
+and you want a local semantic index your AI agent can query.
+
+```sh
+brew tap kroq86/fasm-mac https://github.com/kroq86/fasm-mac
+brew install ragbox
+brew install ollama
+ollama pull nomic-embed-text
+
+arch -x86_64 ragbox build --root . --out memory.lv
+arch -x86_64 ragbox search --index memory.lv --query "where is auth handled?" --json
+```
+
+On Apple Silicon, ragbox runs through Rosetta (`arch -x86_64`). The index stays
+in local files: `memory.lv`, `memory.lv.manifest.json`, optional refresh state,
+and optional delta sidecar.
+
+Why not the obvious alternatives?
+
+| Alternative | ragbox difference |
+|-------------|-------------------|
+| `ripgrep` | semantic search, not lexical search |
+| vector DB server | copyable file snapshot, not a running service |
+| RAG platform | local CLI for repo memory, not a web platform |
+
+More: [`docs/ragbox.md`](docs/ragbox.md). Release check:
+`scripts/check_ragbox_release.sh`.
+
+## fasm-mac foundation
+
+fasm-mac is also an experimental macOS bridge for **flat assembler classic
+1.73.35**. The goal is practical CLI compatibility for small x86_64 fasm
+programs on macOS:
 
 ```sh
 fasm file.asm
@@ -141,6 +188,7 @@ without data-segment declarations and follow the System V AMD64 ABI.
 | [`fasm/core/base64.inc`](fasm/core/base64.inc) | `base64_encode(rdi,rsi,rdx)→rax`, `base64_decode(rdi,rsi,rdx)→rax` |
 | [`fasm/core/math_fp.inc`](fasm/core/math_fp.inc) | `fp_isnan`, `fp_isinfinite`, `fp_isfinite`, `fp_floor`, `fp_ceil`, `fp_fmod`, `fp_frexp` |
 | [`fasm/core/rational.inc`](fasm/core/rational.inc), [`fasm/core/polynomial.inc`](fasm/core/polynomial.inc) | exact `Rational` arithmetic and caller-owned polynomial operations |
+| [`fasm/core/eml.inc`](fasm/core/eml.inc) | `lb_eml_f64` — EML operator leaf `exp(x)-log(y)` ([arXiv:2603.21852](https://arxiv.org/abs/2603.21852)); export via [`eml_core.asm`](fasm/apps/eml_core.asm) |
 
 Examples:
 
@@ -515,9 +563,11 @@ scripts/check_logbus.sh
 
 Experimental brew-worthy tool: **batch snapshot** index builder plus exact
 cosine top-k search. logbus stays dumb; FASM owns f32 dot/norm/top-k only;
-Zig wires protocol, files, ingest, and doc_id mapping. v0 metric: cosine
-similarity (`score = dot / (norm(q)*norm(v))`, higher is better). `build-index`
-is one-shot — it does not tail topics. Spec: `docs/logvec.md`.
+Zig wires protocol, files, ingest, and doc_id mapping (C++ host available in
+`fasm/apps/logvec/`). v0 metric: cosine similarity
+(`score = dot / (norm(q)*norm(v))`, higher is better). `build-index`
+is one-shot — it does not tail topics. Spec: [`docs/logvec.md`](docs/logvec.md).
+System form (Level 4): [`docs/system_form.md`](docs/system_form.md).
 
 ```sh
 fasm --emit=macho-obj fasm/apps/logvec_core.asm logvec_core.o
@@ -526,10 +576,87 @@ zig build-exe fasm/apps/logvec.zig logvec_core.o \
 arch -x86_64 ./logvec search --index index.lv --query query.bin --top 5
 ```
 
+C++ host (same CLI, binary name `logvec_cpp`):
+
+```sh
+fasm --emit=macho-obj fasm/apps/logvec_core.asm logvec_core.o
+clang++ -std=c++20 -O2 -arch x86_64 \
+  fasm/apps/logvec/logvec.cpp logvec_core.o -o logvec_cpp
+arch -x86_64 ./logvec_cpp search --index index.lv --query query.bin --top 5
+```
+
 Smoke test:
 
 ```sh
 scripts/check_logvec.sh
+scripts/check_logvec_cpp.sh
+scripts/bench_logvec.sh   # in-process top-k regression (1k/10k/100k × dim=768)
+scripts/bench_perf.sh     # layered dot/topk/search/io + parallel + ragbox breakdown
+```
+
+v0.2 adds layered bench (`--layer dot|topk|search|io`), scalar vs AVX2 dot A/B,
+parallel exact search (1–4 threads), and unit-vector top-k fast path. Exact
+linear scan — ~4.5 ms for 10k×768 single-thread, ~1.4 ms with 4 threads (see
+`docs/logvec.md`). Not ANN; agent-scale snapshots only.
+
+## ragbox
+
+Local-first codebase memory for AI agents: chunk a repo, embed via Ollama,
+build a copyable `.lv` index + JSON manifest, and search it from the terminal.
+One x86_64 binary — no Python venv, no vector DB server, no web platform. More:
+[`docs/ragbox.md`](docs/ragbox.md). System form (Level 4):
+[`docs/system_form.md`](docs/system_form.md).
+
+Homebrew:
+
+```sh
+brew tap kroq86/fasm-mac https://github.com/kroq86/fasm-mac
+brew install ragbox
+brew install ollama
+ollama pull nomic-embed-text
+arch -x86_64 ragbox doctor --skip-ollama
+arch -x86_64 ragbox build --root ./repo --out memory.lv
+arch -x86_64 ragbox refresh --root ./repo --index memory.lv
+arch -x86_64 ragbox search --index memory.lv --query "where is auth handled?" --json
+```
+
+Why not the obvious alternatives?
+
+| Alternative | ragbox difference |
+|-------------|-------------------|
+| `ripgrep` | semantic search, not lexical search |
+| vector DB server | copyable file snapshot, not a running service |
+| RAG platform | local CLI for repo memory, not a web platform |
+
+Manual build (from source):
+
+```sh
+fasm --emit=macho-obj fasm/apps/logvec_core.asm logvec_core.o
+clang++ -std=c++20 -O2 -arch x86_64 -pthread \
+  fasm/apps/ragbox/ragbox.cpp logvec_core.o -o ragbox
+arch -x86_64 ./ragbox build --root ./repo --out memory.lv
+arch -x86_64 ./ragbox refresh --root ./repo --index memory.lv
+arch -x86_64 ./ragbox search --index memory.lv --query "auth middleware" --json
+```
+
+Release packaging:
+
+```sh
+scripts/build-ragbox-release.sh 0.3.0
+scripts/check_ragbox_release.sh
+```
+
+Smoke test:
+
+```sh
+scripts/check_ragbox.sh
+scripts/check_ragbox_release.sh
+```
+
+Optional live check (Ollama required):
+
+```sh
+scripts/check_ragbox_live.sh
 ```
 
 ## macdbg
@@ -623,6 +750,132 @@ Smoke test:
 
 ```sh
 scripts/check_pathsum.sh
+```
+
+## setdb
+
+Tiny pure set-theoretic database CLI. A database is a `universe.db` directory
+with an append-only operation log; the model is only sets and binary relations:
+no SQL, no NULL, no duplicate rows, and no multisets.
+Query results use the reusable [`arena.inc`](fasm/core/arena.inc) region
+allocator: a command allocates temporary set/relation results in one arena, then
+the process exits and the whole invocation lifetime is reclaimed at once.
+
+```sh
+fasm fasm/apps/setdb.asm setdb
+arch -x86_64 ./setdb new universe.db
+arch -x86_64 ./setdb add universe.db users alice bob carol
+arch -x86_64 ./setdb add universe.db admins alice
+arch -x86_64 ./setdb relation universe.db follows alice bob
+arch -x86_64 ./setdb relation universe.db follows bob carol
+arch -x86_64 ./setdb relation universe.db follows carol dana
+arch -x86_64 ./setdb diff universe.db users admins
+arch -x86_64 ./setdb select universe.db follows first alice
+arch -x86_64 ./setdb join universe.db follows follows
+arch -x86_64 ./setdb domain universe.db follows
+arch -x86_64 ./setdb range universe.db follows
+arch -x86_64 ./setdb inverse universe.db follows
+arch -x86_64 ./setdb transitive-closure universe.db follows
+arch -x86_64 ./setdb sets universe.db
+arch -x86_64 ./setdb relations universe.db
+arch -x86_64 ./setdb contains universe.db alice
+arch -x86_64 ./setdb pairs universe.db follows
+```
+
+Tag-sugar layer (`tag`/`files`/`tags`) is a thin convenience wrapper over
+`add`/`relation`/`select`, fixed to the sets `files`/`tags` and relation
+`has_tag`:
+
+```sh
+arch -x86_64 ./setdb new files.db
+arch -x86_64 ./setdb tag files.db song1.mp3 music jazz
+arch -x86_64 ./setdb tag files.db song2.mp3 music
+arch -x86_64 ./setdb files files.db music
+arch -x86_64 ./setdb tags files.db song1.mp3
+```
+
+Names may contain letters, digits, `_`, `-`, `.`, and `/`, so real filesystem
+paths work as atoms directly. `store-domain`/`store-range`/`store-inverse`
+persist a query result as a named set or relation (an `SADD`/`RADD` per
+result row) instead of only printing it, so it can feed a later query —
+`domain`/`range`/`inverse` alone only ever print to stdout:
+
+```sh
+arch -x86_64 ./setdb store-domain universe.db follows leaders
+arch -x86_64 ./setdb diff universe.db users leaders
+```
+
+`load` bulk-applies facts from a file instead of one `setdb` process per
+fact — each line is `SADD`/`SREM`/`RADD`/`RREM`, the same wire format
+already used for `ops.log`; `#` and blank lines are ignored, and a bad
+line stops the load without rolling back lines already applied. `dump`
+prints the current state back out in that same format, so `dump | load`
+round-trips:
+
+```sh
+arch -x86_64 ./setdb load universe.db data/fasm_mac_readiness.setdb
+arch -x86_64 ./setdb dump universe.db > snapshot.setdb
+arch -x86_64 ./setdb new copy.db
+arch -x86_64 ./setdb load copy.db snapshot.setdb
+```
+
+`scripts/dogfood_setdb_fasm_mac.sh` uses `data/fasm_mac_readiness.setdb`
+to self-audit this repo with setdb: which apps lack a check/release
+script or Homebrew formula, which core headers have no app consumer.
+
+Output examples:
+
+```text
+bob
+carol
+```
+
+```text
+(alice,carol)
+(bob,dana)
+```
+
+```text
+(alice,bob)
+(alice,carol)
+(alice,dana)
+(bob,carol)
+(bob,dana)
+(carol,dana)
+```
+
+```text
+admins
+users
+```
+
+```text
+song1.mp3
+song2.mp3
+```
+
+```text
+jazz
+music
+```
+
+Homebrew:
+
+```sh
+brew install kroq86/fasm-mac/setdb
+setdb new universe.db
+```
+
+Release packaging:
+
+```sh
+scripts/build-setdb-release.sh 0.1.0
+```
+
+Smoke test:
+
+```sh
+scripts/check_setdb.sh
 ```
 
 ## machodoctor

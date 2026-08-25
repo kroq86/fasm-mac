@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "dim": 4,
+  "model": "fixture-dim4",
+  "chunk_size": 800,
+  "overlap": 100,
+  "root": "/Users/kirill_ostapenko/fasm-mac/fasm/tests/ragbox/fixtures/tiny-repo",
+  "records": [
+    {
+      "doc_id": 0,
+      "path": "docs/auth.md",
+      "offset": 0,
+      "length": 63
+    },
+    {
+      "doc_id": 1,
+      "path": "docs/db.md",
+      "offset": 0,
+      "length": 69
+    },
+    {
+      "doc_id": 2,
+      "path": "src/middleware.go",
+      "offset": 0,
+      "length": 71
+    }
+  ]
+}

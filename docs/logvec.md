@@ -8,13 +8,19 @@ top-k search.
 
 ```text
 logbus     dumb durable log — no vector semantics
-FASM       f32 dot / norm / exact top-k only — no logbus, no .lv, no doc_id
+FASM       f32 dot / norm / exact top-k / in-place `.lv` top-k (`lb_vec_topk_cosine_lv`) only
 Zig        payload validate, CRC envelope check, index I/O, FETCH/--dir ingest,
            doc_id mapping, final sort (score desc, doc_id asc)
+C++        same host responsibilities as Zig (`fasm/apps/logvec/`) — additive alternative;
+           CRC via FASM `lb_crc32c`, index search loads `.lv` via mmap and uses
+           in-place `lb_vec_topk_cosine_lv`; `build-index` streams one record at a time
 ```
 
 `build-index` is a **one-shot snapshot builder**. It does not tail topics or
 refresh indexes in real time.
+
+System form (Level 4 — truth, projection, invariants):
+[`docs/system_form.md`](system_form.md).
 
 ## Metric (v0)
 
@@ -75,10 +81,56 @@ logvec build-index --dir DATA --topic TOPIC --out PATH
 
 `search` writes `doc_id score` lines to stdout (score fixed to 6 decimal places).
 
+```text
+logvec bench --index PATH --query PATH [--top K] [--iters N]
+  [--layer dot|topk|search|io] [--simd auto|scalar|avx2]
+  [--cold] [--threads N] [--breakdown]
+```
+
+`bench` loads the index once and times in-process exact top-k (median over
+`--iters`, default 50). Layers isolate SIMD dot scan, FASM top-k, full search
+(including doc_id resolve), and mmap load. Use for regression checks, not as a
+FAISS comparison.
+
+```text
+ragbox bench --index PATH --manifest PATH --query-file PATH
+  [--top K] [--iters N] [--threads N] [--snippet-len N] [--breakdown]
+```
+
+Offline ragbox bench (no Ollama): times search + manifest join + snippet load.
+
+## Performance (v0.2, Apple Silicon via Rosetta x86_64)
+
+Exact brute-force cosine over mmap'd unit vectors. FASM AVX2 dot/norm; parallel
+search partitions records across 1–4 threads and merges partial top-k heaps.
+
+| Layer | 10k×768 | 100k×768 | Notes |
+|-------|--------:|---------:|-------|
+| dot (AVX2) | ~4.6 ms | ~45 ms | dot-only, no heap |
+| search (1 thread) | ~4.5 ms | ~46 ms | full path |
+| search (4 threads) | ~1.4 ms | ~12 ms | parallel merge top-k |
+| top-k kernel | ~4.4 ms | ~44 ms | FASM heap only |
+
+v0 scalar (~44 ms) → v0.1 AVX2 (~4.5 ms) → v0.2 parallel 4t (~1.4 ms at 10k).
+
+Subprocess `search` adds ~25–40 ms process spawn overhead per query — not
+representative of in-process use (ragbox embeds search in-process).
+
+```sh
+scripts/bench_logvec.sh    # quick end-to-end table
+scripts/bench_perf.sh      # layered bench + ragbox breakdown + CI gate
+```
+
+This is **not** ANN. At 100k×768 (~300 MB index) scan time scales linearly.
+For large corpora use an external ANN index; logvec/ragbox target agent-scale
+snapshots (1k–50k chunks), not billion-vector search. Product positioning:
+[`docs/system_form.md`](system_form.md).
+
 ## CRC32C
 
 Zig verifies logbus record envelopes with the same CRC32C polynomial/format as
-logbus (`[u32_len][u32_crc32c][payload]`). Parity is tested against
+logbus (`[u32_len][u32_crc32c][payload]`). The C++ host delegates CRC to FASM
+`lb_crc32c` (`fasm/core/crc32c.inc`). Parity is tested against
 `scripts/check_logbus.sh` fixtures, not against Python as the spec source.
 
 ## Checks
@@ -86,4 +138,5 @@ logbus (`[u32_len][u32_crc32c][payload]`). Parity is tested against
 ```sh
 scripts/check_logvec_search.sh   # PR1: fixture .lv -> search only
 scripts/check_logvec.sh          # wrapper; grows with ingest parity tests
+scripts/check_logvec_cpp.sh      # same checks for C++ host (clang++)
 ```
