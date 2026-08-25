@@ -1,0 +1,17 @@
+{"id":"e001","kind":"goal","text":"Find a real product direction by combining existing repository components."}
+{"id":"e002","kind":"vcs","branch":"main","head":"6cd3dc2","upstream":"origin/main"}
+{"id":"e003","kind":"file","path":"fasm/tools/elf64_to_macho64.py","state":"modified","owned_by":"user"}
+{"id":"e004","kind":"file","path":"fasm/tools/__pycache__/","state":"untracked","owned_by":"user"}
+{"id":"e005","kind":"check","name":"tensor-runtime","status":"failed","detail":"old result superseded later"}
+{"id":"e006","kind":"decision","key":"tensor-abi","text":"Keep the tensor ABI experimental."}
+{"id":"e007","kind":"decision","key":"projection-policy","text":"Store ML output as disposable versioned derived facts."}
+{"id":"e008","kind":"check","name":"tensor-runtime","status":"passed","detail":"all runtime and setdb ML checks passed"}
+{"id":"e009","kind":"command","text":"compiler output and linker noise 0000000000000000000000000000000000000000000000000000000000000000","status":"passed"}
+{"id":"e010","kind":"command","text":"compiler output and linker noise 1111111111111111111111111111111111111111111111111111111111111111","status":"passed"}
+{"id":"e011","kind":"command","text":"compiler output and linker noise 2222222222222222222222222222222222222222222222222222222222222222","status":"passed"}
+{"id":"e012","kind":"command","text":"compiler output and linker noise 3333333333333333333333333333333333333333333333333333333333333333","status":"passed"}
+{"id":"e013","kind":"command","text":"compiler output and linker noise 4444444444444444444444444444444444444444444444444444444444444444","status":"passed"}
+{"id":"e014","kind":"command","text":"compiler output and linker noise 5555555555555555555555555555555555555555555555555555555555555555","status":"passed"}
+{"id":"e015","kind":"command","text":"compiler output and linker noise 6666666666666666666666666666666666666666666666666666666666666666","status":"passed"}
+{"id":"e016","kind":"command","text":"compiler output and linker noise 7777777777777777777777777777777777777777777777777777777777777777","status":"passed"}
+{"id":"e017","kind":"next","text":"Test whether a bounded provenance capsule enables a correct continuation."}

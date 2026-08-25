@@ -1,0 +1,8 @@
+{"id":"h001","kind":"goal","text":"Implement the retry delay policy and leave the project passing its regression check."}
+{"id":"h002","kind":"decision","key":"permanent","text":"Permanent errors are never retried and return 0 milliseconds."}
+{"id":"h003","kind":"decision","key":"transient","text":"Transient delay is 100 * 2^attempt milliseconds, capped at 1600."}
+{"id":"h004","kind":"decision","key":"rate-limit","text":"Rate-limit delay is 1000 * 2^attempt milliseconds, capped at 8000."}
+{"id":"h005","kind":"file","path":"local.env","state":"untracked","owned_by":"user"}
+{"id":"h006","kind":"check","name":"compile-only","status":"passed","detail":"The current stub compiles; behavioral assertions still fail."}
+{"id":"h007","kind":"decision","key":"failed-attempt","text":"An earlier change to retry_policy.h was reverted; implement only retry_policy.c."}
+{"id":"h008","kind":"next","text":"Implement retry_policy.c, run ./check.sh, and report the result without touching local.env."}

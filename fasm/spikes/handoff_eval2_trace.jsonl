@@ -1,0 +1,12 @@
+{"id":"s001","kind":"goal","text":"Implement retry routing in retry_route.c."}
+{"id":"s002","kind":"decision","key":"rate-limit-cap","text":"Treat status 429 as retryable through attempt 5."}
+{"id":"s003","kind":"check","name":"route-regression","status":"failed","detail":"The first implementation used the obsolete filename and was reverted."}
+{"id":"s004","kind":"file","path":"retry_route.c","state":"modified"}
+{"id":"s005","kind":"goal","text":"Implement the final HTTP result classifier in route_result.c and pass its regression check."}
+{"id":"s006","kind":"decision","key":"rate-limit-cap","text":"Latest rule: 429 is THROTTLE for attempts 0..2 and EXHAUSTED from attempt 3."}
+{"id":"s007","kind":"decision","key":"server-cap","text":"500..599 is RETRY for attempts 0..1 and EXHAUSTED from attempt 2."}
+{"id":"s008","kind":"decision","key":"auth","text":"401 and 403 are always AUTH; all remaining statuses are OK."}
+{"id":"s009","kind":"file","path":"retry_route.c","state":"clean"}
+{"id":"s010","kind":"file","path":"route_result.h","state":"untracked","owned_by":"user"}
+{"id":"s011","kind":"check","name":"route-regression","status":"passed","detail":"Compile-only preflight passes; behavioral test still requires route_result.c."}
+{"id":"s012","kind":"next","text":"Edit only route_result.c, run ./check.sh, preserve route_result.h, and do not revive retry_route.c."}

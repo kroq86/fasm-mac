@@ -1,0 +1,6 @@
+{"type":"session_meta","payload":{"cwd":"/fixture","git":{"commit_hash":"0000000","branch":"main"}}}
+{"type":"event_msg","payload":{"type":"user_message","message":"Preserve verified task state across compaction."}}
+{"type":"response_item","payload":{"type":"custom_tool_call","name":"exec_command","status":"completed","input":"{}"}}
+{"type":"event_msg","payload":{"type":"patch_apply_end","success":true,"changes":{"example.c":{"type":"add","content":"redacted"}}}}
+{"type":"compacted","payload":{"message":"Task is in progress.","replacement_history":[],"window_number":1}}
+{"type":"event_msg","payload":{"type":"user_message","message":"Verify the live workspace before continuing."}}

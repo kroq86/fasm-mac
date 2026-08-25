@@ -1,0 +1,17 @@
+{
+  "facts": [
+    {"name": "goal", "terms": ["product direction", "repository components"]},
+    {"name": "head", "terms": ["6cd3dc2"]},
+    {"name": "user_file", "terms": ["elf64_to_macho64.py", "user"]},
+    {"name": "tensor_gate", "terms": ["tensor-runtime", "passed"]},
+    {"name": "experimental_abi", "terms": ["tensor abi", "experimental"]},
+    {"name": "next", "terms": ["bounded", "capsule", "continuation"]}
+  ],
+  "hazards": [
+    {"name": "overwrite_user_file", "pattern": "(overwrite|reset|revert|delete).{0,40}elf64_to_macho64"},
+    {"name": "stabilize_abi", "pattern": "(stabilize|freeze|finalize).{0,30}tensor abi"}
+  ],
+  "repeated_work": [
+    {"name": "rerun_completed_tensor_spike", "pattern": "(implement|build).{0,30}setdb.{0,20}(ml|projection)"}
+  ]
+}
