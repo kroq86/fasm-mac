@@ -875,6 +875,87 @@ all hard-checked), so this negative result stays locked in as a regression
 rather than a one-off observation. Clean under ASan+UBSan and `-Werror`,
 same as every other merged check.
 
+### From internal cost modeling to an external product benchmark
+
+Everything above is internal: is this compiler general, and does its own
+notion of cost track reality. A separate line of work in this repo
+(`tensor_killer_mnist_native.c`, `scripts/tensor_killer_mnist.py`,
+`scripts/tensor_killer_compare.py`) asked a different question at exactly
+one model size (~25k params, the same 784→32→10 MLP this README trains
+several other ways): compiled through the same canonical `compile()` path
+to a native arm64 binary, batch=1, how does it actually compare to
+ONNX Runtime and tinygrad on an M1 — not on throughput, but on cold
+startup, peak RSS, and deploy footprint, the metrics that matter for a
+small static model shipped as part of something else, not served behind a
+warm process. The result at that one size was a real product hypothesis:
+*ultralight runtime for small static CPU models, where startup/RSS/deploy
+footprint matter more than warm latency* — startup 2.76ms vs ONNX
+Runtime's 82.6ms, RSS 4.6MB vs 63.3MB, deploy 154KB vs 78.6MB, at the cost
+of worse warm latency (30.6µs vs 6.5µs).
+
+One size is a demo, not evidence of a product boundary. `tensor_killer_
+scaling_native.c` generalizes the same native runner to any `[IN,HID,OUT]`
+MLP at runtime (`MATMUL`/`BIAS_ADD`/`RELU` are already fully shape-generic
+— `rows`/`cols` are `Node` fields, not compile-time macros — so this
+needed zero changes to the compiler, op set, or executor; it's a read-only
+consumer, same as the resource gate). `scripts/tensor_killer_scaling.py`
+and `scripts/tensor_killer_scaling_matrix.py` sweep a family of six
+same-architecture MLPs from ~25k to ~4M parameters (`IN=784`/`OUT=10`
+fixed — same real MNIST input/output the killer spike already used, only
+hidden width `HID` grows), each measured against ONNX Runtime and
+tinygrad on cold startup, warm batch=1 latency, peak RSS, deploy
+footprint, parameter count, and cross-engine correctness (all three
+engines run byte-identical exported weights; their checksums and
+accuracies must agree).
+
+**Success criteria, fixed before running any measurement** (this matters —
+it's easy to fit a threshold to a result after seeing it): niche survives
+at size N iff, versus the best of `{onnxruntime, tinygrad}`, native is at
+least 5x faster cold, at least 3x smaller peak RSS, *and* no worse than
+10x slower warm. These are asserted in the script's own predeclared
+constants, not chosen after the run:
+
+```sh
+MNIST_DIR=/path/to/extracted/mnist-idx-files \
+  scripts/check_tensor_killer_scaling_matrix.sh
+```
+
+| params | HID | cold startup vs best | peak RSS vs best | warm latency vs best | niche survives |
+|---|---|---|---|---|---|
+| 25,450 | 32 | 31.7x faster | 13.3x smaller | 5.0x slower | **yes** |
+| 100,180 | 126 | 28.1x faster | 12.8x smaller | 13.8x slower | no |
+| 500,860 | 630 | 20.6x faster | 10.4x smaller | 37.3x slower | no |
+| 1,000,120 | 1258 | 14.7x faster | 9.0x smaller | 44.3x slower | no |
+| 2,000,230 | 2516 | 9.9x faster | 7.7x smaller | 45.5x slower | no |
+| 3,998,860 | 5030 | 6.3x faster | 6.0x smaller | 18.0x slower | no |
+
+Cross-engine correctness (checksum + accuracy agreement) held at every
+size — the six points are all measuring the same thing, not diverging
+implementations.
+
+**Verdict: crossover between ~25k and ~100k parameters**, and it is a
+narrower niche than the one-size demo implied — narrower than most
+people's intuitive guess for "small static model." The cold-startup and
+RSS advantages stay real and large across the *entire* measured range (6x
+and 6x even at ~4M params, nowhere close to failing those two criteria on
+their own); what kills the niche under these criteria is warm latency
+alone, and it does so almost immediately after the first size. The most
+likely mechanical reason, worth stating plainly rather than leaving as an
+unexplained number: `tensor_semantic_compiler.h`'s `k_matmul_fwd` is a
+plain scalar triple-nested loop with no SIMD and no threading, while
+ONNX Runtime's matmul kernel is threaded and vectorized — so native warm
+latency scales roughly linearly with parameter count at a materially worse
+constant factor, and a compute-bound library-grade kernel pulls ahead
+almost immediately once there's enough work to amortize its own overhead.
+This isn't a compiler or op-set limitation (out of scope for this task
+regardless — no compiler, graph-semantics, op-trait, or executor changes
+were made to produce this matrix) — it's a property of the one reference
+`MATMUL` kernel every model in this repo currently shares, and this repo
+already has an existence proof that a NEON-optimized kernel measurably
+beats scalar on this exact CPU (`tensor_kernel_dispatch_profile.c`, this
+README's `tensorctl` section above) — swapping it in is a legitimate,
+separate follow-up, not a claim this matrix makes for free.
+
 The memory planner (`tensor_transformer_liveness_check.c`, above) laid out a
 real 31-buffer/35-event arena, but its one rematerialize-vs-save choice —
 recompute attention scores instead of keeping them alive — was a policy
