@@ -12,11 +12,13 @@ extern int run_transformer(int argc, char **argv);
 int main(int argc, char **argv) {
     if (argc < 2) {
         fprintf(stderr,
-            "usage: tensorctl <mlp|transformer> [--plan] [--epochs N] [--memory-budget N] [--reprofile] [--no-profile-cache]\n"
+            "usage: tensorctl <mlp|transformer> [--plan] [--explain-decisions] [--show-alternatives] [--counterfactual-budget=N] [--epochs N] [--memory-budget N] [--reprofile] [--no-profile-cache]\n"
             "  mlp:          trains the 2-4-1 XOR MLP through the shared executor\n"
             "  transformer:  trains the T=3,M=4,H=2,D=2,F=6 encoder block through the shared executor\n"
             "  --plan:       print the execution/memory/layout plan and exit, no training run\n"
             "  --memory-budget lets you watch the save-vs-rematerialize decision flip (transformer only)\n"
+            "  --explain-decisions/--show-alternatives: render the planner decision trace\n"
+            "  --counterfactual-budget=N: show the memory choice under another budget\n"
             "  --reprofile:  force a fresh layout-decision benchmark, ignoring any cached one (transformer only)\n"
             "  --no-profile-cache: never read or write the layout-decision profile cache (transformer only)\n");
         return 2;

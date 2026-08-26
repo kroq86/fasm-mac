@@ -83,6 +83,20 @@ if grep -q "^training:" <<<"$mlp_plan"; then
   exit 1
 fi
 
+explained="$(XDG_CACHE_HOME="$OUT_DIR/explain-cache" arch -x86_64 "$OUT_DIR/tensorctl" transformer --plan --memory-budget=5000 --counterfactual-budget=8192 --explain-decisions --no-profile-cache)"
+if ! grep -q "chosen: rematerialize" <<<"$explained" || ! grep -q "counterfactual budget=8192 -> save" <<<"$explained"; then
+  printf 'FAIL: memory explanation was not derived from the requested real/counterfactual budgets:\n%s\n' "$explained" >&2
+  exit 1
+fi
+if grep -q "decision=layout-aware" <<<"$explained"; then
+  grep -q "chosen: layout-aware" <<<"$explained" || { printf 'FAIL: layout trace disagrees with planner output\n' >&2; exit 1; }
+else
+  grep -q "chosen: standard" <<<"$explained" || { printf 'FAIL: layout trace disagrees with planner output\n' >&2; exit 1; }
+fi
+alternatives="$(XDG_CACHE_HOME="$OUT_DIR/explain-cache" arch -x86_64 "$OUT_DIR/tensorctl" transformer --plan --show-alternatives)"
+grep -q "decision: attention_scores" <<<"$alternatives" || { printf 'FAIL: --show-alternatives omitted memory candidates\n' >&2; exit 1; }
+grep -q "decision: head_merge_layout" <<<"$alternatives" || { printf 'FAIL: --show-alternatives omitted layout candidates\n' >&2; exit 1; }
+
 if arch -x86_64 "$OUT_DIR/tensorctl" >/dev/null 2>&1; then
   printf 'FAIL: tensorctl with no args should exit non-zero\n' >&2
   exit 1
@@ -132,4 +146,4 @@ if ! grep -q "verified: numerical_equivalence=yes merge_never_written=yes" <<<"$
   exit 1
 fi
 
-printf 'tensorctl check passed: mlp_converges=yes transformer_converges=yes memory_decision_flips=yes plan_mode_exits_early=yes plan_buffer_table_in_bounds=yes profile_cache_hit_and_miss=yes corrupted_cache_ignored=yes usage_exit_code=nonzero\n'
+printf 'tensorctl check passed: mlp_converges=yes transformer_converges=yes memory_decision_flips=yes explain_and_alternatives=yes counterfactual=yes trace_execution_consistency=yes plan_mode_exits_early=yes plan_buffer_table_in_bounds=yes profile_cache_hit_and_miss=yes corrupted_cache_ignored=yes usage_exit_code=nonzero\n'

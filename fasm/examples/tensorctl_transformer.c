@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#include "tensor_plan_trace_adapter_spike.h"
 
 /* Memory-plan reporting: the exact real 31-buffer/35-event schedule and
  * cost decision from tensor_liveness_cost_planner_check.c, embedded so the
@@ -60,8 +61,6 @@ static uint32_t arena_layout(LiveBuffer *b, unsigned count) {
     {"d_projected", 256, 29, 30, NO_ALIAS, 0}, {"d_merged", 256, 30, 31, NO_ALIAS, 0}, {"d_head", 256, 31, 33, NO_ALIAS, 0}, \
     {"d_prob", 512, 33, 33, NO_ALIAS, 0}, {"d_score", 512, 33, 33, NO_ALIAS, 0}, {"d_qkv", 768, 33, 34, NO_ALIAS, 0}
 
-static uint32_t overflow_cost(uint32_t arena, uint32_t budget) { return arena > budget ? arena - budget : 0; }
-
 static void print_buffer_table(LiveBuffer *sched, unsigned n) {
     printf("  %-16s %6s %10s %8s\n", "buffer", "bytes", "live", "offset");
     for (unsigned i = 0; i < n; i++)
@@ -72,7 +71,7 @@ static void print_buffer_table(LiveBuffer *sched, unsigned n) {
 /* Returns 1 if "save" was chosen, 0 if "rematerialize". Optionally prints
  * the full buffer table for whichever schedule was actually picked, so
  * "what got chosen" is a real, inspectable arena layout, not just a word. */
-static int report_memory_plan(uint32_t budget, int verbose) {
+static int report_memory_plan(uint32_t budget, uint32_t counterfactual_budget, int verbose, PlanTrace *trace) {
     /* Not the same buffer count: "save" drops the separate scores_remat
      * entry entirely (scores lives across its full window instead), so
      * these must never share one length — that mismatch previously read
@@ -84,9 +83,10 @@ static int report_memory_plan(uint32_t budget, int verbose) {
     uint32_t remat_arena = arena_layout(remat_sched, remat_n);
     uint32_t save_arena = arena_layout(save_sched, save_n);
     uint32_t recompute_cost = 64; /* tiny 3x3x2x2 attention recompute, same estimate as the cost-planner spike */
-    uint32_t save_penalty = overflow_cost(save_arena, budget);
-    uint32_t remat_penalty = overflow_cost(remat_arena, budget) + recompute_cost;
-    int save_chosen = save_penalty <= remat_penalty;
+    PlannerDecisionOutput decision = {"attention_scores", "budget overflow + recompute cost", "lowest combined planner cost",
+        {{"save", save_arena, 0, 0, 1}, {"rematerialize", remat_arena, recompute_cost, 0, 1}}, 2};
+    if (planner_choose_memory(&decision, budget, counterfactual_budget) || trace_from_planner(trace, &decision)) return 0;
+    int save_chosen = decision.chosen == 0;
     printf("memory: budget=%u save_arena=%u remat_arena=%u recompute_cost=%u decision=%s(attention_scores)\n",
            budget, save_arena, remat_arena, recompute_cost, save_chosen ? "save" : "rematerialize");
     if (verbose) {
@@ -349,7 +349,7 @@ static void cache_write_atomic(const char *path, const char *dir, const ProfileC
     if (rename(tmp_path, path) != 0) unlink(tmp_path);
 }
 
-static int report_layout_decision(int verbose, int reprofile, int no_cache) {
+static int report_layout_decision(int verbose, int reprofile, int no_cache, PlanTrace *trace) {
     uint32_t contiguous_copy_bytes = T * M * sizeof(float);
 
     /* (1) + (2): equivalence and no-copy proof, on the real spliced path.
@@ -427,7 +427,30 @@ static int report_layout_decision(int verbose, int reprofile, int no_cache) {
      * noise, say so and fall back to the safer, longer-established path
      * (standard) instead of pretending a coin flip is a decision. */
     int uncertain = stats_uncertain(std_s, lay_s);
-    int layout_chosen = verified && !uncertain && lay_s.median < std_s.median;
+    MeasurementProvenance provenance = {0};
+    snprintf(provenance.source, sizeof provenance.source, "%s", source);
+#if defined(__aarch64__)
+    snprintf(provenance.host, sizeof provenance.host, "arm64");
+#elif defined(__x86_64__)
+    snprintf(provenance.host, sizeof provenance.host, "x86_64");
+#else
+    snprintf(provenance.host, sizeof provenance.host, "unknown");
+#endif
+    snprintf(provenance.compiler, sizeof provenance.compiler, "%s", __VERSION__);
+    snprintf(provenance.build, sizeof provenance.build, "%s", TENSORCTL_BUILD_CONFIG);
+    snprintf(provenance.revision, sizeof provenance.revision, "%s", PROFILE_REVISION);
+    provenance.samples = std_s.n < lay_s.n ? std_s.n : lay_s.n;
+    provenance.median = std_s.median < lay_s.median ? std_s.median : lay_s.median;
+    provenance.min = std_s.min < lay_s.min ? std_s.min : lay_s.min;
+    provenance.max = std_s.max > lay_s.max ? std_s.max : lay_s.max;
+    provenance.uncertain = uncertain;
+    PlannerDecisionOutput decision = {"head_merge_layout", "verified and measurement confidence",
+        uncertain ? "uncertain measurement falls back to standard" : "minimum measured median",
+        {{"standard", 5760, (uint64_t)(std_s.median * 1000), 21, verified}, {"layout-aware", 5712, (uint64_t)(lay_s.median * 1000), 20, verified}}, 2,
+        .provenance = provenance};
+    planner_choose_measured(&decision, verified, uncertain);
+    if (trace_from_planner(trace, &decision)) return 0;
+    int layout_chosen = decision.chosen == 1;
     printf("layout: output projection — standard(merge+CONTIGUOUS+matmul) copies %u bytes/step, %s %.2fns/call [%.2f,%.2f] n=%u; "
            "layout-aware(head-wise matmul) copies 0 bytes/step, %s %.2fns/call [%.2f,%.2f] n=%u; "
            "decision=%s(%s, wall-clock not byte-traffic)\n",
@@ -465,21 +488,27 @@ static void target_make(float *t) {
 int run_transformer(int argc, char **argv) {
     unsigned epochs = 12000;
     uint32_t budget = 4928; /* today's real arena at the default policy */
-    int plan_only = 0, reprofile = 0, no_cache = 0;
+    int plan_only = 0, reprofile = 0, no_cache = 0, explain = 0, counterfactual_set = 0;
+    uint32_t counterfactual_budget = budget;
     for (int i = 1; i < argc; i++) {
         if (!strncmp(argv[i], "--epochs=", 9)) epochs = (unsigned)atoi(argv[i] + 9);
         else if (!strncmp(argv[i], "--memory-budget=", 16)) budget = (uint32_t)atoi(argv[i] + 16);
         else if (!strcmp(argv[i], "--plan")) plan_only = 1;
         else if (!strcmp(argv[i], "--reprofile")) reprofile = 1;
         else if (!strcmp(argv[i], "--no-profile-cache")) no_cache = 1;
+        else if (!strcmp(argv[i], "--explain-decisions") || !strcmp(argv[i], "--show-alternatives")) explain = 1;
+        else if (!strncmp(argv[i], "--counterfactual-budget=", 24)) { counterfactual_budget = (uint32_t)atoi(argv[i] + 24); counterfactual_set = 1; }
     }
 
     printf("model: transformer\n");
     printf("graph: shape=T3-M4-H2-D2-F6 forward=direct(not yet scheduled) "
            "backward=21-or-20 actions via shared executor tensor_transformer_steps_execute (depends on layout decision below) "
            "optimizer=4 updates(wq,wo,w1,w2, plain SGD, not yet scheduled)\n");
-    report_memory_plan(budget, plan_only);
-    int use_layout = report_layout_decision(plan_only, reprofile, no_cache);
+    if (!counterfactual_set) counterfactual_budget = budget;
+    PlanTrace trace = {0};
+    report_memory_plan(budget, counterfactual_budget, plan_only, &trace);
+    int use_layout = report_layout_decision(plan_only, reprofile, no_cache, &trace);
+    if (explain) trace_explain(stdout, &trace);
     if (plan_only) return 0;
 
     Block b;
@@ -501,7 +530,7 @@ int run_transformer(int argc, char **argv) {
         current = mse_seed(&b, target, seed);
         unsigned count = use_layout ? emit_layout(&b, &scratch, seed, &generation, steps, ctx, &lctx) : emit(&b, &scratch, seed, &generation, steps, ctx);
         unsigned expected = use_layout ? 20 : 21;
-        if (count != expected || tensor_transformer_steps_execute(steps, count)) { fprintf(stderr, "tensorctl transformer: executor error\n"); return 1; }
+        if (count != expected || trace.count < 2 || trace_verify_actions(&trace.decisions[1], count) || tensor_transformer_steps_execute(steps, count)) { fprintf(stderr, "tensorctl transformer: executor/trace consistency error\n"); return 1; }
         float lr = .02f;
         for (int i = 0; i < M * QW; i++) b.wq[i] -= lr * b.dwq[i];
         for (int i = 0; i < M * M; i++) b.wo[i] -= lr * b.dwo[i];
