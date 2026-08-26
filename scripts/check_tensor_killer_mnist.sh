@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+: "${MNIST_DIR:?set MNIST_DIR to extracted IDX files}"
+OUT="$(mktemp -d "${TMPDIR:-/tmp}/tensor-killer.XXXXXX")";trap 'rm -rf "$OUT"' EXIT
+if [[ -n "${KILLER_PYTHON:-}" ]]; then
+  PYTHON="$KILLER_PYTHON"
+else
+  command -v uv >/dev/null || { echo "uv is required (or set KILLER_PYTHON)" >&2; exit 2; }
+  uv venv --python 3.12 "$OUT/venv" >/dev/null
+  uv pip install --python "$OUT/venv/bin/python" numpy==2.5.2 onnx==1.22.0 onnxruntime==1.29.0 tinygrad==0.14.0 >/dev/null
+  PYTHON="$OUT/venv/bin/python"
+fi
+clang -arch arm64 -O3 -Wall -Wextra -Werror "$ROOT/fasm/spikes/tensor_killer_mnist_native.c" -o "$OUT/native"
+"$PYTHON" "$ROOT/scripts/tensor_killer_mnist.py" prepare --mnist "$MNIST_DIR" --out "$OUT/model"
+"$PYTHON" "$ROOT/scripts/tensor_killer_compare.py" --native "$OUT/native" --python "$PYTHON" --runner "$ROOT/scripts/tensor_killer_mnist.py" --model "$OUT/model"
