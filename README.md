@@ -544,11 +544,336 @@ scripts/check_tensor_mlp_train_spike.sh
 
 It converges to the exact XOR truth table (0, 1, 1, 0), matching that
 existing trainer's locked result. The executor loop itself is confirmed
-general; the planner/`emit()` logic that turns a graph into actions is still
-hand-written per architecture, not derived from a shared graph compiler — the
-recurring `tensor_compiler_planner_check.c` spike already lowers arbitrary
+general; the planner/`emit()` logic that turns a graph into actions was still
+hand-written per architecture at that point, not derived from a shared graph
+compiler — `tensor_compiler_planner_check.c` already lowered arbitrary
 matmul/bias/relu/mse node graphs (including this exact MLP shape) into fused
-steps, but that lowering isn't wired to either executor yet.
+steps, but that lowering wasn't wired to numbers or an executor.
+
+`tensor_graph_engine_check.c` closes that gap: the same op set (matmul,
+bias, relu, mse) as real float buffers, with forward and backward both
+dispatched generically by `node->op` through a small table — one function
+per op, not one function per model — running through the exact same
+`tensor_transformer_steps_execute` executor. The 2→4→1 XOR MLP this repo
+now trains four different ways (`xor_tensor_train.asm`, the MLP-through-
+transformer-executor spike above, `tensorctl mlp`, and this) is trained a
+fourth time here with zero hand-written `forward()`/`backward()` for this
+shape at all — only a 12-node graph description and a generic interpreter
+that would describe any other matmul/bias/relu/mse graph identically.
+Correctness is checked by finite differences on this exact engine, the same
+oracle pattern every other spike in this repo uses:
+
+```sh
+scripts/check_tensor_graph_engine_spike.sh
+```
+
+Getting there caught a real bug on the first run: predictions diverged to a
+flat ~-12.9 for every input. The zero-actions only reset the four trainable
+parameters' gradient buffers, not the five intermediate nodes' — and
+backward accumulates into every grad buffer with `+=`, so those five grew
+across every training step forever instead of resetting each time. Fixing
+that (and dropping the unused `d(loss)/d(x)` gradient buffer entirely,
+rather than leaving it silently accumulating too) is what actually
+converges. That bug also generalizes past this one graph: any live
+gradient accumulator needs a defined initialization policy, or state leaks
+across training steps — not an MLP quirk, a training-engine invariant.
+Fusing steps the way the original planner spike's `STEP_MB`/`STEP_MBR` does
+is a deliberately separate next refinement, not required for the core claim
+here: this is one generic engine, not MLP-code plus Transformer-code that
+both happen to call the same assembly function.
+
+`tensor_graph_engine_transformer_check.c` is the real test of that claim,
+not "add Transformer support": the same generic op-dispatch mechanism,
+extended with four new op traits this block's real math needs —
+`ATTENTION`, `RESIDUAL`, `LAYERNORM`, `CONTIGUOUS` — under a hard rule of no
+`transformer_backward_emit()` or any transformer-specific compiler path.
+`MATMUL`, `BIAS`, and `RELU` are reused completely unchanged from the MLP
+engine (already generalized over rows/cols, so a `[T,*]` shape needed no
+new code); only the four new ops are new, dispatched through the exact
+same table. Same real shape as every other transformer spike here
+(`T=3,M=4,H=2,D=2,F=6`); no `BIAS` nodes anywhere in this graph, because
+the real Block has none in its FFN either (`matmul->relu->matmul`, no bias
+add) — the graph simply doesn't use every op the engine knows about, which
+is itself part of the point. Finite differences on all four trainable
+groups (`wq,wo,w1,w2`) pass, and training converges from `loss=2.178741`
+to `0.000000` — the same starting loss, to the last printed digit, as
+every other transformer training spike in this repo, an independent
+cross-check that the target generation and initial weights actually match
+before a single gradient is compared:
+
+```sh
+scripts/check_tensor_graph_engine_transformer_spike.sh
+```
+
+Getting there caught one real, non-obvious setup gap, not a math bug: the
+first run converged only to `loss=1.28`, plateaued, while finite
+differences on the same run already passed — so the gradients were exact
+and something else was wrong. The target wasn't per-row normalized like
+`target_make()` elsewhere in this repo, and the graph's last op before the
+loss is `LAYERNORM`, whose output is inherently zero-mean/unit-variance per
+row — an unnormalized target has a floor a LayerNorm-terminated network
+can't reach no matter how correct its gradients are. Matching the
+established target convention is what actually gets to zero.
+
+With generality proven on two very different graphs, the next real question
+is whether an *optimization* pass on top of that graph — not just execution
+— stays model-independent too, or starts needing per-model rules the moment
+it tries to be clever. `tensor_graph_engine_fusion_check.c` answers it with
+the literal case from `tensor_compiler_planner_check.c`: can one generic
+pass see `MATMUL->BIAS->RELU`, decide (by consumer-count, not by which
+model it's looking at) that it's safe to collapse, and replace three
+scheduled actions with one — without ever bypassing the kernels already
+proven correct, since the fused step just calls the same `k_matmul`/
+`k_bias`/`k_relu` functions from inside one dispatch instead of three:
+
+```sh
+scripts/check_tensor_graph_engine_fusion_spike.sh
+```
+
+Run on the MLP graph, it finds exactly the grouping
+`tensor_compiler_planner_check.c` already locked in statically — `MBR` then
+`MB` then one plain step, 3 groups from 6 actions — and training still
+converges to the same XOR truth table through the fused schedule. The
+other half of the cross-check lives in
+`tensor_graph_engine_transformer_check.c`: the identical, unmodified pass
+run against the real Transformer graph, which has no `BIAS` nodes anywhere
+(`N_Z1`, a matmul, feeds `N_ACT`, a relu, directly). The honest, correct
+answer there is "nothing to fuse" — 12 groups, all plain — not a misfire
+and not a special case carved out for this shape. Same code, two very
+different graphs, two different but both *correct* outcomes: the
+optimization pass turns out to be exactly as model-independent as the
+execution path it sits on top of.
+
+Every model this engine had trained up to this point — XOR, the T=3
+Transformer block, GunPoint — was purpose-built for this repo. A user
+pointing `tensorctl` at their own model brings neither the shapes nor the
+data this project chose, so the real test is a model this repo didn't
+design around at all. `tensor_graph_engine_mnist_check.c` is the first rung
+of that ladder: the exact same 6-node matmul/bias/relu/matmul/bias/mse
+graph as the XOR MLP — zero new op traits — but at real `784->32->10`
+dimensions instead of `2->4->1`, on the real MNIST digit dataset (the same
+`ossci-datasets` mirror `torchvision` uses), not a fixture built for this
+repo:
+
+```sh
+MNIST_DIR=/path/to/extracted/mnist-idx-files \
+  scripts/check_tensor_graph_engine_mnist_spike.sh
+```
+
+Without `MNIST_DIR`, the check skips (matching the NIR-MFCO/GunPoint
+pattern). With it: the same fusion pass finds the identical `MBR`+`MB`
+grouping as the tiny XOR graph — confirming the pass generalizes across
+*size*, not just across models — and training on a 3,000-image subset for
+8 epochs takes about a second and a half, moving test accuracy from 12.3%
+(near the 10% chance floor) to 89.3%. Not a competitive MNIST result — the
+point was never accuracy, it was proving the engine doesn't choke or need
+new plumbing the moment real external data and non-toy dimensions show up.
+
+### Reconciling two independently-built compilers
+
+A parallel effort in this repo had, without coordination, built its own
+semantic graph compiler (`tensor_semantic_training_compiler_check.c`) with a
+genuinely reusable `compile()` entry point — automatic needs-grad
+derivation, shape validation, and the optimizer step scheduled through the
+executor like everything else — none of which `tensor_graph_engine_*.c`
+above had. A structural comparison found the two were complementary layers,
+not duplicates: Codex's file had the better compiler *skeleton*, this
+repo's graph-engine files had the broader semantic *coverage* (the
+Transformer op set, the `aux` saved-state mechanism, a real fusion pass, a
+real external dataset). `tensor_semantic_compiler.h` merges them into one
+canonical compiler, under a hard rule: no `forward_nodes[]`, `zeroable[]`,
+or any other hand-enumerated per-model schedule list anywhere downstream —
+a model is exactly a `Node` array, and `compile()` derives the rest
+(needs-grad by forward reachability from `PARAM` leaves, zero-grad for
+every node that needs one, backward in reverse order with an automatically
+computed per-operand grad mask, optimizer steps for every trainable leaf —
+all four still lowered to `ExecStep`s and run through
+`tensor_transformer_steps_execute`, never a bare C loop). Op dispatch stays
+table-driven (`FWD[op]`/`BWD[op]`) rather than Codex's if-chain, and
+`ATTENTION`/`LAYERNORM` save their forward state through the generic `aux`
+field on `Tensor` — there is no transformer-specific field anywhere in the
+header. Fusion (`detect_fusion()`) is kept as a separate, optional pass
+layered on top of `compile()`'s output, not logic built into `compile()` or
+into any model's graph.
+
+Three driver files prove the merge reproduces every previously-green result
+through this one path, with nothing but a graph + tensors in each:
+
+```sh
+scripts/check_tensor_merged_mlp_spike.sh          # XOR: predictions=0,1,1,0, correct=4/4
+scripts/check_tensor_merged_fusion_spike.sh        # same MBR+MB grouping, spliced onto compile()'s own schedule
+scripts/check_tensor_merged_transformer_spike.sh   # loss=2.178741->0.000000, finite differences on wq/wo/w1/w2
+MNIST_DIR=/path/to/extracted/mnist-idx-files \
+  scripts/check_tensor_merged_mnist_spike.sh       # 784->32->10, test_accuracy=12.3%->89.3%
+```
+
+Both original implementations (`tensor_graph_engine_*.c` and
+`tensor_semantic_training_compiler_check.c`) are left untouched and still
+pass their own checks — kept as regression oracles for this merge, not
+deleted alongside it.
+
+### A new op trait, not a new compiler path: CONV
+
+The cleanest test of the merge above is adding a model the canonical
+compiler wasn't built around and checking what has to change.
+`tensor_merged_cnn_check.c` adds `CONV` — a real valid, stride-1 2D
+convolution, not an im2col-plus-matmul decomposition — to
+`tensor_semantic_compiler.h`. The diff for that is one op-enum entry, one
+forward/backward kernel pair, one dispatch-table entry, and one new branch
+in `validate()`; `compile()`'s needs-grad derivation, zero-grad policy,
+backward grad-mask computation, optimizer scheduling, and
+`tensor_transformer_steps_execute` were not touched, and every
+previously-green merged check (MLP, fusion, Transformer, MNIST) still
+passes unmodified with `CONV` added to the shared header:
+
+```sh
+scripts/check_tensor_merged_cnn_spike.sh
+```
+
+Small synthetic task, same role XOR played before MLP ever saw real MNIST:
+four fixed 6x6 single-channel images through one 3x3/2-filter conv (valid,
+no padding) → relu → a small FC head, trained against four distinct fixed
+targets. Conv output is declared as a flat `[1, HOUT*WOUT*COUT]` node
+rather than `[HOUT*WOUT, COUT]` specifically so the very next `MATMUL`
+consumes it with no reshape op in between — the memory layout is identical
+either way, so this is a free reinterpretation, not new plumbing. Finite
+differences pass on both the new conv weight and the pre-existing FC
+weight; `steps=20` (`forward=5 zero=7 backward=5 optimizer=3`) is exactly
+what `compile()`'s existing, unmodified algorithm derives for this graph;
+loss goes `1.001362->0.000000` over 4000 epochs.
+
+### CONV at real scale: MNIST-CNN vs MNIST-MLP through the same compiler
+
+The synthetic fixture proved the architectural thesis; it didn't prove
+`CONV` holds up at real scale and a real data distribution.
+`tensor_merged_cnn_mnist_check.c` trains `conv(5x5,4 filters)->relu->fc->
+bias->mse` on the same real MNIST digits and the same 3,000/1,000 train/
+test subset `tensor_merged_mnist_check.c` (the MLP) already uses — same
+canonical `compile()`, same executor, **no new op**: `CONV`'s output was
+already declared as a flat `[1, HOUT*WOUT*COUT]` node, so the next
+`MATMUL` reads it directly and no flatten/view trait was needed after all.
+Finite differences on a real MNIST fixture (conv weight and FC weight)
+pass before any training happens, then:
+
+```sh
+MNIST_DIR=/path/to/extracted/mnist-idx-files \
+  scripts/check_tensor_merged_cnn_mnist_spike.sh
+```
+
+| | MLP (784→32→10) | CNN (conv 5×5×4→fc 2304→10) |
+|---|---|---|
+| compiled steps | 25 | **20** |
+| declared graph bytes | 210,888 | 228,584 |
+| epochs | 8 | 5 |
+| wall time | 1.2s | 1.7s |
+| test accuracy | 12.3%→89.3% | 8.8%→**91.4%** |
+
+Two things worth being honest about rather than glossing over. First, the
+CNN's *compiled step count is lower* than the MLP's (20 vs 25 — one `CONV`
+action replaces what would otherwise be five nodes' worth of matmul-style
+unrolling) while its *wall-clock cost per epoch is about 2.4x higher*
+(`1.7s/5` vs `1.2s/8`) — because `CONV`'s nested nine-loop body
+(`COUT×HOUT×WOUT×CIN×KH×KW`) runs entirely inside one `ExecStep`. Action
+count and declared-buffer size are not proxies for compute cost once an op
+like this exists; a planner (the cost-aware work earlier in this README)
+that priced a schedule by step count or byte traffic alone would have
+under-priced this graph. Second, the FC weight after an unpooled conv
+(`2304×10`) ends up close in size to the MLP's whole first layer
+(`784×32`) — removing pooling by design (`CONV` is the only new op; no
+`POOL`) means the flatten-to-FC weight matrix, not the conv filters
+themselves (`4×1×5×5` — tiny), is what actually dominates this graph's
+memory, a genuine layout/lifetime consequence of the op set chosen, not
+something either compile() or the executor had any say in.
+
+### POOL: does the resource trade-off move the way it should?
+
+The FC-after-flatten finding above pointed at an obvious next question, and
+the parallel effort in this repo's differential-oracle work made the same
+call independently: not another conv, but pooling — not for accuracy, but
+to check whether shrinking the graph's intermediate width actually shrinks
+FC parameters, memory, and compute the way it should. `POOL` (non-
+overlapping max pool, stride == window) was added to
+`tensor_semantic_compiler.h` under the exact same constraint as `CONV`: one
+op-enum entry, one kernel pair, one dispatch-table entry, one line added to
+`validate()`'s existing unary-op list (`POOL` joins `RELU`/`LAYERNORM`/
+`CONTIGUOUS`/`ATTENTION` — ops with no `rhs`), one new `validate()` branch.
+`compile()`'s needs-grad/zero-grad/backward-mask/optimizer logic was not
+touched. Saved state (the argmax's flat input index per output element)
+goes through the same generic `aux` mechanism `LAYERNORM`/`ATTENTION`
+already use — not a new struct field.
+
+```sh
+scripts/check_tensor_merged_pool_spike.sh              # synthetic fixture, finite differences through the argmax route
+MNIST_DIR=/path/to/extracted/mnist-idx-files \
+  scripts/check_tensor_merged_cnn_pool_mnist_spike.sh   # real MNIST, conv->relu->pool->fc
+```
+
+`tensor_merged_pool_check.c` is the synthetic fixture (same role as
+`tensor_merged_cnn_check.c` for `CONV`): the CONV fixture's exact 6x6x1 →
+conv 3x3/2 filters → 4x4x2 graph, with a 2x2 max pool inserted before the
+FC head (4x4x2 → 2x2x2). Finite differences on the conv weight only pass
+if backward correctly routes gradient through the pool's per-output argmax
+— confirmed. `tensor_merged_cnn_pool_mnist_check.c` is the real-scale
+comparison: identical conv stage to `tensor_merged_cnn_mnist_check.c`
+(5x5, 4 filters, 28x28x1→24x24x4), only difference a 2x2 pool before FC
+(→12x12x4), same train/test subset, same printed fields:
+
+| | MLP (784→32→10) | CNN, no pool (2304→10) | CNN, 2×2 pool (576→10) |
+|---|---|---|---|
+| compiled steps | 25 | 20 | 23 |
+| declared graph bytes | 210,888 | 228,584 | **97,256** |
+| wall time (5-8 epochs) | 1.2s | 1.7s | **1.0s** |
+| test accuracy | 12.3%→89.3% | 8.8%→91.4% | 8.7%→**92.5%** |
+
+The trade-off moved exactly the direction it should, on every axis at
+once: pooling's 4x spatial downsample (2×2, stride 2) shrinks the FC
+weight 4x (2304→576), which drags total declared graph memory down 2.4x
+and wall-clock training time down ~1.7x relative to the unpooled CNN —
+*and* accuracy went up, not down (91.4%→92.5%), consistent with pooling's
+usual role as a mild regularizer rather than a pure compression trade.
+None of this required touching `compile()`, `validate()` for any
+pre-existing op, or the executor a second time — the same claim `CONV`
+established, now confirmed by a second, independently-motivated op.
+
+### One gate, three models: MLP vs CNN vs CNN+POOL
+
+The comparisons above were three separate files printing adjacent numbers,
+not one apples-to-apples run. `tensor_merged_mnist_resource_gate.c` is a
+read-only consumer of `tensor_semantic_compiler.h` — no op or compiler work
+happens here — that builds all three graphs, trains each under the
+identical fixed `train_samples=3000 test_samples=1000 epochs=5` budget,
+and reports, per model: compiled step count; declared graph bytes split
+into parameter bytes (`PARAM` leaves) vs activation/saved-state bytes
+(everything else); a breakdown of node count by op; a **static**
+per-forward-pass MAC/element-op estimate computed purely from each node's
+own declared shape and its operands' (no op-specific macros involved, so
+it generalizes to any graph this header can compile); wall-clock training
+time; and test accuracy:
+
+```sh
+MNIST_DIR=/path/to/extracted/mnist-idx-files \
+  scripts/check_tensor_merged_mnist_resource_gate.sh
+```
+
+```
+compiled_steps: cnn=20 pool=23 (pool has MORE steps: yes)
+train_seconds:  cnn=1.78 pool=1.02 (pool is FASTER despite more steps: yes)
+static_macs:    cnn=82955 pool=67979 (mac estimate correctly predicts pool is cheaper: yes)
+```
+
+This is the concrete negative example against a naive `cost = action_count`
+planner: pooled CNN has *more* compiled steps than unpooled (23 vs 20) but
+trains faster (~1.7x), so ranking by step count gets the trade-off
+backwards. A cost estimate computed from shapes instead — `MATMUL` costs
+`rows·cols_lhs·cols_rhs`, `CONV` costs `output_elements·kernel_volume`,
+`POOL` costs roughly one visit per input element, everything else one op
+per output element — ranks the two correctly (67,979 < 82,955) using
+nothing but each node's own declared shape. The gate asserts this
+ordering, not just prints it (`pool.steps > cnn.steps` *and*
+`pool.train_seconds < cnn.train_seconds` *and* `pool.macs < cnn.macs` are
+all hard-checked), so this negative result stays locked in as a regression
+rather than a one-off observation. Clean under ASan+UBSan and `-Werror`,
+same as every other merged check.
 
 The memory planner (`tensor_transformer_liveness_check.c`, above) laid out a
 real 31-buffer/35-event arena, but its one rematerialize-vs-save choice —
