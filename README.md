@@ -1139,6 +1139,66 @@ supposed to own."** For the "start up, do a handful of inferences, exit"
 shape of workload this niche was defined around, warm latency's isolated
 4.7x deficit is close to irrelevant.
 
+### Does the niche generalize, or is this one lucky MLP?
+
+Everything above is one model: a 784→32→10 MLP on MNIST. A product
+hypothesis built on a single workload isn't a product hypothesis yet —
+three more real model *types* (not just three more datasets) went through
+the exact same measurement (`tensor_killer_compare.py` unmodified, byte-
+identical CLI) to see whether the pattern is a property of this specific
+model or of the runtime design: `tensor_killer_cnn_native.c` (compact CNN:
+`conv(5x5,4)→relu→2x2 maxpool→fc(576→10)`, real MNIST, reusing `CONV`/
+`POOL` exactly as already verified — no compiler work), `tensor_killer_
+tabular_native.c` (small MLP, `13→16→3`, real UCI Wine dataset — a
+genuinely different data domain, not another image task), and
+`tensor_killer_autoencoder_native.c` (MLP autoencoder, `784→64→784`,
+trained to reconstruct only digit `0`, evaluated as anomaly detection —
+unsupervised reconstruction, not classification; its "accuracy" needed no
+external threshold file to stay reusable with the shared comparison
+scripts — see the file's own comment on why the split is the test set's
+*mean* reconstruction error, not the median, computed independently by
+every engine from the same weights and data).
+
+```sh
+MNIST_DIR=/path/to/extracted/mnist-idx-files scripts/check_tensor_killer_cnn.sh
+WINE_DATA=/path/to/wine.data scripts/check_tensor_killer_tabular.sh
+MNIST_DIR=/path/to/extracted/mnist-idx-files scripts/check_tensor_killer_autoencoder.sh
+MNIST_DIR=/path/to/extracted/mnist-idx-files scripts/check_tensor_killer_lifetime_matrix.sh   # (and the cnn/tabular/autoencoder runners via --runner)
+```
+
+| model | cold (native/onnx) | warm (native/onnx) | RSS (native/onnx) | deploy (native/onnx) | correctness | lifetime crossover |
+|---|---|---|---|---|---|---|
+| MLP 784→32→10 | 2.76ms / 82.6ms | 30.6µs / 6.5µs | 4.6MB / 63.3MB | 154KB / 78.6MB | pass | 1,000–10,000 |
+| CNN conv+pool→fc | 3.3ms / 92.8ms | **12.3µs / 13.5µs** | 4.6MB / 61.6MB | 75KB / 78.5MB | pass | never (native still ahead at 10,000) |
+| Tabular (Wine) 13→16→3 | 4.4ms / 87.0ms | **0.4µs / 3.6µs** | 1.3MB / 56.6MB | 53KB / 78.5MB | pass | never (native still ahead at 10,000) |
+| Autoencoder 784→64→784 | 2.5ms / 92.2ms | 87.5µs / 11.1µs | 2.4MB / 60.8MB | 457KB / 78.9MB | pass | 100–1,000 |
+
+Two results, and they're not the same claim. First, the part that's flatly
+consistent: cold startup, peak RSS, and deploy footprint favor native by a
+large margin on *every* model type — 20-35x startup, 12-45x RSS, 170-
+1500x footprint, no exceptions, no near-misses. Correctness (checksum +
+accuracy agreement across all three engines) held on all four. That part
+of the product hypothesis isn't a property of the MLP; it's a property of
+the runtime.
+
+Second, and more interesting: warm latency and the lifetime crossover it
+drives are *not* a fixed ratio — they move with how much compute a single
+inference actually costs, and they move in both directions. On the tiny
+Wine model (13 inputs, 3 outputs), ONNX Runtime's own per-call session
+overhead dominates even its "warm" measurement, so native wins warm
+latency outright (9.5x) and there's no crossover in the measured range at
+all. The CNN lands in between — close enough that native's warm latency is
+actually *lower* than ONNX Runtime's on this CPU for this shape, so again
+no crossover shows up. The autoencoder is the opposite case: reconstructing
+a full 784-dim output is real work, native's scalar kernel pays for it
+directly, and the crossover arrives earliest of the four (100-1,000
+inferences) — a smaller, more compute-bound niche than the original MLP's.
+The pattern that generalizes isn't "native always wins by 30x startup and
+loses warm by 4.7x" — it's "startup/RSS/footprint favor native
+unconditionally; whether warm latency is a real cost depends on how much
+compute the specific model actually does per inference, and for at least
+two of these four real model types, it isn't a cost at all."
+
 The memory planner (`tensor_transformer_liveness_check.c`, above) laid out a
 real 31-buffer/35-event arena, but its one rematerialize-vs-save choice —
 recompute attention scores instead of keeping them alive — was a policy
