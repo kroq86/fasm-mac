@@ -470,6 +470,20 @@ are reported alongside the transformer's own ordered/shuffled runs, so the
 architecture's usefulness on genuinely order-sensitive data is judged by the
 same measurement, not by assumption.
 
+Run against the real archive (`timeseriesclassification.com/aeon-toolkit`,
+no password), the result is the opposite of NIR-MFCO's: pooled logistic
+reaches 56.7% test accuracy, ordered logistic 66.7%, shuffled logistic
+64.7%, and a small 4-unit hand-derived recurrent baseline sits at 54.7%
+ordered / 58.7% shuffled — none of the small linear/recurrent baselines
+show much order sensitivity on this pooled `[3, 4]` representation. The
+transformer is the outlier: 95.3% test accuracy ordered versus 74.0%
+shuffled, the same architecture and weights losing over 20 points of
+accuracy purely from corrupting temporal order. That is genuine evidence
+the encoder is using attention over real order, not just fitting per-band
+statistics; the small recurrent baseline's near-chance results are more
+likely a capacity artifact of its 4-unit hidden state over 3 pooled tokens
+than proof that sequence order does not matter here.
+
 | Command | Problem / approach | Output |
 |---------|--------------------|--------|
 | `best_time_to_buy_sell_stock.asm` | LC 121 via `dp.inc` | `5` |
