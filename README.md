@@ -272,6 +272,171 @@ scripts/build-digits-tensor.sh
 arch -x86_64 fasm/build/out/digits-tensor-train
 ```
 
+The NIR-MFCO spike exercises the same compiled tensor runtime on 880 open
+industrial material-flow images. A dependency-free extractor converts exact
+NIR false colours into 60 numeric features, holds out repetition zero from
+each physical setup, and compares a linear calibration baseline with a
+`60 → 16 → 1` fused tensor model. The 275 MB dataset remains external:
+
+```sh
+NIR_MFCO_ARCHIVE=/path/to/NIR-MFCO-dataset-v1.0.0.zip \
+  scripts/check_nir_mfco_spike.sh
+```
+
+Without the archive, the script runs only its small deterministic contract
+test. The external archive is identified by Zenodo record `7638775` and MD5
+`6703e6d59b2972b0d0c16d21be6a811d`.
+
+A single-head scaled dot-product attention spike composes the existing matmul
+kernels with a materialized transpose and stable row-wise softmax. It checks
+all 7/8/9 combinations for token, feature, and projection dimensions, compares
+forward output with an independent scalar implementation, and checks backward
+gradients by finite differences:
+
+```sh
+scripts/check_tensor_attention_spike.sh
+```
+
+This deliberately remains a 2D spike: batch and multi-head layouts require a
+separate stride/rank ABI decision rather than silently widening `TensorView`.
+
+That ABI decision is explored separately by a sidecar-layout spike. It keeps
+the legacy 32-byte `TensorView`, stores rank/dimensions/strides and the lifetime
+token in arena metadata, and passes a 16-byte `TensorRef` to strided kernels.
+The check exercises batched matmul and O(1) transposed views across 7/8/9
+dimensions without declaring the candidate ABI stable:
+
+```sh
+scripts/check_tensor_layout_stride_spike.sh
+```
+
+The follow-up multi-head attention kernel consumes rank-4
+`[batch, heads, tokens, head_dim]` views directly. Its transposed K operand
+shares storage through strides, and forward/backward cover every 7/8/9
+combination for token and head dimensions:
+
+```sh
+scripts/check_tensor_multihead_attention_spike.sh
+```
+
+QKV projection, head splitting/merging, residual connections, and LayerNorm
+remain separate transformer-block spikes.
+
+The QKV layout check proves that one packed `[B*T, 3*H*D]` projection and its
+three split-head views need no copies. Merging `[B,H,T,D]` back to
+`[B*T,H*D]` is not a legal zero-copy reshape for that stride order, so the
+planner must emit an explicit contiguous/permutation action. Residual-add and
+LayerNorm are checked separately with saved row means/inverse standard
+deviations and finite-difference backward validation:
+
+```sh
+scripts/check_tensor_qkv_layout_spike.sh
+scripts/check_tensor_layernorm_spike.sh
+```
+
+The first integrated encoder-block forward then connects packed QKV, strided
+multi-head attention, contiguous head merging, output projection, two residual
+LayerNorm stages, and a `8 → 16 → 8` feed-forward network. Its 11-step plan is
+checked at 7/8/9 token lengths; end-to-end block backward is still explicitly
+pending:
+
+```sh
+scripts/check_tensor_transformer_block_spike.sh
+```
+
+End-to-end encoder backward is checked on a smaller numerical-oracle shape.
+The gradient chain crosses both LayerNorms, the feed-forward network, output
+projection, softmax attention, and packed QKV projection. Input and all five
+weight groups are compared with finite differences of the complete block loss:
+
+```sh
+scripts/check_tensor_transformer_backward_spike.sh
+```
+
+The transformer planner spike lowers a 19-node semantic encoder graph into
+explicit view, contiguous, attention, matmul, residual, LayerNorm, rematerialize,
+and zero-gradient actions. It records saved-tensor and conservative scratch
+contracts without declaring the new action or layout ABI stable:
+
+```sh
+scripts/check_tensor_transformer_planner_spike.sh
+```
+
+An x86_64 assembly executor consumes the emitted experimental 32-byte direct-
+call steps. Its contract check runs the complete 14-action forward and
+21-action backward schedules, including view, contiguous, rematerialize, and
+zero-gradient actions, and verifies error-stop and stale-context behavior.
+The callbacks are contract probes; transformer kernel contexts are not wired
+into this executor yet:
+
+```sh
+scripts/check_tensor_transformer_executor_spike.sh
+```
+
+Because Apple Silicon executes the repository's x86_64 binaries through
+Rosetta and cannot use their AVX2/FMA path, a native arm64 NEON feasibility
+spike compares four-lane matmul and residual-ReLU kernels with their scalar
+references and 1/7/8/9 tails. It reports both an optimized compiler baseline
+and a diagnostic build with auto-vectorization disabled. This is evidence for
+a possible arm64 backend, not an expansion of the stable platform contract:
+
+```sh
+scripts/check_tensor_neon_spike.sh
+```
+
+A compile/runtime dispatch-table spike exposes the same matmul, residual,
+bias, ReLU, zero-gradient, and SGD families through scalar, NEON, and AVX2
+slots. On Apple Silicon the native arm64 binary selects NEON, while the x86_64
+binary under Rosetta selects scalar because AVX2/FMA are unavailable. Forced
+scalar remains the correctness oracle and all backends retain scalar tails:
+
+```sh
+scripts/check_tensor_kernel_dispatch_spike.sh
+```
+
+Real encoder forward contexts are wired to the 14 emitted actions in a
+follow-up executor integration check. The native arm64 path selects NEON; the
+x86_64 assembly executor under Rosetta selects scalar. Both execute QKV,
+attention, contiguous head merging, projections, two LayerNorms, and the FFN,
+and match the forced-scalar block output. Backward action contexts remain
+pending:
+
+```sh
+scripts/check_tensor_transformer_executor_kernels_spike.sh
+```
+
+The matching backward integration emits 21 real actions: nine scoped gradient
+zeroes, eleven reverse kernels, and one attention rematerialization. The
+x86_64 assembly executor produces input and QKV/output/FFN weight gradients
+matching the previously finite-difference-validated monolithic reference and
+rejects stale contexts:
+
+```sh
+scripts/check_tensor_transformer_backward_executor_spike.sh
+```
+
+The first optimizer-loop spike trains the complete small encoder block on a
+deterministic normalized sequence-pattern target. Every epoch runs the
+21-action backward executor and updates QKV, output-projection, and both FFN
+weight groups with SGD; the gate requires a substantial MSE reduction and
+non-zero updates in every parameter group:
+
+```sh
+scripts/check_tensor_transformer_train_spike.sh
+```
+
+The real-data follow-up reuses NIR-MFCO and converts each conveyor image into
+three ordered bands with four false-colour/occupancy features per token. It
+retains the repetition-zero test split, adds a learned physical-setup
+embedding, and trains the transformer regression head through the 21-action
+backward executor. Its MAE is reported beside the stronger global linear
+calibration baseline; the transformer is not required to win:
+
+```sh
+NIR_MFCO_ARCHIVE=/path/to/NIR-MFCO-dataset-v1.0.0.zip \
+  scripts/check_nir_mfco_transformer_spike.sh
+```
+
 | Command | Problem / approach | Output |
 |---------|--------------------|--------|
 | `best_time_to_buy_sell_stock.asm` | LC 121 via `dp.inc` | `5` |

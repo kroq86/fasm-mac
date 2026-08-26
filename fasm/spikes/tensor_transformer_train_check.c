@@ -1,0 +1,11 @@
+#define TRANSFORMER_EXECUTOR_NO_MAIN
+#include "tensor_transformer_executor_spike.h"
+#undef TRANSFORMER_EXECUTOR_NO_MAIN
+#include <math.h>
+#include <stdio.h>
+
+static float mse_seed(Block*b,const float*target,float*seed){float loss=0;for(int i=0;i<T*M;i++){float e=b->out[i]-target[i];loss+=e*e;seed[i]=2*e/(T*M);}return loss/(T*M);}
+static void normalize_target(float*t){for(int i=0;i<T;i++){float mean=0,var=0;for(int j=0;j<M;j++)mean+=t[i*M+j];mean/=M;for(int j=0;j<M;j++){float d=t[i*M+j]-mean;var+=d*d;}float inv=1/sqrtf(var/M+1e-5f);for(int j=0;j<M;j++)t[i*M+j]=(t[i*M+j]-mean)*inv;}}
+static void sgd(float*p,const float*g,unsigned n,float lr){for(unsigned i=0;i<n;i++)p[i]-=lr*g[i];}
+static float norm_delta(const float*a,const float*b,unsigned n){float s=0;for(unsigned i=0;i<n;i++){float d=a[i]-b[i];s+=d*d;}return sqrtf(s);}
+int main(void){Block b;Scratch scratch={0};float seed[T*M],target[T*M];initialize(&b,seed);for(int i=0;i<T;i++)for(int j=0;j<M;j++)target[i*M+j]=sinf((float)((i+1)*(j+2))*.7f)+cosf((float)(i-j)*.4f);normalize_target(target);float initial_wq[M*QW],initial_wo[M*M],initial_w1[M*F],initial_w2[F*M];memcpy(initial_wq,b.wq,sizeof b.wq);memcpy(initial_wo,b.wo,sizeof b.wo);memcpy(initial_w1,b.w1,sizeof b.w1);memcpy(initial_w2,b.w2,sizeof b.w2);forward(&b);float initial=mse_seed(&b,target,seed),current=initial;uint32_t generation=21;ExecStep steps[21];Context ctx[21];for(unsigned epoch=0;epoch<12000;epoch++){forward(&b);current=mse_seed(&b,target,seed);unsigned count=emit(&b,&scratch,seed,&generation,steps,ctx);if(count!=21||tensor_transformer_steps_execute(steps,count))return 2;sgd(b.wq,b.dwq,M*QW,.02f);sgd(b.wo,b.dwo,M*M,.02f);sgd(b.w1,b.dw1,M*F,.02f);sgd(b.w2,b.dw2,F*M,.02f);}forward(&b);current=mse_seed(&b,target,seed);float dq=norm_delta(initial_wq,b.wq,M*QW),doo=norm_delta(initial_wo,b.wo,M*M),d1=norm_delta(initial_w1,b.w1,M*F),d2=norm_delta(initial_w2,b.w2,F*M);printf("tensor transformer trained: task=sequence-pattern shape=[1,3,4] heads=2 ffn=6 epochs=12000 optimizer=sgd backward_actions=21 loss=%.6f->%.6f parameter_delta=%.3f,%.3f,%.3f,%.3f\n",initial,current,dq,doo,d1,d2);return current<initial*.25f&&dq>1e-4f&&doo>1e-4f&&d1>1e-4f&&d2>1e-4f?0:1;}
