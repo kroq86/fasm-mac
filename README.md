@@ -456,6 +456,31 @@ non-zero updates in every parameter group:
 scripts/check_tensor_transformer_train_spike.sh
 ```
 
+Everything above trains one architecture, so it doesn't yet show whether the
+`{run, context, kind, flags}` assembly executor (`tensor_transformer_steps_execute`)
+is actually general or only happens to work for this one encoder block. The
+executor's own machine code has no attention/LayerNorm/FFN-specific logic in
+it — it is a 32-byte step interpreter — so a second, unrelated architecture
+through the same loop is the direct test. A 2→4→1 XOR MLP (unrelated math,
+its own zero/reverse action set, its own `Context`/`emit`) is driven through
+the identical executor object file. Its backward is checked twice — against
+finite differences, then against a monolithic reference, exactly as the
+encoder block was — and it trains from the same hand-picked starting weights
+the existing `fasm/examples/xor_tensor_train.asm` uses, so a training-dynamics
+difference can't be blamed on unlucky random init:
+
+```sh
+scripts/check_tensor_mlp_train_spike.sh
+```
+
+It converges to the exact XOR truth table (0, 1, 1, 0), matching that
+existing trainer's locked result. The executor loop itself is confirmed
+general; the planner/`emit()` logic that turns a graph into actions is still
+hand-written per architecture, not derived from a shared graph compiler — the
+recurring `tensor_compiler_planner_check.c` spike already lowers arbitrary
+matmul/bias/relu/mse node graphs (including this exact MLP shape) into fused
+steps, but that lowering isn't wired to either executor yet.
+
 The real-data follow-up reuses NIR-MFCO and converts each conveyor image into
 three ordered bands with four false-colour/occupancy features per token. It
 retains the repetition-zero test split, adds a learned physical-setup
