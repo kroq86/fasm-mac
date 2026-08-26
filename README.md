@@ -956,6 +956,70 @@ beats scalar on this exact CPU (`tensor_kernel_dispatch_profile.c`, this
 README's `tensorctl` section above) — swapping it in is a legitimate,
 separate follow-up, not a claim this matrix makes for free.
 
+### Chasing that follow-up: NEON made the dominant shape *worse*
+
+The obvious next experiment: plug that existing, already-verified NEON
+`matmul` into the canonical `MATMUL` kernel and rerun the same scaling
+matrix under the same predeclared criteria, with the one variable isolated
+— no threading yet, so a win or a loss is attributable to vectorization
+alone. `tensor_matmul_scaling_profile.c` measures exactly that isolated
+variable first, at the exact `(M=1,K,N)` shapes this workload actually
+uses — not a generic square sweep — compiled plain `-O3` (the same flags
+the killer benchmark actually builds with, not `-fno-vectorize`, so this
+is "does hand NEON beat what the compiler already gives you for free in
+the real build"):
+
+```sh
+scripts/check_tensor_matmul_scaling_profile.sh
+```
+
+```
+hid=32    layer1 shape=1x784x32   scalar_ns=  4041.1  neon_ns=  9728.9  speedup=0.42x scalar_wins
+hid=630   layer1 shape=1x784x630  scalar_ns= 39175.4  neon_ns= 69221.9  speedup=0.57x scalar_wins
+hid=5030  layer1 shape=1x784x5030 scalar_ns=358258.7  neon_ns=540844.3  speedup=0.66x scalar_wins
+hid=32    layer2 shape=1x32x10    scalar_ns=   167.8  neon_ns=   165.2  speedup=1.02x native_wins
+hid=5030  layer2 shape=1x5030x10  scalar_ns= 25714.3  neon_ns= 25796.7  speedup=1.00x scalar_wins
+```
+
+On layer 1 — the dominant cost at every size (`K=784`, an order of
+magnitude more work than layer 2's `K=HID,N=10`) — the existing NEON
+kernel **loses to scalar `-O3` by 33-61%, consistently, at all six sizes**.
+Layer 2 is a wash (±2%, noise). This isn't "barely moves" — deployed as-is
+it would have made the killer benchmark's cold/warm numbers *worse*,
+because the FLOP-dominant matmul got slower.
+
+The mechanistic reason survives inspection: that NEON kernel's loop order
+is `ikj`, vectorized over output columns — for each of the `K=784`
+reduction steps it re-reads and re-writes the *entire* output row from
+memory, because nothing keeps an accumulator resident in a register across
+the `K` loop. That's memory-traffic-bound. The scalar `ijk` loop keeps one
+accumulator in a register for the whole `K` reduction per output element
+and only writes it once — cache-friendly by construction. The `ikj`
+pattern's real advantage is amortizing that repeated output re-read/
+re-write across *multiple* output rows sharing the same `A[i,p]` load —
+which is exactly why `tensor_kernel_dispatch_profile.c`'s own matmul sweep
+(above) tests `M∈{3,8,64}` and finds NEON winning there: this repo's
+actual inference shape is `M=1` (batch=1), the one regime where that
+kernel's design assumption doesn't hold.
+
+Given that, the swap was **reverted**, not shipped: `k_matmul_fwd` in
+`tensor_semantic_compiler.h` stays the plain scalar loop on every
+platform, unchanged, with the reasoning kept in a comment at the call site
+so the next person doesn't rediscover this by re-trying it. Every merged
+check and the differential oracle were re-run after the revert and are
+byte-for-byte back to their pre-experiment numbers — this was a clean,
+reversible experiment, not left half-applied.
+
+So: **the bottleneck is deeper than "no SIMD"**, which is itself a
+concrete, useful answer, not a null result. It's specifically "the wrong
+SIMD strategy for this shape" — a `K`-reduction kept in a register per
+output element (rather than an output row re-touched per `K` step) is the
+theoretically correct next design for `M=1`, but it needs a strided gather
+of `B` (`B` is stored `[K,N]` row-major, so a fixed output column reads
+`b[p*N+j]` for varying `p` — not contiguous), which is a materially
+different kernel to design and verify, not a one-line swap — and isn't
+implemented here.
+
 The memory planner (`tensor_transformer_liveness_check.c`, above) laid out a
 real 31-buffer/35-event arena, but its one rematerialize-vs-save choice —
 recompute attention scores instead of keeping them alive — was a policy

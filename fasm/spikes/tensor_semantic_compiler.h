@@ -115,6 +115,30 @@ extern int tensor_transformer_steps_execute(const ExecStep *, uint64_t);
 typedef void (*FwdFn)(Node *, Node *, Node *);
 typedef void (*BwdFn)(Node *, Node *, Node *, uint32_t);
 
+/* k_matmul_fwd stays the plain scalar ijk loop on every platform,
+ * including arm64. An arm64 NEON variant (ikj loop order, vectorized over
+ * output columns, ported unmodified from tensor_kernel_dispatch_spike.h's
+ * already-verified native_matmul) was tried here and reverted: measured at
+ * the exact M=1 shapes the killer-workload scaling matrix actually uses
+ * (tensor_matmul_scaling_profile.c), it LOSES to this scalar loop by
+ * 33-61% on the dominant shape (layer 1, K=784) across the entire
+ * 25k-4M-param range — not a wash, a consistent regression. Mechanistic
+ * reason: at M=1 (batch=1 inference), the ikj/vectorize-over-N pattern
+ * re-reads and re-writes the *entire* output row from memory on every one
+ * of the K iterations (no register-resident accumulator across K), which
+ * is memory-traffic-bound; the scalar ijk loop keeps one accumulator in a
+ * register across the whole K reduction per output element and only
+ * writes it once. native_matmul's own shape sweep in
+ * tensor_kernel_dispatch_profile.c tests M in {3,8,64}, where amortizing
+ * the ikj pattern's re-read/re-write cost across multiple output rows pays
+ * off — that's a real, different regime from this repo's actual inference
+ * shape. Shipping the swap anyway because "NEON should help" would have
+ * been exactly the kind of unmeasured assumption this project has
+ * repeatedly had to walk back elsewhere; measuring first here caught it
+ * before it shipped. A NEON strategy suited to M=1 (a K-reduction
+ * vectorized per output element, keeping the accumulator in a register)
+ * is a legitimate next experiment but a materially different kernel, not
+ * a one-line swap, and isn't implemented here. */
 static void k_matmul_fwd(Node *self, Node *a, Node *b) {
     Tensor *out = &self->tensor;
     for (uint32_t i = 0; i < a->tensor.rows; i++) for (uint32_t j = 0; j < b->tensor.cols; j++) {
