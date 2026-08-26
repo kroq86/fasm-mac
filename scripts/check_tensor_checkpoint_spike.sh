@@ -5,4 +5,4 @@ OUT_DIR="$(mktemp -d "${TMPDIR:-/tmp}/tensor-checkpoint.XXXXXX")"
 trap 'rm -rf "$OUT_DIR"' EXIT
 clang -std=c11 -Wall -Wextra -Werror -O2 \
   "$ROOT/fasm/spikes/tensor_checkpoint_check.c" -o "$OUT_DIR/check"
-"$OUT_DIR/check" "$OUT_DIR/model.ckpt"
+"$OUT_DIR/check" "$OUT_DIR/model.ckpt" "$OUT_DIR/truncated.ckpt"
