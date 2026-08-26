@@ -246,6 +246,45 @@ the constraints and pre-XOR gates are recorded in `docs/autograd-spikes.md`.
 scripts/check_autograd_f32.sh
 ```
 
+### tensorctl — graph-planned tensor training engine
+
+Everything from here through the GunPoint spike below is one connected
+system, not a pile of unrelated experiments: a tensor representation with
+views/strides, a semantic graph, a planner, an x86_64 assembly executor that
+runs real kernels, finite-difference-checked forward/backward, an optimizer
+loop, and a memory planner that makes actual cost-based decisions instead of
+hardcoded policy. `tensorctl` is the v0.1 entry point into that system —
+train a real model through it without reading any spike file:
+
+```sh
+scripts/build-tensorctl.sh
+arch -x86_64 fasm/build/out/tensorctl mlp
+arch -x86_64 fasm/build/out/tensorctl transformer
+arch -x86_64 fasm/build/out/tensorctl transformer --memory-budget=8192   # watch the save/rematerialize decision flip
+```
+
+`mlp` trains the same 2→4→1 XOR network `fasm/examples/xor_tensor_train.asm`
+already trains, but through the transformer's executor instead — proof this
+engine isn't Transformer-specific (`tensor_mlp_train_check.c` below).
+`transformer` trains the real `T=3,M=4,H=2,D=2,F=6` encoder block on a
+synthetic target through the same 21-action backward schedule, and prints
+its execution plan: action counts, and a memory report that's genuinely
+computed at run time — `--memory-budget` changes which of two real,
+laid-out arena schedules the planner picks for attention-score
+rematerialization (`tensor_liveness_cost_planner_check.c` below). Forward is
+currently direct (not yet scheduled through the executor for either model);
+the backward path is what's real:
+
+```sh
+scripts/check_tensorctl.sh
+```
+
+The rest of this section is the experiment history that got this far —
+each spike below answers one specific question (is the planner general, does
+rematerialization move the memory peak, does layout-aware kernel selection
+help, is manual SIMD worth it) rather than adding a feature for its own
+sake, several with real negative results left in rather than edited out.
+
 The experimental scalar tensor ABI lives in `fasm/core/tensor_runtime_f32.inc`
 with matmul, bias-add, ReLU, MSE, indexed-tape execution, lifetime validation,
 and SGD implementations in focused `tensor_*_f32.inc` modules. Kernel calling
@@ -547,11 +586,36 @@ Correctness is checked exactly across 5 shapes first. Timed against true
 scalar (the same `-fno-vectorize -fno-slp-vectorize` diagnostic build the
 SIMD profiling spike needed to avoid being fooled by the compiler
 auto-vectorizing the "baseline" side), skipping the copy wins at every shape
-tested, including the real block's exact `T=3,H=2,D=2` — 2.62x there, and
-1.5-2.9x across token-count, head-dimension, and head-count sweeps. Unlike
-the memory-lifetime spike above, this one has a real, unconditional win on
-the current shape: eliminating `CONTIGUOUS` for this specific consumer is
-worth doing, not just worth planning for.
+tested in isolation, including the real block's exact `T=3,H=2,D=2` — 2.62x
+there, and 1.5-2.9x across token-count, head-dimension, and head-count
+sweeps.
+
+That isolated win does not survive being wired into the real block, though.
+`tensor_merge_layout_train_check.c` builds a full layout-aware forward AND
+backward for the real Block — correctness is exact (matches the monolithic
+reference's output and all five gradients, plus an independent
+finite-difference check) — but end-to-end timing against two honest
+baselines (the monolithic `forward()`, which already fuses the merge write
+into the attention loop for free and never actually pays a separate
+CONTIGUOUS cost; and an explicit-contiguous variant that does pay it,
+matching what a real planner-emitted action would cost) lands within
+~1-2% either way, using median-of-15 trials to rule out the single-shot
+timing noise that initially made two back-to-back process runs disagree on
+which variant even won:
+
+```sh
+scripts/check_tensor_merge_layout_train_spike.sh
+```
+
+So, corrected: this is not the unconditional win it looked like in
+isolation. The op-level speedup is real but gets diluted below the noise
+floor by the rest of the forward pass (QKV projection, attention, two
+LayerNorms, FFN) at this block's current tiny scale — the same lesson the
+SIMD profiling spike already taught, now confirmed a second time on a
+different optimization: an isolated microbenchmark does not predict
+full-pipeline impact, in either direction. Of the three planner spikes,
+none delivered an unconditional win on the current shape; all three did
+deliver a real, honestly-measured answer.
 
 The real-data follow-up reuses NIR-MFCO and converts each conveyor image into
 three ordered bands with four false-colour/occupancy features per token. It
