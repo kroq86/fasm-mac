@@ -9,15 +9,20 @@ static double now_ns(void) { struct timespec ts; clock_gettime(CLOCK_MONOTONIC, 
 int run_mlp(int argc, char **argv) {
     unsigned epochs = 4000;
     float lr = .1f;
+    int plan_only = 0;
     for (int i = 1; i < argc; i++) {
         if (!strncmp(argv[i], "--epochs=", 9)) epochs = (unsigned)atoi(argv[i] + 9);
         else if (!strncmp(argv[i], "--lr=", 5)) lr = (float)atof(argv[i] + 5);
+        else if (!strcmp(argv[i], "--plan")) plan_only = 1;
     }
 
     printf("model: mlp\n");
     printf("graph: shape=2-4-1 task=xor forward=direct(5 ops, not scheduled) "
-           "backward=8 actions(zero=5 reverse=3) via shared executor tensor_transformer_steps_execute\n");
+           "backward=8 actions(zero=5 reverse=3) via shared executor tensor_transformer_steps_execute "
+           "optimizer=4 updates(w1,b1,w2,b2, plain SGD, not yet scheduled)\n");
     printf("memory: not modeled for this shape yet (see tensorctl transformer for the memory-planner path)\n");
+    printf("layout: no rewrite candidates identified for this graph shape yet\n");
+    if (plan_only) return 0;
 
     static const float data[4][IN] = {{0, 0}, {0, 1}, {1, 0}, {1, 1}};
     static const float labels[4] = {0, 1, 1, 0};

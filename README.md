@@ -260,20 +260,50 @@ train a real model through it without reading any spike file:
 scripts/build-tensorctl.sh
 arch -x86_64 fasm/build/out/tensorctl mlp
 arch -x86_64 fasm/build/out/tensorctl transformer
-arch -x86_64 fasm/build/out/tensorctl transformer --memory-budget=8192   # watch the save/rematerialize decision flip
+arch -x86_64 fasm/build/out/tensorctl transformer --plan                       # inspect the plan, no training run
+arch -x86_64 fasm/build/out/tensorctl transformer --plan --memory-budget=8192  # watch the save/rematerialize decision flip
 ```
 
 `mlp` trains the same 2→4→1 XOR network `fasm/examples/xor_tensor_train.asm`
 already trains, but through the transformer's executor instead — proof this
 engine isn't Transformer-specific (`tensor_mlp_train_check.c` below).
 `transformer` trains the real `T=3,M=4,H=2,D=2,F=6` encoder block on a
-synthetic target through the same 21-action backward schedule, and prints
-its execution plan: action counts, and a memory report that's genuinely
-computed at run time — `--memory-budget` changes which of two real,
-laid-out arena schedules the planner picks for attention-score
-rematerialization (`tensor_liveness_cost_planner_check.c` below). Forward is
-currently direct (not yet scheduled through the executor for either model);
-the backward path is what's real:
+synthetic target through the same backward schedule. `--plan` skips training
+and prints the execution plan instead: action counts, a memory report
+genuinely computed at run time (the same real 31-buffer arena layout from
+`tensor_liveness_cost_planner_check.c`, with the full buffer table for
+whichever schedule — save or rematerialize — the current `--memory-budget`
+actually picks), and a second real alternative the planner compares:
+standard merge+`CONTIGUOUS`+matmul versus the layout-aware head-wise
+projection. This second decision is grounded in measured wall-clock, not
+the byte-traffic count that looks better on paper (0 bytes copied vs 48) —
+min/median/max over 31 trials, anti-dead-code-elimination-protected,
+against real model state from an actual forward pass — and it genuinely
+drives execution: `case7`+`case8` of the real 21-action backward schedule
+are spliced out for one layout-aware step (21 actions become 20) when the
+measurement favors it, still running through the exact same
+`tensor_transformer_steps_execute` executor, not a bypass. Both paths are
+verified equivalent every run — same forward output, same all five
+gradients, and `b->merge` is poisoned before a layout-aware forward pass and
+checked untouched after, proving the copy really doesn't happen. When the
+gap between the two measured medians is smaller than their combined
+min/max spread, the decision is reported `uncertain` and falls back to the
+longer-established standard path instead of trusting a coin flip.
+
+That 31-trial benchmark is real but doesn't need re-running on every
+invocation: it's backed by a small autotuning cache (an XDG-respecting user
+cache directory, never the repo), keyed on shape + host architecture +
+this file's own revision marker + compiler identity + build flags — not a
+whole-repo hash, so an unrelated edit elsewhere can't invalidate it, and
+not auto-expired by age, since a three-day-old measurement isn't wrong just
+for being old. Two different build configs (say `-O2` vs `-O0`) get
+separate cache entries rather than one clobbering the other. The cache is
+advisory only — written atomically (temp file + rename), and any read
+trouble (missing, truncated, corrupt, wrong key) just falls back to a fresh
+measurement, never a crash. `--reprofile` forces a fresh one anyway;
+`--no-profile-cache` skips the cache file entirely, both directions.
+Forward and the optimizer step are currently direct (not yet scheduled
+through the executor for either model); the backward path is what's real:
 
 ```sh
 scripts/check_tensorctl.sh
