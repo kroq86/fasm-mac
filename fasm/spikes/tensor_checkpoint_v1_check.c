@@ -1,0 +1,7 @@
+#include "tensor_checkpoint_v1_spike.h"
+#include <stdio.h>
+int main(void){float wq[]={1,2,3,4},wo[]={5,6},gotq[4]={0},goto_[2]={0};TcTensor tensors[]={{"wo",TC_F32,1,{2},0,wo,sizeof wo},{"wq",TC_F32,2,{2,2},0,wq,sizeof wq}};unsigned char*wire;uint64_t bytes,fp=UINT64_C(0xc7b6b38c4627b0c0);if(tc_encode(tensors,2,fp,2000,&wire,&bytes))return 1;TcInfo info;if(tc_inspect(wire,bytes,fp,&info)||info.epoch!=2000||info.tensor_count!=2)return 2;
+    TcRequest request[]={{"wq",TC_F32,2,{2,2},0,gotq,sizeof gotq},{"wo",TC_F32,1,{2},0,goto_,sizeof goto_},{"optimizer.v",TC_F32,1,{3},TC_OPTIONAL,NULL,12}};if(tc_load(wire,bytes,fp,request,3)||memcmp(wq,gotq,sizeof wq)||memcmp(wo,goto_,sizeof wo))return 3;
+    if(tc_inspect(wire,bytes,fp+1,NULL)!=TC_MODEL)return 4;unsigned char epoch_byte=wire[24];wire[24]^=1;if(tc_inspect(wire,bytes,fp,NULL)!=TC_FORMAT)return 5;wire[24]=epoch_byte;unsigned char saved=wire[bytes-1];wire[bytes-1]^=1;if(tc_inspect(wire,bytes,fp,NULL)!=TC_INTEGRITY)return 6;wire[bytes-1]=saved;
+    float untouched[3]={9,9,9};TcRequest bad[]={{"wq",TC_F32,2,{4,1},0,untouched,12},{"missing",TC_F32,1,{1},0,untouched,4}};if(tc_load(wire,bytes,fp,bad,2)!=TC_TENSOR||untouched[0]!=9)return 7;
+    printf("tensor checkpoint v1 integration passed: header=%d record=%d tensors=%u bytes=%llu epoch=%llu fingerprint=checked reorder=yes optional=yes transactional=yes integrity=per-tensor\n",TC_HEADER,TC_RECORD,info.tensor_count,(unsigned long long)bytes,(unsigned long long)info.epoch);free(wire);return 0;}
