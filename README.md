@@ -405,6 +405,37 @@ pending:
 scripts/check_tensor_transformer_executor_kernels_spike.sh
 ```
 
+That check's own `matmul` sub-timing at the block's real `T=3` shape was read
+as "NEON loses to scalar on small shapes," which shaped an earlier size-aware-
+dispatch plan. A dedicated size-sweep profiling spike falsifies that reading.
+It runs the same `scalar_*`/`native_*` kernel pair from the dispatch spike
+across many sizes, compiled two ways: plain `-O3` (`scalar_*` may get silently
+auto-vectorized by clang, so this really compares hand NEON against whatever
+the compiler gives you for free) and `-fno-vectorize -fno-slp-vectorize`
+(`scalar_*` is genuinely scalar):
+
+```sh
+scripts/check_tensor_kernel_dispatch_profile.sh
+```
+
+At `m=3, n=12` — the exact matmul shape inside the real block — hand NEON
+beats true scalar by 2.8-3.1x and keeps winning down to the smallest size
+tested (crossover at n=4 for every family: matmul, residual, relu, zero,
+bias, sgd). Against the plain `-O3` build, hand NEON *loses* at that same
+shape (0.9x), matching the block benchmark almost exactly. So the earlier
+result was real, but its explanation was wrong: it isn't that vectorization
+doesn't pay off at small transformer shapes, it's that clang's own
+auto-vectorizer already beats these particular hand-written NEON intrinsics
+(a single unrolled 4-lane FMA per step, no accumulator or scheduling tricks)
+on most shapes tested, small and large alike — re-running the block
+benchmark itself even flipped sign between two back-to-back runs (0.82x,
+then 1.44x), which is consistent with a close, noisy comparison rather than
+a robust small-shape effect. The corrected implication is not "add a
+scalar/NEON size threshold" but "the current hand-NEON kernels need real
+optimization (unrolling, multiple accumulators) before they're worth
+dispatching to at all, or the compiler's own vectorization should be
+trusted instead of hand intrinsics here."
+
 The matching backward integration emits 21 real actions: nine scoped gradient
 zeroes, eleven reverse kernels, and one attention rematerialization. The
 x86_64 assembly executor produces input and QKV/output/FFN weight gradients
