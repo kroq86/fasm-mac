@@ -471,18 +471,20 @@ architecture's usefulness on genuinely order-sensitive data is judged by the
 same measurement, not by assumption.
 
 Run against the real archive (`timeseriesclassification.com/aeon-toolkit`,
-no password), the result is the opposite of NIR-MFCO's: pooled logistic
-reaches 56.7% test accuracy, ordered logistic 66.7%, shuffled logistic
-64.7%, and a small 4-unit hand-derived recurrent baseline sits at 54.7%
-ordered / 58.7% shuffled — none of the small linear/recurrent baselines
-show much order sensitivity on this pooled `[3, 4]` representation. The
-transformer is the outlier: 95.3% test accuracy ordered versus 74.0%
-shuffled, the same architecture and weights losing over 20 points of
-accuracy purely from corrupting temporal order. That is genuine evidence
-the encoder is using attention over real order, not just fitting per-band
-statistics; the small recurrent baseline's near-chance results are more
-likely a capacity artifact of its 4-unit hidden state over 3 pooled tokens
-than proof that sequence order does not matter here.
+no password), the result is the opposite of NIR-MFCO's. The recurrent
+baseline is sized to roughly match the transformer block's own parameter
+count (113 vs ~117 weights) and trained for the same 2500 epochs, so
+capacity and training budget aren't stacked against either model. Ordered
+test accuracy climbs with model class — pooled logistic 56.7%, ordered
+logistic 66.7%, recurrent 76.7%, transformer 95.3% — and every order-aware
+model loses accuracy when its own bands are shuffled: logistic barely
+(66.7%→64.7% shuffled), the recurrent baseline more (76.7%→66.0%), and the
+transformer most of all (95.3%→74.0%, over 20 points on the same weights).
+That is a real three-way answer to the questions this spike was built to
+ask: order can't be ignored here (order-invariant pooling is the weakest
+model), a plain sequential baseline already captures a good part of it, and
+attention still adds a large, order-dependent margin on top of the
+recurrent baseline rather than just re-deriving what pooling already knew.
 
 | Command | Problem / approach | Output |
 |---------|--------------------|--------|

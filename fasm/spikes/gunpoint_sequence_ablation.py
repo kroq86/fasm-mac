@@ -7,7 +7,11 @@ from gunpoint_baseline import (
     BANDS, FEATURES, design, pooled_design, logistic_fit, logistic_accuracy, sigmoid,
 )
 
-HID = FEATURES
+# Sized to roughly match the transformer block's parameter count (~117
+# weights: wq 48 + wo 16 + w1 24 + w2 24 + head/bias 5) so the ordered-vs-
+# shuffled comparison isn't stacked against the recurrent baseline by
+# capacity alone: hid=8 gives wx 32 + wh 64 + bh 8 + w_out 8 + b_out 1 = 113.
+HID = 8
 
 
 def load(path):
@@ -103,7 +107,7 @@ def rnn_grad(params, bands, order, label):
     return dwx, dwh, dbh, dw_out, db_out
 
 
-def rnn_fit(train, order_fn, epochs=200, lr=0.3, seed=1234567):
+def rnn_fit(train, order_fn, epochs=2500, lr=0.3, seed=1234567):
     params = rnn_init(seed)
     wx, wh, bh, w_out, b_out = params
     n = len(train)
