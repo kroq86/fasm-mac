@@ -481,6 +481,78 @@ recurring `tensor_compiler_planner_check.c` spike already lowers arbitrary
 matmul/bias/relu/mse node graphs (including this exact MLP shape) into fused
 steps, but that lowering isn't wired to either executor yet.
 
+The memory planner (`tensor_transformer_liveness_check.c`, above) laid out a
+real 31-buffer/35-event arena, but its one rematerialize-vs-save choice —
+recompute attention scores instead of keeping them alive — was a policy
+baked into the buffer list by hand, not a decision the planner made. A
+follow-up spike turns it into an actual trade-off: lay out the same real
+schedule twice, once with scores kept alive for their full need window and
+once with the existing short recomputed interval, convert "bytes over a
+memory budget" and "recompute cost" into one comparable cost, and pick
+whichever side is cheaper. The remat layout reproduces the existing 4928-byte
+arena exactly; the save layout costs 5440. The acceptance bar isn't "it
+picked the same answer as before" — it's that the answer actually moves when
+the inputs change: a generous budget prefers saving (recompute buys nothing),
+today's tight budget prefers rematerializing (matching the existing hand
+policy), and making recompute artificially expensive at that same tight
+budget flips it back to saving. All three real-data outcomes, plus two
+synthetic candidates with unrelated size/cost profiles, are asserted, not
+just printed:
+
+```sh
+scripts/check_tensor_liveness_cost_planner_spike.sh
+```
+
+A follow-up asks the same "is this a real decision or a hardcoded one"
+question about the optimizer, not the memory planner: today all four SGD
+updates run as one batch strictly after all 21 backward actions finish, even
+though the four weight gradients finish accumulating at very different
+points inside that pass. Each gradient's real lifetime — first write (its
+zero action) to last write (the `reverse_one()` case that finishes it, read
+directly off that switch statement, not guessed) — is modeled the same way
+as the memory planner's buffers, comparing today's deferred-to-the-end
+policy against releasing each gradient right after its own last write. On
+the real 31-buffer schedule this saves exactly 0 bytes, and that's a real,
+mechanistic finding: the weight gradient and its co-produced activation
+gradient come out of the same `mmback` call and are both consumed one tick
+later, so there's no free tick between them regardless of optimizer timing,
+and the arena is already saturated through that window. A second, isolated
+case proves the mechanism itself is correctly implemented rather than
+silently broken — a later consumer that doesn't share that same-tick
+co-production constraint does reuse the freed space:
+
+```sh
+scripts/check_tensor_gradient_lifetime_planner_spike.sh
+```
+
+The third planner question is about layout, not memory: the QKV layout spike
+already showed that merging attention heads `[H,T,D] -> [T,H*D]` is not a
+legal zero-copy reshape, so the planner always inserts an explicit
+`CONTIGUOUS` copy before the output projection matmul. Rather than building
+a general layout-aware kernel dispatcher on spec, one concrete question is
+tested first: does a kernel that reads the `[H,T,D]` layout directly, skipping
+the copy, actually win? The reformulation turns out to be exact, not
+approximate — for fixed head `h`, `head`'s `[T,D]` slice and `wo`'s `[D,M]`
+row-slice are both already ordinary contiguous blocks (row-major storage
+makes this fall out for free), so `proj = sum_h head_h[T,D] @ wo_h[D,M]` is
+mathematically identical to (contiguous-copy + one `[T,M]x[M,M]` matmul) —
+no strided/gather kernel is needed for this specific case, just H
+accumulating matmuls over blocks that were contiguous all along:
+
+```sh
+scripts/check_tensor_merge_layout_profile_spike.sh
+```
+
+Correctness is checked exactly across 5 shapes first. Timed against true
+scalar (the same `-fno-vectorize -fno-slp-vectorize` diagnostic build the
+SIMD profiling spike needed to avoid being fooled by the compiler
+auto-vectorizing the "baseline" side), skipping the copy wins at every shape
+tested, including the real block's exact `T=3,H=2,D=2` — 2.62x there, and
+1.5-2.9x across token-count, head-dimension, and head-count sweeps. Unlike
+the memory-lifetime spike above, this one has a real, unconditional win on
+the current shape: eliminating `CONTIGUOUS` for this specific consumer is
+worth doing, not just worth planning for.
+
 The real-data follow-up reuses NIR-MFCO and converts each conveyor image into
 three ordered bands with four false-colour/occupancy features per token. It
 retains the repetition-zero test split, adds a learned physical-setup
