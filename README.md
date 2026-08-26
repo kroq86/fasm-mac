@@ -1020,6 +1020,125 @@ of `B` (`B` is stored `[K,N]` row-major, so a fixed output column reads
 different kernel to design and verify, not a one-line swap — and isn't
 implemented here.
 
+### The register-resident redesign, tried anyway — and it lost harder
+
+That "materially different kernel" got built and measured rather than
+left as a paragraph. `tensor_matmul_gemv_profile.c` implements the
+theoretically-correct design for `M=1`: block the output into 4-wide
+column groups, and for *each* block run the entire `K` reduction with the
+accumulator held in a NEON register (`vfmaq_f32`) the whole time, writing
+that block's output exactly once at the end — sidestepping the strided-`B`
+gather problem by blocking over `N` instead of vectorizing over `K`
+directly. `B` is read exactly once in total (no re-scans), the output is
+written exactly once in total (not `K` times, fixing the previous kernel's
+actual problem), and `A` (784 floats, ~3KB) stays L1-resident across every
+block's re-read of it. Verified numerically equivalent to
+`tensor_kernel_dispatch_spike.h`'s `scalar_matmul` (same 3e-5 relative
+tolerance that file's own `check()` already uses) at every shape below,
+before any timing happened — and benchmarked with proper repetitions
+(200) reporting median/min/max, not a single average:
+
+```sh
+scripts/check_tensor_matmul_gemv_profile.sh
+```
+
+```
+hid=32    layer1 shape=1x784x32   scalar=10125.0[9333,10833]  gemv=15625.0[15083,18333]  0.65x scalar_wins
+hid=630   layer1 shape=1x784x630  scalar=56208.3[55750,83667] gemv=151667[144083,210500] 0.37x scalar_wins
+hid=5030  layer1 shape=1x784x5030 scalar=337209[322375,548167] gemv=1244542[1166542,1512833] 0.27x scalar_wins
+dominant-shape (layer1) verdict: gemv_wins=0 scalar_wins=6 out_of=6 -> DO NOT SPECIALIZE
+```
+
+It lost *worse* than the first NEON attempt — down to 0.27x at the largest
+size, versus the reverted kernel's 0.59-0.66x. That result forced the
+actual question open: was the earlier "memory-traffic" diagnosis wrong, or
+is something else going on? The profile script also runs both kernels
+against a genuinely un-vectorized scalar baseline
+(`-fno-vectorize -fno-slp-vectorize`, the same second build mode
+`tensor_kernel_dispatch_profile.c` already established), and that
+comparison flips completely: against *true* scalar, GEMV wins at **all
+six** sizes (1.01-1.25x). The memory-traffic diagnosis was right; it just
+wasn't the whole picture. What actually happened: the plain-C scalar loop
+this repo compares against isn't scalar in the shipped `-O3` build — LLVM's
+autovectorizer is already turning that trivial `s += a[p]*b[p*n+j]`
+reduction into something that beats *both* hand-written NEON kernels tried
+here, on this exact CPU, for this exact shape family. This repo already
+has one precedent for exactly this trap
+(`tensor_kernel_dispatch_profile.c`'s own header comment, and the
+"SIMD auto-vectorization confound" this README's `tensorctl` history
+records elsewhere) — it reproduced a second time, this time as the actual
+decision-blocking result rather than a caught-in-review mistake.
+
+Per the criteria fixed before this experiment — compare against
+production `-O3`, not a disabled-vectorization baseline; specialize only
+if it wins there — the answer is unambiguous: **do not specialize.**
+`k_matmul_fwd` is untouched by this experiment (no dispatch, no `M=1`
+branch, nothing shipped); the canonical compiler, graph semantics, and
+planner policy were never in scope and stayed that way. The killer-
+workload scaling matrix's crossover is therefore **unchanged: still
+between ~25k and ~100k parameters** — there was no code change for it to
+move in response to. Two independent hand-NEON designs have now both lost
+to the compiler's own autovectorization of the reference C loop on this
+target; the honest stopping point per the criteria set for this task is
+here, not a third kernel attempt. If this gets revisited, the next
+question isn't "try another hand kernel" — it's "why does clang's
+autovectorizer beat straightforward hand NEON here," which is a compiler-
+codegen question, not a numerical-kernel-design one.
+
+### The metric in between: total time for a process's whole lifetime
+
+Cold startup and warm latency leave a gap between them. Cold startup
+(measured with `KILLER_SKIP_ACCURACY=1`, a single sample) doesn't really
+include a real inference; warm latency is measured *after* discarding
+startup and a warm-up call entirely — steady state only. Neither answers
+the actual question for the product niche this README already
+established (small, short-lived, static-model workloads): if a process
+starts, does `N` inferences, and exits, which engine wins on *total*
+wall-clock time, and how does that answer change with `N`?
+`tensor_killer_lifetime_matrix.py` measures that directly — no new native
+or Python inference code; `tensor_killer_mnist_native.c`'s `reps` argument
+and `tensor_killer_mnist.py`'s `--reps` flag already control exactly this,
+so this only varies that parameter and times the whole subprocess
+externally, the same methodology `tensor_killer_compare.py`'s existing
+cold-startup measurement already uses at `reps=1`:
+
+```sh
+MNIST_DIR=/path/to/extracted/mnist-idx-files \
+  scripts/check_tensor_killer_lifetime_matrix.sh
+```
+
+| N inferences/process | native total | onnxruntime total | tinygrad total | winner |
+|---|---|---|---|---|
+| 1 | 4.35ms | 86.1ms | 563.7ms | native |
+| 10 | 3.70ms | 87.5ms | 593.9ms | native |
+| 100 | 6.48ms | 89.0ms | 1013.0ms | native |
+| 1,000 | 37.4ms | 99.3ms | 3,939.1ms | native |
+| 10,000 | 298.7ms | 202.0ms | 32,847.9ms | **onnxruntime** |
+
+**Empirical crossover: between 1,000 and 10,000 inferences per process
+lifetime** — native wins total wall-clock time below that range,
+ONNX Runtime wins above it, at every `N` measured on either side. A rough
+linear interpolation between those two points (native ≈29.4µs/inference
+past its ~4.4ms floor; onnxruntime ≈11.6µs/inference past its ~86ms floor)
+puts the crossover near `N≈4,500` — in the same order of magnitude as, if
+not identical to, the back-of-envelope estimate (`N≈3,313`) computed from
+the isolated cold-startup/warm-latency numbers alone, which is a useful
+sanity check that the two measurement methods agree in direction even
+though they're not measuring quite the same thing (the amortized-into-
+`N` per-inference cost here is higher than the steady-state-only warm
+number for both engines, since it includes each engine's own warm-up
+transient — real cost a deployed process actually pays, not an artifact
+to be measured away).
+
+This is the sharper version of the product claim this README already
+made: not "warm latency is 4.7x worse," but **"ONNX Runtime only starts
+winning total execution time after roughly four to five thousand
+inferences in a single process's lifetime — below that, for this exact
+model, native wins on every axis, including the one ONNX Runtime is
+supposed to own."** For the "start up, do a handful of inferences, exit"
+shape of workload this niche was defined around, warm latency's isolated
+4.7x deficit is close to irrelevant.
+
 The memory planner (`tensor_transformer_liveness_check.c`, above) laid out a
 real 31-buffer/35-event arena, but its one rematerialize-vs-save choice —
 recompute attention scores instead of keeping them alive — was a policy
