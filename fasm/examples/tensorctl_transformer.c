@@ -489,6 +489,7 @@ int run_transformer(int argc, char **argv) {
     unsigned epochs = 12000;
     uint32_t budget = 4928; /* today's real arena at the default policy */
     int plan_only = 0, reprofile = 0, no_cache = 0, explain = 0, counterfactual_set = 0;
+    const char *export_path = NULL;
     uint32_t counterfactual_budget = budget;
     for (int i = 1; i < argc; i++) {
         if (!strncmp(argv[i], "--epochs=", 9)) epochs = (unsigned)atoi(argv[i] + 9);
@@ -498,6 +499,8 @@ int run_transformer(int argc, char **argv) {
         else if (!strcmp(argv[i], "--no-profile-cache")) no_cache = 1;
         else if (!strcmp(argv[i], "--explain-decisions") || !strcmp(argv[i], "--show-alternatives")) explain = 1;
         else if (!strncmp(argv[i], "--counterfactual-budget=", 24)) { counterfactual_budget = (uint32_t)atoi(argv[i] + 24); counterfactual_set = 1; }
+        else if (!strncmp(argv[i], "--export=", 9)) { export_path = argv[i] + 9; plan_only = 1; }
+        else if (!strcmp(argv[i], "--export") && i + 1 < argc) { export_path = argv[++i]; plan_only = 1; }
     }
 
     printf("model: transformer\n");
@@ -509,6 +512,7 @@ int run_transformer(int argc, char **argv) {
     report_memory_plan(budget, counterfactual_budget, plan_only, &trace);
     int use_layout = report_layout_decision(plan_only, reprofile, no_cache, &trace);
     if (explain) trace_explain(stdout, &trace);
+    if (export_path) { FILE *f = fopen(export_path, "wb"); if (!f) { fprintf(stderr, "tensorctl: cannot export plan trace to %s\n", export_path); return 1; } int failed = trace_export_tsv(f, &trace) || fclose(f); if (failed) { fprintf(stderr, "tensorctl: cannot export plan trace to %s\n", export_path); return 1; } }
     if (plan_only) return 0;
 
     Block b;

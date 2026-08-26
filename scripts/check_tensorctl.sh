@@ -97,6 +97,21 @@ alternatives="$(XDG_CACHE_HOME="$OUT_DIR/explain-cache" arch -x86_64 "$OUT_DIR/t
 grep -q "decision: attention_scores" <<<"$alternatives" || { printf 'FAIL: --show-alternatives omitted memory candidates\n' >&2; exit 1; }
 grep -q "decision: head_merge_layout" <<<"$alternatives" || { printf 'FAIL: --show-alternatives omitted layout candidates\n' >&2; exit 1; }
 
+XDG_CACHE_HOME="$OUT_DIR/diff-cache" arch -x86_64 "$OUT_DIR/tensorctl" plan transformer --memory-budget=8192 --export "$OUT_DIR/plan-a.tsv" --no-profile-cache >/dev/null
+XDG_CACHE_HOME="$OUT_DIR/diff-cache" arch -x86_64 "$OUT_DIR/tensorctl" plan transformer --memory-budget=5000 --export "$OUT_DIR/plan-b.tsv" --no-profile-cache >/dev/null
+plan_diff="$(arch -x86_64 "$OUT_DIR/tensorctl" plan diff "$OUT_DIR/plan-a.tsv" "$OUT_DIR/plan-b.tsv")"
+grep -q "attention_scores: save -> rematerialize" <<<"$plan_diff" || { printf 'FAIL: plan diff missed save/rematerialize flip\n' >&2; exit 1; }
+grep -q "attention_scores.budget: 8192 -> 5000" <<<"$plan_diff" || { printf 'FAIL: plan diff missed budget change\n' >&2; exit 1; }
+identical="$(arch -x86_64 "$OUT_DIR/tensorctl" plan diff "$OUT_DIR/plan-a.tsv" "$OUT_DIR/plan-a.tsv")"
+[[ "$identical" == "no semantic changes" ]] || { printf 'FAIL: identical plan traces produced a diff\n' >&2; exit 1; }
+machine="$(arch -x86_64 "$OUT_DIR/tensorctl" plan diff "$OUT_DIR/plan-a.tsv" "$OUT_DIR/plan-b.tsv" --machine)"
+grep -q $'^kind\tsubject\tbefore\tafter$' <<<"$machine" || { printf 'FAIL: machine plan diff is not TSV\n' >&2; exit 1; }
+printf 'corrupted trace\n' > "$OUT_DIR/corrupt.tsv"
+if arch -x86_64 "$OUT_DIR/tensorctl" plan diff "$OUT_DIR/corrupt.tsv" "$OUT_DIR/plan-a.tsv" >/dev/null 2>&1; then
+  printf 'FAIL: corrupted plan trace was accepted\n' >&2
+  exit 1
+fi
+
 if arch -x86_64 "$OUT_DIR/tensorctl" >/dev/null 2>&1; then
   printf 'FAIL: tensorctl with no args should exit non-zero\n' >&2
   exit 1
@@ -146,4 +161,4 @@ if ! grep -q "verified: numerical_equivalence=yes merge_never_written=yes" <<<"$
   exit 1
 fi
 
-printf 'tensorctl check passed: mlp_converges=yes transformer_converges=yes memory_decision_flips=yes explain_and_alternatives=yes counterfactual=yes trace_execution_consistency=yes plan_mode_exits_early=yes plan_buffer_table_in_bounds=yes profile_cache_hit_and_miss=yes corrupted_cache_ignored=yes usage_exit_code=nonzero\n'
+printf 'tensorctl check passed: mlp_converges=yes transformer_converges=yes memory_decision_flips=yes explain_and_alternatives=yes counterfactual=yes trace_execution_consistency=yes plan_diff=human+tsv+safe plan_mode_exits_early=yes plan_buffer_table_in_bounds=yes profile_cache_hit_and_miss=yes corrupted_cache_ignored=yes usage_exit_code=nonzero\n'
