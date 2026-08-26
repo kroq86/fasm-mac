@@ -437,6 +437,39 @@ NIR_MFCO_ARCHIVE=/path/to/NIR-MFCO-dataset-v1.0.0.zip \
   scripts/check_nir_mfco_transformer_spike.sh
 ```
 
+An ordered/shuffled ablation on that same NIR-MFCO sequence fixture answers
+whether the transformer benefits from real band order: a pooled (order-blind)
+linear baseline, the ordered transformer, and a shuffled-band transformer all
+land within noise of each other (2.6/2.8/2.7 MAE points), so this dataset's
+band order carries no exploitable signal for the block; it remains a useful
+linear/tensor regression fixture, not a case for the extra architecture.
+
+GunPoint is the order-sensitive counterpart: a classic UCR univariate
+time-series benchmark (50 train / 150 test, length 150, 2 classes) where
+column order is a real hand-motion timeline, not an interchangeable label.
+Each trace is z-normalized and pooled into the same `[3, 4]` shape as the
+NIR-MFCO sequence spike (three temporal thirds, four summary stats per
+third: mean/std/min/max), so the classification head reuses the existing
+21-action backward executor unchanged. The archive stays external:
+
+```sh
+GUNPOINT_DIR=/path/to/extracted/GunPoint \
+  scripts/check_gunpoint_spike.sh
+```
+
+(or `GUNPOINT_TRAIN=... GUNPOINT_TEST=...` for two explicit file paths).
+Without either, the script runs only its deterministic self-test. The
+self-test's harness check is telling on its own: two classes built from the
+*same* three band values with only their order flipped are perfectly
+separable by a position-aware linear model (100%) and sit at exact chance
+for the pooled, order-blind one (50%) — confirming the harness actually
+measures order sensitivity before any real data is involved. On the real
+split, a pooled-band logistic baseline, an ordered-band logistic baseline, a
+shuffled-band logistic baseline, and a small hand-derived recurrent baseline
+are reported alongside the transformer's own ordered/shuffled runs, so the
+architecture's usefulness on genuinely order-sensitive data is judged by the
+same measurement, not by assumption.
+
 | Command | Problem / approach | Output |
 |---------|--------------------|--------|
 | `best_time_to_buy_sell_stock.asm` | LC 121 via `dp.inc` | `5` |

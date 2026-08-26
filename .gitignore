@@ -34,3 +34,6 @@
 # macOS metadata
 .DS_Store
 ._*
+
+# Python bytecode cache
+__pycache__/
