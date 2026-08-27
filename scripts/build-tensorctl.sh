@@ -20,6 +20,7 @@ clang -arch x86_64 -O2 -I"$ROOT/fasm/spikes" -DTENSORCTL_BUILD_CONFIG=\"arch=x86
   "$ROOT/fasm/examples/tensorctl_plan_diff.c" \
   "$ROOT/fasm/examples/tensorctl_inspect.c" \
   "$ROOT/fasm/examples/tensorctl_build.c" \
+  "$ROOT/fasm/examples/tensorctl_verify.c" \
   "$OBJ_DIR/executor.o" \
   -o "$OUT"
 chmod +x "$OUT"
