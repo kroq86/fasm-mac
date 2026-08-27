@@ -91,7 +91,7 @@
 #define PHOUT (PHIN / PPH)
 #define PWOUT (PWIN / PPW)
 
-enum { LEAF, MATMUL, BIAS_ADD, RELU, MSE, ATTENTION, RESIDUAL, LAYERNORM, CONTIGUOUS, CONV, POOL, OP_COUNT };
+enum { LEAF, MATMUL, BIAS_ADD, RELU, MSE, ATTENTION, RESIDUAL, LAYERNORM, CONTIGUOUS, CONV, POOL, REDUCE_MEAN_ROWS, SIGMOID, BINARY_CROSS_ENTROPY, OP_COUNT };
 /* Storage/ownership role occupies the low nibble. RETAIN_GRAD is an
  * orthogonal semantic request: materialize this tensor's gradient even
  * when it is not trainable. It does not make a leaf an optimizer target. */
@@ -102,6 +102,9 @@ enum { MAX_NODES = 64 };
 
 typedef struct { float *data, *grad, *aux; uint32_t rows, cols, aux_count; } Tensor;
 typedef struct { uint32_t op, lhs, rhs, flags; Tensor tensor; } Node;
+/* Optional metadata for PARAM leaves. A NULL tensor.aux keeps the historical
+ * multiplier 1.0. Only lr_multiplier is contractual today. */
+typedef struct { float lr_multiplier; } ParameterOptimizationMetadata;
 typedef struct { int (*run)(void *); void *context; uint32_t kind, flags; uint64_t reserved; } ExecStep;
 typedef struct { Node *graph; uint32_t node, action, grad_mask; float lr; } Context;
 extern int tensor_transformer_steps_execute(const ExecStep *, uint64_t);
@@ -194,6 +197,41 @@ static void k_mse_bwd(Node *self, Node *a, Node *b, uint32_t mask) {
         if (mask & 2) b->tensor.grad[i] -= g;
     }
 }
+static void k_sigmoid_fwd(Node *self, Node *a, Node *b) {
+    (void)b;
+    uint32_t n = self->tensor.rows * self->tensor.cols;
+    for (uint32_t i = 0; i < n; i++) {
+        float z = fmaxf(-60.0f, fminf(60.0f, a->tensor.data[i]));
+        self->tensor.data[i] = 1.0f / (1.0f + expf(-z));
+    }
+}
+static void k_sigmoid_bwd(Node *self, Node *a, Node *b, uint32_t mask) {
+    (void)b;
+    if (!(mask & 1)) return;
+    uint32_t n = self->tensor.rows * self->tensor.cols;
+    for (uint32_t i = 0; i < n; i++) {
+        float y = self->tensor.data[i];
+        a->tensor.grad[i] += self->tensor.grad[i] * y * (1.0f - y);
+    }
+}
+static void k_bce_fwd(Node *self, Node *a, Node *b) {
+    uint32_t n = a->tensor.rows * a->tensor.cols;
+    float loss = 0;
+    for (uint32_t i = 0; i < n; i++) {
+        float p = fmaxf(1e-7f, fminf(1.0f - 1e-7f, a->tensor.data[i]));
+        loss -= b->tensor.data[i] * logf(p) + (1.0f - b->tensor.data[i]) * logf(1.0f - p);
+    }
+    self->tensor.data[0] = loss / n;
+}
+static void k_bce_bwd(Node *self, Node *a, Node *b, uint32_t mask) {
+    (void)self;
+    uint32_t n = a->tensor.rows * a->tensor.cols;
+    for (uint32_t i = 0; i < n; i++) {
+        float p = fmaxf(1e-7f, fminf(1.0f - 1e-7f, a->tensor.data[i]));
+        if (mask & 1) a->tensor.grad[i] += (p - b->tensor.data[i]) / (p * (1.0f - p) * n);
+        if (mask & 2) b->tensor.grad[i] -= logf(p / (1.0f - p)) / n;
+    }
+}
 
 /* --- residual/layernorm/attention/contiguous: ported from
  * tensor_graph_engine_transformer_check.c, rewritten to take grad_mask
@@ -211,6 +249,24 @@ static void k_residual_bwd(Node *self, Node *a, Node *b, uint32_t mask) {
         if (mask & 1) a->tensor.grad[i] += g;
         if (mask & 2) b->tensor.grad[i] += g;
     }
+}
+
+/* Sequence/classification bridge: reduce [rows, cols] to [1, cols].
+ * This is a general tensor relation, not GunPoint-specific model logic. */
+static void k_reduce_mean_rows_fwd(Node *self, Node *a, Node *b) {
+    (void)b;
+    for (uint32_t j = 0; j < a->tensor.cols; j++) {
+        float sum = 0;
+        for (uint32_t i = 0; i < a->tensor.rows; i++) sum += a->tensor.data[i * a->tensor.cols + j];
+        self->tensor.data[j] = sum / a->tensor.rows;
+    }
+}
+static void k_reduce_mean_rows_bwd(Node *self, Node *a, Node *b, uint32_t mask) {
+    (void)b;
+    if (!(mask & 1)) return;
+    for (uint32_t i = 0; i < a->tensor.rows; i++)
+        for (uint32_t j = 0; j < a->tensor.cols; j++)
+            a->tensor.grad[i * a->tensor.cols + j] += self->tensor.grad[j] / a->tensor.rows;
 }
 static void k_layernorm_fwd(Node *self, Node *a, Node *b) {
     (void)b;
@@ -373,11 +429,15 @@ static void k_pool_bwd(Node *self, Node *a, Node *b, uint32_t mask) {
 static const FwdFn FWD[OP_COUNT] = {
     [MATMUL] = k_matmul_fwd, [BIAS_ADD] = k_bias_fwd, [RELU] = k_relu_fwd, [MSE] = k_mse_fwd,
     [ATTENTION] = k_attention_fwd, [RESIDUAL] = k_residual_fwd, [LAYERNORM] = k_layernorm_fwd, [CONTIGUOUS] = k_contiguous_fwd,
+    [REDUCE_MEAN_ROWS] = k_reduce_mean_rows_fwd,
+    [SIGMOID] = k_sigmoid_fwd, [BINARY_CROSS_ENTROPY] = k_bce_fwd,
     [CONV] = k_conv_fwd, [POOL] = k_pool_fwd,
 };
 static const BwdFn BWD[OP_COUNT] = {
     [MATMUL] = k_matmul_bwd, [BIAS_ADD] = k_bias_bwd, [RELU] = k_relu_bwd, [MSE] = k_mse_bwd,
     [ATTENTION] = k_attention_bwd, [RESIDUAL] = k_residual_bwd, [LAYERNORM] = k_layernorm_bwd, [CONTIGUOUS] = k_contiguous_bwd,
+    [REDUCE_MEAN_ROWS] = k_reduce_mean_rows_bwd,
+    [SIGMOID] = k_sigmoid_bwd, [BINARY_CROSS_ENTROPY] = k_bce_bwd,
     [CONV] = k_conv_bwd, [POOL] = k_pool_bwd,
 };
 
@@ -400,15 +460,23 @@ static int action(void *opaque) {
 static int validate(const Node *g, uint32_t n) {
     for (uint32_t i = 0; i < n; i++) {
         if (!g[i].tensor.data || !g[i].tensor.grad || !g[i].tensor.rows || !g[i].tensor.cols) return -1;
-        if (g[i].op == LEAF) continue;
+        if (g[i].op == LEAF) {
+            if ((g[i].flags & PARAM) && g[i].tensor.aux) {
+                const ParameterOptimizationMetadata *meta = (const ParameterOptimizationMetadata *)g[i].tensor.aux;
+                if (g[i].tensor.aux_count != 1 || !isfinite(meta->lr_multiplier) || meta->lr_multiplier <= 0) return -4;
+            }
+            continue;
+        }
         if (g[i].lhs >= i ||
-            (g[i].op != RELU && g[i].op != LAYERNORM && g[i].op != CONTIGUOUS && g[i].op != ATTENTION && g[i].op != POOL && g[i].rhs >= i))
+            (g[i].op != RELU && g[i].op != LAYERNORM && g[i].op != CONTIGUOUS && g[i].op != ATTENTION && g[i].op != POOL && g[i].op != REDUCE_MEAN_ROWS && g[i].op != SIGMOID && g[i].rhs >= i))
             return -2;
         const Tensor *a = &g[g[i].lhs].tensor, *b = g[i].rhs == NONE ? NULL : &g[g[i].rhs].tensor, *o = &g[i].tensor;
         if (g[i].op == MATMUL && (a->cols != b->rows || o->rows != a->rows || o->cols != b->cols)) return -3;
         if (g[i].op == BIAS_ADD && (a->rows != o->rows || a->cols != o->cols || b->rows != 1 || b->cols != o->cols)) return -3;
         if (g[i].op == RELU && (a->rows != o->rows || a->cols != o->cols)) return -3;
         if (g[i].op == MSE && (a->rows != b->rows || a->cols != b->cols || o->rows != 1 || o->cols != 1)) return -3;
+        if (g[i].op == BINARY_CROSS_ENTROPY && (a->rows != b->rows || a->cols != b->cols || o->rows != 1 || o->cols != 1)) return -3;
+        if (g[i].op == SIGMOID && (a->rows != o->rows || a->cols != o->cols)) return -3;
         if (g[i].op == RESIDUAL && (a->rows != o->rows || a->cols != o->cols || b->rows != o->rows || b->cols != o->cols)) return -3;
         if (g[i].op == LAYERNORM && (a->rows != o->rows || a->cols != o->cols || !o->aux || o->aux_count < 2 * o->rows)) return -3;
         if (g[i].op == CONTIGUOUS && a->rows * a->cols != o->rows * o->cols) return -3;
@@ -419,6 +487,7 @@ static int validate(const Node *g, uint32_t n) {
         if (g[i].op == POOL && (a->rows != 1 || a->cols != (uint32_t)(PHIN * PWIN * PCIN) || o->rows != 1 ||
                                  o->cols != (uint32_t)(PHOUT * PWOUT * PCIN) || !o->aux || o->aux_count < (uint32_t)(PHOUT * PWOUT * PCIN)))
             return -3;
+        if (g[i].op == REDUCE_MEAN_ROWS && (o->rows != 1 || o->cols != a->cols)) return -3;
     }
     return 0;
 }
@@ -456,7 +525,9 @@ static int compile(Node *g, uint32_t n, float lr, ExecStep *s, Context *c, uint3
     }
     for (uint32_t i = 0; i < n; i++) if (g[i].op == LEAF && (g[i].flags & PARAM)) {
         if (at == cap) return -2;
-        c[at] = (Context){g, i, OPTIMIZER, 0, lr};
+        float multiplier = 1.0f;
+        if (g[i].tensor.aux) multiplier = ((const ParameterOptimizationMetadata *)g[i].tensor.aux)->lr_multiplier;
+        c[at] = (Context){g, i, OPTIMIZER, 0, lr * multiplier};
         s[at] = (ExecStep){action, &c[at], OPTIMIZER, 0, 0};
         at++;
     }
