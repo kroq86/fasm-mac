@@ -5,7 +5,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-enum{T=3,M=4,H=2,D=2,F=6,QW=3*M};
+#ifndef T
+#define T 3
+#endif
+#ifndef M
+#define M 4
+#endif
+#ifndef H
+#define H 2
+#endif
+#ifndef D
+#define D 2
+#endif
+#ifndef F
+#define F 6
+#endif
+#ifndef QW
+#define QW (3 * M)
+#endif
 typedef struct{
  float x[T*M],wq[M*QW],wo[M*M],w1[M*F],w2[F*M];
  float qkv[T*QW],score[H*T*T],prob[H*T*T],head[H*T*D],merge[T*M],proj[T*M],s1[T*M],ln1[T*M],mean1[T],inv1[T],z1[T*F],act[T*F],ff[T*M],s2[T*M],out[T*M],mean2[T],inv2[T];
