@@ -1,10 +1,16 @@
-/* Canonical compiler vs retained monolithic Transformer oracle. */
-#define T OT
-#define M OM
-#define H OH
-#define D OD
-#define F OF
-#define QW OQW
+/* Canonical compiler vs retained monolithic Transformer oracle.
+ *
+ * T/M/H/D/F/QW are deliberately NOT renamed before including the oracle
+ * header: tensor_transformer_reference_spike.h now defines them itself
+ * via #ifndef-guarded defaults (T=3,M=4,H=2,D=2,F=6,QW=3*M) — the same
+ * values this file sets explicitly for the canonical side below. Renaming
+ * them to OT/OM/OH/OD/OF/OQW (as this file used to) broke that: the
+ * header's own #ifndef T sees T already defined (as the literal token
+ * "OT", not a number) and skips setting a value at all, so every use of T
+ * inside the header expands to the permanently-undefined identifier OT.
+ * No rename is needed any more — both headers agree on the same names and
+ * the same intended values, so a plain #undef between the two #include
+ * blocks (already present below) is sufficient to reuse them safely. */
 #define Block OracleBlock
 #define initv oracle_initv
 #define mm oracle_mm
