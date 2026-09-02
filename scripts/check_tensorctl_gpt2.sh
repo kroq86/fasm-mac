@@ -28,6 +28,11 @@ grep -q '^  generated_tokens: 12$' "$OUT_DIR/stderr"
 grep -q '^  ttft_ms: [0-9]' "$OUT_DIR/stderr"
 grep -q '^  decode_tokens_per_sec: [0-9]' "$OUT_DIR/stderr"
 grep -q '^  peak_rss_mb: [0-9]' "$OUT_DIR/stderr"
+auto="$("${run[@]}" --backend auto --prompt "The quick brown fox" --tokens 1 2>"$OUT_DIR/auto.stderr")"
+[[ "$auto" == "The quick brown foxes" ]] || { echo "auto backend output mismatch" >&2; exit 1; }
+grep -q '^  backend: auto$' "$OUT_DIR/auto.stderr"
+grep -q '^  planner_profile_ms: [0-9]' "$OUT_DIR/auto.stderr"
+grep -q '^  kernel_plan\[0\]:' "$OUT_DIR/auto.stderr"
 grep -q '^  sampling: greedy_argmax$' "$OUT_DIR/stderr"
 
 sample1="$("${run[@]}" --prompt "how many stars?" --tokens 8 --temperature 0.8 --top-k 40 --seed 42 2>/dev/null)"

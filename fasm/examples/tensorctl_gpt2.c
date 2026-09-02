@@ -30,9 +30,78 @@ static Gpt2Weights cli_weights;
 static Gpt2Bpe cli_bpe;
 typedef void (*Gpt2Matmul)(const float *, int, int, const float *, const float *, int, float *);
 static Gpt2Matmul cli_matmul = gpt2_matmul_bias;
+static double monotonic_ms(void);
 #ifdef __APPLE__
 void gpt2_matmul_bias_accelerate(const float *, int, int, const float *, const float *, int, float *);
 #endif
+
+typedef struct {
+    int rows, inner, columns, chosen;
+    double scalar_ms, accelerate_ms;
+    float max_abs;
+} Gpt2KernelDecision;
+static Gpt2KernelDecision cli_decisions[16];
+static int cli_decision_count;
+static double cli_profile_ms;
+
+static double median3(double a, double b, double c) {
+    if (a > b) { double t = a; a = b; b = t; }
+    if (b > c) { double t = b; b = c; c = t; }
+    if (a > b) { double t = a; a = b; b = t; }
+    return b;
+}
+
+static void cli_matmul_auto(const float *a, int rows, int inner, const float *w,
+        const float *b, int columns, float *out) {
+    for (int i = 0; i < cli_decision_count; i++) {
+        Gpt2KernelDecision *d = &cli_decisions[i];
+        if (d->rows == rows && d->inner == inner && d->columns == columns) {
+            (d->chosen ? gpt2_matmul_bias_accelerate : gpt2_matmul_bias)(a, rows, inner, w, b, columns, out);
+            return;
+        }
+    }
+    size_t count = (size_t)rows * (size_t)columns;
+    float *scalar = malloc(count * sizeof(float));
+    float *accelerate = malloc(count * sizeof(float));
+    if (!scalar || !accelerate || cli_decision_count == 16) {
+        free(scalar); free(accelerate);
+        gpt2_matmul_bias_accelerate(a, rows, inner, w, b, columns, out);
+        return;
+    }
+    double start = monotonic_ms(), st[3], at[3];
+    for (int rep = 0; rep < 3; rep++) {
+        double t = monotonic_ms();
+        if (!(rep & 1)) {
+            gpt2_matmul_bias(a, rows, inner, w, b, columns, scalar);
+            st[rep] = monotonic_ms() - t; t = monotonic_ms();
+            gpt2_matmul_bias_accelerate(a, rows, inner, w, b, columns, accelerate);
+            at[rep] = monotonic_ms() - t;
+        } else {
+            gpt2_matmul_bias_accelerate(a, rows, inner, w, b, columns, accelerate);
+            at[rep] = monotonic_ms() - t; t = monotonic_ms();
+            gpt2_matmul_bias(a, rows, inner, w, b, columns, scalar);
+            st[rep] = monotonic_ms() - t;
+        }
+    }
+    float max_abs = 0.0f;
+    for (size_t i = 0; i < count; i++) {
+        if (!isfinite(scalar[i]) || !isfinite(accelerate[i])) {
+            fprintf(stderr, "tensorctl gpt2: non-finite backend candidate output\n"); exit(3);
+        }
+        float delta = fabsf(scalar[i] - accelerate[i]);
+        if (delta > max_abs) max_abs = delta;
+    }
+    if (max_abs > 1e-3f) {
+        fprintf(stderr, "tensorctl gpt2: backend candidates exceed tolerance: %.9g\n", max_abs); exit(3);
+    }
+    Gpt2KernelDecision *d = &cli_decisions[cli_decision_count++];
+    *d = (Gpt2KernelDecision){rows, inner, columns, 0,
+        median3(st[0], st[1], st[2]), median3(at[0], at[1], at[2]), max_abs};
+    d->chosen = d->accelerate_ms < d->scalar_ms;
+    cli_profile_ms += monotonic_ms() - start;
+    (d->chosen ? gpt2_matmul_bias_accelerate : gpt2_matmul_bias)(a, rows, inner, w, b, columns, out);
+    free(scalar); free(accelerate);
+}
 
 static int cli_layer_setup(Gpt2CliLayer *layer) {
     memset(layer, 0, sizeof *layer);
@@ -142,13 +211,14 @@ int run_gpt2(int argc, char **argv) {
         else if (!strcmp(argv[i], "--top-k") && i + 1 < argc) top_k = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--seed") && i + 1 < argc) seed = (uint32_t)strtoul(argv[++i], NULL, 10);
         else {
-            fprintf(stderr, "usage: tensorctl gpt2 --prompt TEXT [--tokens N] [--temperature F] [--top-k N] [--seed N] [--backend accelerate|scalar] [--model FILE] [--tokenizer DIR]\n");
+            fprintf(stderr, "usage: tensorctl gpt2 --prompt TEXT [--tokens N] [--temperature F] [--top-k N] [--seed N] [--backend auto|accelerate|scalar] [--model FILE] [--tokenizer DIR]\n");
             return 2;
         }
     }
     if (!strcmp(backend, "scalar")) cli_matmul = gpt2_matmul_bias;
 #ifdef __APPLE__
     else if (!strcmp(backend, "accelerate")) cli_matmul = gpt2_matmul_bias_accelerate;
+    else if (!strcmp(backend, "auto")) cli_matmul = cli_matmul_auto;
 #endif
     else { fprintf(stderr, "tensorctl gpt2: unsupported backend: %s\n", backend); return 2; }
     if (!prompt || !*prompt) { fprintf(stderr, "tensorctl gpt2: --prompt must not be empty\n"); return 2; }
@@ -222,6 +292,7 @@ int run_gpt2(int argc, char **argv) {
         "  decode_tokens_per_sec: %.3f\n"
         "  inference_total_ms: %.3f\n"
         "  peak_rss_mb: %.3f\n"
+        "  planner_profile_ms: %.3f\n"
         "  sampling: %s\n"
         "  temperature: %.6g\n"
         "  top_k: %d\n"
@@ -232,7 +303,13 @@ int run_gpt2(int argc, char **argv) {
         model_loaded - load_start, tokenizer_loaded - model_loaded,
         prefill_done - inference_start, first_token_done - inference_start,
         decode_ms, decode_tps, inference_done - inference_start,
-        peak_rss_mb(), temperature == 0.0f ? "greedy_argmax" : "top_k_temperature",
+        peak_rss_mb(), cli_profile_ms, temperature == 0.0f ? "greedy_argmax" : "top_k_temperature",
         temperature, top_k, seed, MAXCACHE);
+    for (int i = 0; i < cli_decision_count; i++) {
+        const Gpt2KernelDecision *d = &cli_decisions[i];
+        fprintf(stderr, "  kernel_plan[%d]: shape=%dx%dx%d chosen=%s scalar_ms=%.3f accelerate_ms=%.3f max_abs=%.9g\n",
+                i, d->rows, d->inner, d->columns, d->chosen ? "accelerate" : "scalar",
+                d->scalar_ms, d->accelerate_ms, d->max_abs);
+    }
     return 0;
 }

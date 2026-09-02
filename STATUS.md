@@ -606,6 +606,17 @@ temperature zero preserves greedy argmax as the default. The product gate
 checks same-seed replay and rejects non-finite temperature and unsupported
 top-k workspace sizes.
 
+The first real GPT-2 kernel-selection experiment is available as
+`tensorctl gpt2 --backend auto`. It profiles scalar and Accelerate candidates
+in alternating order (three samples each) for every distinct real matmul shape,
+rejects non-finite output or max absolute disagreement above 1e-3, records both
+medians and the selected candidate, and reports profiling cost. On the initial
+M1/Rosetta run (prompt length 4), it selected Accelerate for all nine distinct
+prefill/decode shapes; profiling cost about 275 ms and did not discover a
+different regime. This is a negative result for the current two-candidate
+planner, not evidence of planner value. Accelerate therefore remains the
+production default and `auto` remains an explicit diagnostic experiment.
+
 ## Ordered roadmap after the real-block gate
 
 The portability work is complete. Each item below starts only after the
