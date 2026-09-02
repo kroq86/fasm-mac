@@ -112,22 +112,94 @@ printf '%s\n' "$strict_report"
 require '[[ "$(grep "^\[measured\] semantic_verify:" <<<"$strict_report")" == *PASS* ]]' "$strict_report"   # same model still semantically equivalent
 require '[[ "$(grep -c "^\[measured\] bitwise_verify: FAIL\$" <<<"$strict_report")" -eq 1 ]]' "$strict_report"
 
-echo "=== unsupported graph (Conv) must not silently succeed or leave a partial artifact ==="
+echo "=== unsupported graph (Sigmoid, entirely outside the v0 op subset) must not silently succeed or leave a partial artifact ==="
+# Conv used to be this fixture's unsupported op, but it is now genuinely
+# supported end to end (inspect reports the layout transform, build lowers
+# it to native HWC code, verify passes on the real mnist-8.onnx CNN) --
+# using it here would assert a premise that is no longer true. Sigmoid is
+# not in the v0 subset at all (not even import-supported), so it still
+# exercises the same fail-closed contract this test exists to check.
 "$OUT_DIR/venv/bin/python" - "$OUT_DIR/unsupported.onnx" <<'PY'
 import sys
 import onnx
 from onnx import TensorProto, helper
 
-x = helper.make_tensor_value_info("x", TensorProto.FLOAT, [1, 1, 3, 3])
-y = helper.make_tensor_value_info("y", TensorProto.FLOAT, [1, 1, 1, 1])
-w = helper.make_tensor("w", TensorProto.FLOAT, [1, 1, 3, 3], [1.0] * 9)
-graph = helper.make_graph([helper.make_node("Conv", ["x", "w"], ["y"])], "unsupported", [x], [y], [w])
+x = helper.make_tensor_value_info("x", TensorProto.FLOAT, [1, 4])
+y = helper.make_tensor_value_info("y", TensorProto.FLOAT, [1, 4])
+graph = helper.make_graph([helper.make_node("Sigmoid", ["x"], ["y"])], "unsupported", [x], [y], [])
 onnx.save(helper.make_model(graph, opset_imports=[helper.make_opsetid("", 13)], ir_version=10), sys.argv[1])
 PY
-if arch -x86_64 "$OUT_DIR/tensorctl" build "$OUT_DIR/unsupported.onnx" -o "$OUT_DIR/unsupported-native" >/dev/null 2>&1; then
+conv_inspect="$(arch -x86_64 "$OUT_DIR/tensorctl" inspect "$OUT_DIR/unsupported.onnx" || true)"
+require '[[ "$conv_inspect" == *"[unsupported]"* && "$conv_inspect" == *"Sigmoid"* && "$conv_inspect" == *"not in the v0 subset"* ]]' "$conv_inspect"
+if arch -x86_64 "$OUT_DIR/tensorctl" build "$OUT_DIR/unsupported.onnx" -o "$OUT_DIR/unsupported-native" >"$OUT_DIR/unsupported-build.out" 2>&1; then
   printf '%s\n' 'unsupported graph unexpectedly built' >&2
   exit 1
 fi
+unsupported_build="$(cat "$OUT_DIR/unsupported-build.out")"
+require '[[ "$unsupported_build" == *"error"* || "$unsupported_build" == *"unsupported"* ]]' "$unsupported_build"
 require '[[ ! -e "$OUT_DIR/unsupported-native" ]]' "unsupported build must not leave a partial artifact"
+
+echo "=== real foreign CNN (mnist-8.onnx) must build and verify end to end, no manual edits ==="
+if [[ -n "${MNIST_ONNX:-}" ]]; then
+  mnist_inspect="$(arch -x86_64 "$OUT_DIR/tensorctl" inspect "$MNIST_ONNX")"
+  require '[[ "$mnist_inspect" == *"[unsupported] none"* ]]' "$mnist_inspect"
+  require '[[ "$mnist_inspect" == *"[build-unsupported] none"* ]]' "$mnist_inspect"
+  arch -x86_64 "$OUT_DIR/tensorctl" build "$MNIST_ONNX" -o "$OUT_DIR/mnist-native" >/dev/null
+  mnist_verify="$(TENSORCTL_PYTHON="$OUT_DIR/venv/bin/python" arch -x86_64 "$OUT_DIR/tensorctl" verify "$MNIST_ONNX" "$OUT_DIR/mnist-native")"
+  printf '%s\n' "$mnist_verify"
+  require '[[ "$mnist_verify" == *"semantic_verify: PASS"* ]]' "$mnist_verify"
+else
+  printf '%s\n' 'mnist-8.onnx CNN build/verify check skipped: set MNIST_ONNX to the downloaded fixture'
+fi
+
+echo "=== unsupported Gemm bias broadcast must fail before code generation ==="
+"$OUT_DIR/venv/bin/python" - "$OUT_DIR/gemm-bias.onnx" <<'PY'
+import sys
+import onnx
+from onnx import TensorProto, helper
+
+x = helper.make_tensor_value_info("x", TensorProto.FLOAT, [2, 3])
+y = helper.make_tensor_value_info("y", TensorProto.FLOAT, [2, 4])
+w = helper.make_tensor("w", TensorProto.FLOAT, [3, 4], [0.25] * 12)
+# ONNX can broadcast [M,1] to [M,N], but tensorctl's v0 Gemm emitter only
+# implements a column bias.  This model must be rejected, never miscompiled.
+c = helper.make_tensor("c", TensorProto.FLOAT, [2, 1], [1.0, 2.0])
+node = helper.make_node("Gemm", ["x", "w", "c"], ["y"], name="row_bias")
+graph = helper.make_graph([node], "gemm_row_bias", [x], [y], [w, c])
+onnx.save(helper.make_model(graph, opset_imports=[helper.make_opsetid("", 13)], ir_version=10), sys.argv[1])
+PY
+if arch -x86_64 "$OUT_DIR/tensorctl" inspect "$OUT_DIR/gemm-bias.onnx" >"$OUT_DIR/gemm-bias-inspect.out" 2>&1; then
+  printf '%s\n' 'unsupported Gemm bias unexpectedly passed inspect' >&2
+  exit 1
+fi
+gemm_bias_inspect="$(cat "$OUT_DIR/gemm-bias-inspect.out")"
+require '[[ "$gemm_bias_inspect" == *"[unsupported]"*"(Gemm)"*"bias C shape"*"expected [4] or [1,4]"* ]]' "$gemm_bias_inspect"
+if arch -x86_64 "$OUT_DIR/tensorctl" build "$OUT_DIR/gemm-bias.onnx" -o "$OUT_DIR/gemm-bias-native" >"$OUT_DIR/gemm-bias-build.out" 2>&1; then
+  printf '%s\n' 'unsupported Gemm bias unexpectedly built' >&2
+  exit 1
+fi
+gemm_bias_build="$(cat "$OUT_DIR/gemm-bias-build.out")"
+require '[[ "$gemm_bias_build" == *"[unsupported]"*"(Gemm)"*"bias C shape"* ]]' "$gemm_bias_build"
+require '[[ ! -e "$OUT_DIR/gemm-bias-native" ]]' "unsupported Gemm bias must not leave a partial artifact"
+
+echo "=== grouped Conv must be rejected by the importer contract ==="
+"$OUT_DIR/venv/bin/python" - "$OUT_DIR/grouped-conv.onnx" <<'PY'
+import sys
+import onnx
+from onnx import TensorProto, helper
+
+x = helper.make_tensor_value_info("x", TensorProto.FLOAT, [1, 2, 3, 3])
+y = helper.make_tensor_value_info("y", TensorProto.FLOAT, [1, 2, 1, 1])
+w = helper.make_tensor("w", TensorProto.FLOAT, [2, 1, 3, 3], [1.0] * 18)
+node = helper.make_node("Conv", ["x", "w"], ["y"], name="depthwise", group=2)
+graph = helper.make_graph([node], "grouped_conv", [x], [y], [w])
+onnx.save(helper.make_model(graph, opset_imports=[helper.make_opsetid("", 13)], ir_version=10), sys.argv[1])
+PY
+if arch -x86_64 "$OUT_DIR/tensorctl" inspect "$OUT_DIR/grouped-conv.onnx" >"$OUT_DIR/grouped-conv-inspect.out" 2>&1; then
+  printf '%s\n' 'grouped Conv unexpectedly passed inspect' >&2
+  exit 1
+fi
+grouped_conv_inspect="$(cat "$OUT_DIR/grouped-conv-inspect.out")"
+require '[[ "$grouped_conv_inspect" == *"[unsupported]"*"(Conv)"*"grouped convolution"*"group=2"* ]]' "$grouped_conv_inspect"
 
 printf '%s\n' 'tensorctl foreign ONNX inspect/build/verify passed: Wine 13->16->3'

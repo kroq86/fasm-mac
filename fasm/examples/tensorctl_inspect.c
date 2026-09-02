@@ -13,12 +13,19 @@
  *   [unknown]     genuinely not knowable from the file alone (e.g. how it
  *                 compares to another engine)
  *   [unsupported] anything in the file this importer's v0 subset
- *                 (MatMul/Gemm/Add/Relu) can't interpret — reported
- *                 explicitly, never silently dropped or guessed past
+ *                 (MatMul/Gemm/Add/Relu/Conv/MaxPool/Reshape) can't
+ *                 interpret — reported explicitly, never silently
+ *                 dropped or guessed past
  *
- * v0 scope only. Conv/MaxPool (CNN, NCHW-vs-HWC layout) come after this
- * path is proven on a plain MLP, per the explicit ordering this was asked
- * for — that boundary is deliberate, not an oversight.
+ * v0 subset: MatMul/Gemm/Add/Relu/Conv/MaxPool/Reshape. Conv/MaxPool were
+ * added after the plain-MLP path (Wine) was proven end to end, per the
+ * explicit ordering this was asked for — and specifically to force this
+ * importer to reason about NCHW (ONNX Conv/MaxPool convention) vs this
+ * project's own canonical HWC layout, not just to check off more op
+ * support. The '[derived] layout' section below is the actual point of
+ * that work: it states what transform is required and its cost, verified
+ * directly against tensor_semantic_compiler.h's k_conv_fwd indexing, not
+ * assumed or guessed.
  */
 #include "tensor_onnx_import.h"
 
@@ -113,6 +120,44 @@ int run_inspect(int argc, char **argv) {
     }
     if (!fused_groups) printf("[derived] fusion: no matmul+bias[+relu] groups found\n");
 
+    /* [derived] layout: NCHW (ONNX Conv/MaxPool convention) vs this
+     * project's canonical HWC (CONV/POOL in tensor_semantic_compiler.h).
+     * Verified directly against k_conv_fwd's own indexing —
+     * activation: a->tensor.data[(ih*WIN+iw)*CIN+ci]              -> HWC
+     * weight:     b->tensor.data[co*(CIN*KH*KW)+(ci*KH+kh)*KW+kw] -> OIHW
+     * — so the weight layout already matches ONNX's Conv weight (also
+     * OIHW) with no transform; only the activation needs a transpose.
+     * This is the actual boundary this importer exists to surface, not
+     * just another op to check off. */
+    int any_conv_or_pool = 0;
+    for (uint32_t i = 0; i < g.n_nodes; i++) {
+        OnnxNode *n = &g.nodes[i];
+        int is_conv = !strcmp(n->op_type, "Conv");
+        int is_pool = !strcmp(n->op_type, "MaxPool");
+        if (!is_conv && !is_pool) continue;
+        any_conv_or_pool = 1;
+        int64_t in_dims[ONNX_MAX_DIMS]; uint32_t in_ndim;
+        if (n->n_inputs < 1 || onnx_find_value_shape(&g, n->inputs[0], in_dims, &in_ndim) != 0 || in_ndim != 4) {
+            printf("[derived] layout %s('%s'): input shape unavailable or not 4-D — cannot state the required transform\n", n->op_type, n->name);
+            continue;
+        }
+        uint64_t elems = onnx_elem_count(in_dims, in_ndim);
+        printf("[derived] layout %s('%s'): activation is ONNX NCHW ", n->op_type, n->name);
+        print_shape(in_dims, in_ndim);
+        printf(" — canonical CONV/POOL require HWC; transpose (N,C,H,W)->(N,H,W,C) needed on this input (%llu elements, %llu bytes moved)\n", (unsigned long long)elems, (unsigned long long)elems * 4);
+        if (is_conv && n->n_inputs >= 2) {
+            int64_t w_dims[ONNX_MAX_DIMS]; uint32_t w_ndim;
+            if (onnx_find_value_shape(&g, n->inputs[1], w_dims, &w_ndim) == 0 && w_ndim == 4) {
+                printf("[derived] layout %s('%s'): weight is ONNX OIHW ", n->op_type, n->name);
+                print_shape(w_dims, w_ndim);
+                printf(" — matches canonical CONV's own weight layout [COUT, CIN*KH*KW] exactly; no weight transform needed\n");
+            }
+        }
+    }
+    if (any_conv_or_pool) {
+        printf("[derived] layout: a Reshape/flatten downstream of Conv/MaxPool in this graph was very likely authored against the file's ORIGINAL NCHW activation order — the MatMul weight it feeds needs its rows reordered to match canonical's HWC-flattened order too, not just the activation transpose above (this is a real, previously-hit bug in this project's own hand-authored CNN killer-benchmark, not a hypothetical)\n");
+    }
+
     /* [derived] peak memory: liveness-style — a tensor (initializer, graph
      * input, or node output) is live from its production point to the
      * last node index that consumes it (or the end, if it's a graph
@@ -146,8 +191,15 @@ int run_inspect(int argc, char **argv) {
 
     /* [estimated] MACs, per node, from shapes alone — same shape-driven
      * formula family as tensor_merged_mnist_resource_gate.c's
-     * estimate_macs(): MatMul/Gemm cost rows*inner*cols, elementwise ops
-     * cost one op per output element. */
+     * estimate_macs(): MatMul/Gemm cost rows*inner*cols, Conv cost
+     * out_elements*(CIN*KH*KW) (standard conv MAC count — each output
+     * element is one CIN*KH*KW dot product), elementwise ops cost one op
+     * per output element. Reshape is excluded from elementwise: it's a
+     * pure layout/view operation with no arithmetic, not an op, and
+     * counting it would overstate cost (this was a real bug — Conv nodes
+     * used to fall into "elementwise" by default, undercounting the
+     * dominant cost of any CNN and never surfacing Conv's own MACs at
+     * all, caught by running this on the first real Conv-bearing file). */
     double total_macs = 0, total_elementwise = 0;
     for (uint32_t i = 0; i < g.n_nodes; i++) {
         OnnxNode *n = &g.nodes[i];
@@ -159,12 +211,18 @@ int run_inspect(int argc, char **argv) {
                 int64_t inner = !strcmp(n->op_type, "Gemm") && n->transA ? da[0] : da[1];
                 macs = (double)n->out_dims[0] * (double)inner * (double)n->out_dims[1];
             }
-        } else total_elementwise += (double)onnx_elem_count(n->out_dims, n->out_ndim);
+        } else if (!strcmp(n->op_type, "Conv")) {
+            int64_t w_dims[ONNX_MAX_DIMS]; uint32_t w_ndim;
+            if (n->n_inputs >= 2 && onnx_find_value_shape(&g, n->inputs[1], w_dims, &w_ndim) == 0 && w_ndim == 4) {
+                double per_output_dot = (double)w_dims[1] * (double)w_dims[2] * (double)w_dims[3]; /* CIN*KH*KW */
+                macs = (double)onnx_elem_count(n->out_dims, n->out_ndim) * per_output_dot;
+            }
+        } else if (strcmp(n->op_type, "Reshape")) total_elementwise += (double)onnx_elem_count(n->out_dims, n->out_ndim);
         if (macs) printf("[estimated] MACs for %s('%s'): %.0f\n", n->op_type, n->name, macs);
         total_macs += macs;
     }
     printf("[estimated] total MACs (one forward pass, batch=1): %.0f\n", total_macs);
-    printf("[estimated] elementwise ops (Add/Relu): %.0f\n", total_elementwise);
+    printf("[estimated] elementwise ops (Add/Relu/MaxPool): %.0f\n", total_elementwise);
 
     printf("[measured] none (inspect performs no execution — see 'tensorctl verify' for measured cross-engine numbers)\n");
     printf("[unknown] lifetime crossover, warm latency, peak RSS, deploy footprint (require actually running this model against a competing engine)\n");
@@ -172,8 +230,18 @@ int run_inspect(int argc, char **argv) {
     if (g.n_unsupported) {
         for (uint32_t i = 0; i < g.n_unsupported; i++) printf("[unsupported] %s\n", g.unsupported[i].message);
     } else {
-        printf("[unsupported] none — every node in this graph is in the v0 subset (MatMul/Gemm/Add/Relu)\n");
+        printf("[unsupported] none — every node in this graph is in the v0 subset (MatMul/Gemm/Add/Relu/Conv/MaxPool/Reshape)\n");
     }
+
+    unsigned build_unsupported = 0;
+    for (uint32_t i = 0; i < g.n_nodes; i++) {
+        if (!(onnx_op_capability(g.nodes[i].op_type) & ONNX_CAP_BUILD)) {
+            printf("[build-unsupported] node '%s' (%s): importable for inspection, but native lowering is not implemented\n",
+                   g.nodes[i].name, g.nodes[i].op_type);
+            build_unsupported++;
+        }
+    }
+    if (!build_unsupported) printf("[build-unsupported] none — every imported node has native lowering\n");
 
     return g.n_unsupported ? 1 : 0;
 }

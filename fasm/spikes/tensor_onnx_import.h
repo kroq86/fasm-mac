@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "tensor_onnx_capability.h"
 
 enum {
     ONNX_MAX_NODES = 64, ONNX_MAX_INITIALIZERS = 64, ONNX_MAX_IO = 16,
@@ -72,16 +73,29 @@ static void pb_copy_str(const uint8_t *bytes, uint64_t len, char *out, size_t ca
     memcpy(out, bytes, n);
     out[n] = 0;
 }
+/* AttributeProto's repeated-scalar fields (ints/floats) use protobuf's
+ * "packed" encoding: wire type 2 (length-delimited), payload is a plain
+ * back-to-back run of varints (no per-element tags). */
+static uint32_t pb_read_packed_int64s(const uint8_t *bytes, uint64_t len, int64_t *out, uint32_t cap) {
+    PbReader r = {bytes, bytes + len};
+    uint32_t n = 0;
+    uint64_t v;
+    while (r.p < r.end && n < cap) { if (pb_varint(&r, &v)) break; out[n++] = (int64_t)v; }
+    return n;
+}
 
 /* --- ONNX-level structures: only what v0 (MatMul/Gemm/Add/Relu) needs --- */
 typedef struct {
     char name[ONNX_MAX_NAME];
     int64_t dims[ONNX_MAX_DIMS];
     uint32_t ndim;
-    int32_t data_type;   /* TensorProto.DataType; 1 = FLOAT */
+    int32_t data_type;   /* TensorProto.DataType; 1 = FLOAT, 7 = INT64 */
     const float *data;   /* points into the loaded file buffer; not a copy */
     uint64_t count;      /* product of dims */
     uint64_t data_count; /* inline float elements actually present */
+    const int64_t *idata;   /* set instead of data when data_type == INT64 (shape tensors) */
+    uint64_t idata_count;
+    int64_t idata_buf[ONNX_MAX_DIMS]; /* owns the decoded values when the source was packed varints (int64_data), which can't be pointed-into like raw_data */
 } OnnxTensor;
 
 typedef struct {
@@ -104,6 +118,16 @@ typedef struct {
      * default, not a guess. */
     float alpha, beta;
     int transA, transB;
+    /* Conv/MaxPool attributes; ONNX spec defaults applied only when the
+     * attribute is genuinely absent (has_* == 0), never silently assumed
+     * present. kernel_shape/strides/dilations are [H,W]; pads is
+     * [h_begin,w_begin,h_end,w_end] (ONNX's own ordering). */
+    int64_t kernel_shape[2]; int has_kernel_shape;
+    int64_t strides[2];      int has_strides;
+    int64_t dilations[2];    int has_dilations;
+    int64_t pads[4];         int has_pads;
+    int64_t group;           int has_group;
+    char auto_pad[16];       /* "NOTSET" (default), "SAME_UPPER", "SAME_LOWER", "VALID" */
     /* computed by shape inference, filled in by onnx_infer_shapes() */
     int64_t out_dims[ONNX_MAX_DIMS];
     uint32_t out_ndim;
@@ -189,16 +213,33 @@ static int onnx_parse_attribute(PbReader r, OnnxNode *n, OnnxGraph *g) {
     PbField f;
     int rc;
     char name[64] = {0};
-    float fval = 0; int64_t ival = 0; int has_f = 0, has_i = 0;
+    float fval = 0; int64_t ival = 0; int has_f = 0, has_i = 0, has_s = 0;
+    char sval[16] = {0};
+    int64_t ints[4] = {0}; uint32_t n_ints = 0; int has_ints = 0;
     while ((rc = pb_next(&r, &f)) > 0) {
         if (f.field == 1 && f.wire == 2) pb_copy_str(f.bytes, f.len, name, sizeof name);
         else if (f.field == 2 && f.wire == 5) { float v; memcpy(&v, f.bytes, 4); fval = v; has_f = 1; }
         else if (f.field == 3 && f.wire == 0) { ival = (int64_t)f.varint; has_i = 1; }
+        else if (f.field == 4 && f.wire == 2) { pb_copy_str(f.bytes, f.len, sval, sizeof sval); has_s = 1; }
+        /* AttributeProto.ints (field 8) is a proto2 `repeated int64` with no
+         * `[packed=true]`, confirmed by hexdumping a real attribute
+         * (mnist-8.onnx's kernel_shape): each element arrives as its own
+         * field-8/wire-0 varint, not one wire-2 packed blob. Accept both,
+         * since a packed encoder is still spec-legal even if this file
+         * doesn't use one. */
+        else if (f.field == 8 && f.wire == 0 && n_ints < 4) { ints[n_ints++] = (int64_t)f.varint; has_ints = 1; }
+        else if (f.field == 8 && f.wire == 2) { n_ints = pb_read_packed_int64s(f.bytes, f.len, ints, 4); has_ints = 1; }
     }
     if (!strcmp(name, "alpha") && has_f) { n->alpha = fval; return rc; }
     if (!strcmp(name, "beta") && has_f) { n->beta = fval; return rc; }
     if (!strcmp(name, "transA") && has_i) { n->transA = (int)ival; return rc; }
     if (!strcmp(name, "transB") && has_i) { n->transB = (int)ival; return rc; }
+    if (!strcmp(name, "group") && has_i) { n->group = ival; n->has_group = 1; return rc; }
+    if (!strcmp(name, "auto_pad") && has_s) { pb_copy_str((const uint8_t *)sval, strlen(sval), n->auto_pad, sizeof n->auto_pad); return rc; }
+    if (!strcmp(name, "kernel_shape") && has_ints && n_ints == 2) { n->kernel_shape[0] = ints[0]; n->kernel_shape[1] = ints[1]; n->has_kernel_shape = 1; return rc; }
+    if (!strcmp(name, "strides") && has_ints && n_ints == 2) { n->strides[0] = ints[0]; n->strides[1] = ints[1]; n->has_strides = 1; return rc; }
+    if (!strcmp(name, "dilations") && has_ints && n_ints == 2) { n->dilations[0] = ints[0]; n->dilations[1] = ints[1]; n->has_dilations = 1; return rc; }
+    if (!strcmp(name, "pads") && has_ints && n_ints == 4) { memcpy(n->pads, ints, sizeof n->pads); n->has_pads = 1; return rc; }
     ONNX_UNSUPPORTED(g, "node '%s' (%s): attribute '%s' is not recognized for this op in v0 and was NOT applied", n->name, n->op_type, name);
     return rc;
 }
@@ -207,6 +248,8 @@ static int onnx_parse_node(PbReader r, OnnxNode *n, OnnxGraph *g) {
     int rc;
     memset(n, 0, sizeof *n);
     n->alpha = 1.0f; n->beta = 1.0f; n->transA = 0; n->transB = 0;
+    n->group = 1; n->dilations[0] = n->dilations[1] = 1;
+    strcpy(n->auto_pad, "NOTSET"); /* ONNX spec default when the attribute is absent */
     while ((rc = pb_next(&r, &f)) > 0) {
         if (f.field == 1 && f.wire == 2 && n->n_inputs < ONNX_MAX_NODE_IO) pb_copy_str(f.bytes, f.len, n->inputs[n->n_inputs++], ONNX_MAX_NAME);
         else if (f.field == 2 && f.wire == 2 && n->n_outputs < ONNX_MAX_NODE_IO) pb_copy_str(f.bytes, f.len, n->outputs[n->n_outputs++], ONNX_MAX_NAME);
@@ -221,18 +264,30 @@ static int onnx_parse_tensor(PbReader r, OnnxTensor *t) {
     int rc;
     const uint8_t *raw = NULL; uint64_t raw_len = 0;
     const uint8_t *packed_floats = NULL; uint64_t packed_len = 0;
+    const uint8_t *packed_int64s = NULL; uint64_t packed_int64_len = 0;
     memset(t, 0, sizeof *t);
     while ((rc = pb_next(&r, &f)) > 0) {
         if (f.field == 1 && f.wire == 0 && t->ndim < ONNX_MAX_DIMS) t->dims[t->ndim++] = (int64_t)f.varint;
         else if (f.field == 2 && f.wire == 0) t->data_type = (int32_t)f.varint;
         else if (f.field == 4 && f.wire == 2) { packed_floats = f.bytes; packed_len = f.len; }
+        else if (f.field == 7 && f.wire == 2) { packed_int64s = f.bytes; packed_int64_len = f.len; } /* int64_data, packed varints */
         else if (f.field == 8 && f.wire == 2) pb_copy_str(f.bytes, f.len, t->name, sizeof t->name);
         else if (f.field == 9 && f.wire == 2) { raw = f.bytes; raw_len = f.len; }
     }
     uint64_t count = 1;
     for (uint32_t i = 0; i < t->ndim; i++) count *= (uint64_t)(t->dims[i] < 0 ? 0 : t->dims[i]);
     t->count = count;
-    if (raw) { t->data = (const float *)(const void *)raw; t->data_count = raw_len / 4; }
+    if (t->data_type == 7) { /* INT64 (shape tensors, e.g. Reshape's second operand) */
+        if (raw) { t->idata = (const int64_t *)(const void *)raw; t->idata_count = raw_len / 8; }
+        else if (packed_int64s) {
+            /* int64_data is varint-packed, not fixed-8-byte-per-element, so
+             * it can't be pointed into directly like the float/raw_data
+             * cases — decode into this tensor's own idata_buf (shape
+             * tensors are always tiny: the rank of some other tensor). */
+            t->idata_count = pb_read_packed_int64s(packed_int64s, packed_int64_len, t->idata_buf, ONNX_MAX_DIMS);
+            t->idata = t->idata_buf;
+        }
+    } else if (raw) { t->data = (const float *)(const void *)raw; t->data_count = raw_len / 4; }
     else if (packed_floats) { t->data = (const float *)(const void *)packed_floats; t->data_count = packed_len / 4; }
     return rc;
 }
@@ -331,14 +386,119 @@ static void onnx_infer_shapes(OnnxGraph *g) {
             if (da[1] != db[0]) { ONNX_ERROR(g, "node '%s' (MatMul): inner dims mismatch (%lldx%lld @ %lldx%lld)", n->name, (long long)da[0], (long long)da[1], (long long)db[0], (long long)db[1]); continue; }
             n->out_dims[0] = da[0]; n->out_dims[1] = db[1]; n->out_ndim = 2; n->shape_ok = 1;
         } else if (!strcmp(n->op_type, "Gemm")) {
+            if (n->n_inputs < 2 || n->n_inputs > 3) { ONNX_ERROR(g, "node '%s' (Gemm): expected 2 or 3 inputs, got %u", n->name, n->n_inputs); continue; }
             if (!have_a || !have_b) { ONNX_ERROR(g, "node '%s' (Gemm): operand shape unknown", n->name); continue; }
             if (an != 2 || bn != 2) { ONNX_UNSUPPORTED(g, "node '%s' (Gemm): only 2-D A/B are supported in v0", n->name); continue; }
             int64_t am = n->transA ? da[1] : da[0], ak = n->transA ? da[0] : da[1];
             int64_t bk = n->transB ? db[1] : db[0], bn2 = n->transB ? db[0] : db[1];
             if (ak != bk) { ONNX_ERROR(g, "node '%s' (Gemm): inner dims mismatch after transA/transB", n->name); continue; }
+            /* The v0 emitter addresses C as C[column].  ONNX permits broader
+             * unidirectional broadcasting, but accepting it here would make
+             * shapes such as [M,1] silently produce the wrong result. */
+            if (n->n_inputs == 3) {
+                int64_t dc[ONNX_MAX_DIMS]; uint32_t cn = 0;
+                if (onnx_find_value_shape(g, n->inputs[2], dc, &cn)) { ONNX_ERROR(g, "node '%s' (Gemm): bias C shape unknown", n->name); continue; }
+                if (!((cn == 1 && dc[0] == bn2) || (cn == 2 && dc[0] == 1 && dc[1] == bn2))) {
+                    ONNX_UNSUPPORTED(g, "node '%s' (Gemm): bias C shape is not supported by native v0 lowering (expected [%lld] or [1,%lld], got %u-D)", n->name, (long long)bn2, (long long)bn2, cn);
+                    continue;
+                }
+            }
             n->out_dims[0] = am; n->out_dims[1] = bn2; n->out_ndim = 2; n->shape_ok = 1;
+        } else if (!strcmp(n->op_type, "Conv")) {
+            /* NCHW input, OIHW weight — this is ONNX's own convention, not a
+             * choice we make; the mismatch against this project's canonical
+             * HWC layout is exactly the boundary this importer exists to
+             * surface (in inspect's report), not paper over here. */
+            if (!have_a) { ONNX_ERROR(g, "node '%s' (Conv): input '%s' shape unknown", n->name, n->inputs[0]); continue; }
+            if (!have_b) { ONNX_ERROR(g, "node '%s' (Conv): weight '%s' shape unknown", n->name, n->n_inputs >= 2 ? n->inputs[1] : "?"); continue; }
+            if (an != 4 || bn != 4) { ONNX_UNSUPPORTED(g, "node '%s' (Conv): only 4-D NCHW input and OIHW weight are supported in v0 (got %u-D/%u-D)", n->name, an, bn); continue; }
+            if (n->group != 1) { ONNX_UNSUPPORTED(g, "node '%s' (Conv): grouped convolution is not supported in v0 (group=%lld)", n->name, (long long)n->group); continue; }
+            int64_t kh = n->has_kernel_shape ? n->kernel_shape[0] : db[2];
+            int64_t kw = n->has_kernel_shape ? n->kernel_shape[1] : db[3];
+            int64_t sh = n->has_strides ? n->strides[0] : 1, sw = n->has_strides ? n->strides[1] : 1;
+            int64_t dh = n->dilations[0], dw = n->dilations[1];
+            int64_t in_h = da[2], in_w = da[3], out_h, out_w;
+            /* n->pads is left holding the RAW attribute (or its NOTSET
+             * default) by earlier parsing; from here on it is overwritten
+             * to hold the EFFECTIVE [h_begin,w_begin,h_end,w_end] padding
+             * to actually use, regardless of whether it came from an
+             * explicit attribute or was derived from auto_pad — so a
+             * downstream consumer (native codegen) never needs to
+             * re-derive the auto_pad formula itself, it just reads
+             * n->pads after inference has run. */
+            if (!strcmp(n->auto_pad, "SAME_UPPER") || !strcmp(n->auto_pad, "SAME_LOWER")) {
+                out_h = (in_h + sh - 1) / sh; out_w = (in_w + sw - 1) / sw; /* ceil(in/stride), per ONNX auto_pad spec */
+                int64_t need_h = (out_h - 1) * sh + ((kh - 1) * dh + 1) - in_h; if (need_h < 0) need_h = 0;
+                int64_t need_w = (out_w - 1) * sw + ((kw - 1) * dw + 1) - in_w; if (need_w < 0) need_w = 0;
+                int64_t small_h = need_h / 2, small_w = need_w / 2;
+                int upper = !strcmp(n->auto_pad, "SAME_UPPER");
+                n->pads[0] = upper ? small_h : need_h - small_h; n->pads[2] = upper ? need_h - small_h : small_h;
+                n->pads[1] = upper ? small_w : need_w - small_w; n->pads[3] = upper ? need_w - small_w : small_w;
+            } else if (!strcmp(n->auto_pad, "VALID")) {
+                out_h = (in_h - ((kh - 1) * dh + 1)) / sh + 1;
+                out_w = (in_w - ((kw - 1) * dw + 1)) / sw + 1;
+                n->pads[0] = n->pads[1] = n->pads[2] = n->pads[3] = 0;
+            } else { /* NOTSET: explicit pads [h_begin,w_begin,h_end,w_end], default all-zero — n->pads already holds this */
+                int64_t pt = n->pads[0], pl = n->pads[1], pb = n->pads[2], pr = n->pads[3];
+                out_h = (in_h + pt + pb - ((kh - 1) * dh + 1)) / sh + 1;
+                out_w = (in_w + pl + pr - ((kw - 1) * dw + 1)) / sw + 1;
+            }
+            n->out_dims[0] = da[0]; n->out_dims[1] = db[0]; n->out_dims[2] = out_h; n->out_dims[3] = out_w;
+            n->out_ndim = 4; n->shape_ok = 1;
+        } else if (!strcmp(n->op_type, "MaxPool")) {
+            if (!have_a) { ONNX_ERROR(g, "node '%s' (MaxPool): input '%s' shape unknown", n->name, n->inputs[0]); continue; }
+            if (an != 4) { ONNX_UNSUPPORTED(g, "node '%s' (MaxPool): only 4-D NCHW input is supported in v0 (got %u-D)", n->name, an); continue; }
+            if (!n->has_kernel_shape) { ONNX_UNSUPPORTED(g, "node '%s' (MaxPool): kernel_shape attribute is required", n->name); continue; }
+            int64_t kh = n->kernel_shape[0], kw = n->kernel_shape[1];
+            /* MaxPool's default stride is kernel_shape, not [1,1] — a
+             * different default than Conv's, per the ONNX spec; getting
+             * this wrong silently changes the output size. */
+            int64_t sh = n->has_strides ? n->strides[0] : kh, sw = n->has_strides ? n->strides[1] : kw;
+            int64_t in_h = da[2], in_w = da[3], out_h, out_w;
+            if (!strcmp(n->auto_pad, "SAME_UPPER") || !strcmp(n->auto_pad, "SAME_LOWER")) {
+                out_h = (in_h + sh - 1) / sh; out_w = (in_w + sw - 1) / sw;
+                int64_t need_h = (out_h - 1) * sh + kh - in_h; if (need_h < 0) need_h = 0;
+                int64_t need_w = (out_w - 1) * sw + kw - in_w; if (need_w < 0) need_w = 0;
+                int64_t small_h = need_h / 2, small_w = need_w / 2;
+                int upper = !strcmp(n->auto_pad, "SAME_UPPER");
+                n->pads[0] = upper ? small_h : need_h - small_h; n->pads[2] = upper ? need_h - small_h : small_h;
+                n->pads[1] = upper ? small_w : need_w - small_w; n->pads[3] = upper ? need_w - small_w : small_w;
+            } else if (!strcmp(n->auto_pad, "VALID")) {
+                out_h = (in_h - kh) / sh + 1; out_w = (in_w - kw) / sw + 1;
+                n->pads[0] = n->pads[1] = n->pads[2] = n->pads[3] = 0;
+            } else {
+                int64_t pt = n->pads[0], pl = n->pads[1], pb = n->pads[2], pr = n->pads[3];
+                out_h = (in_h + pt + pb - kh) / sh + 1;
+                out_w = (in_w + pl + pr - kw) / sw + 1;
+            }
+            n->out_dims[0] = da[0]; n->out_dims[1] = da[1]; n->out_dims[2] = out_h; n->out_dims[3] = out_w;
+            n->out_ndim = 4; n->shape_ok = 1;
+        } else if (!strcmp(n->op_type, "Reshape")) {
+            if (!have_a) { ONNX_ERROR(g, "node '%s' (Reshape): input '%s' shape unknown", n->name, n->inputs[0]); continue; }
+            if (n->n_inputs < 2) { ONNX_UNSUPPORTED(g, "node '%s' (Reshape): v0 requires the target shape as a second input", n->name); continue; }
+            const OnnxTensor *shape_t = onnx_find_initializer(g, n->inputs[1]);
+            if (!shape_t || !shape_t->idata) { ONNX_UNSUPPORTED(g, "node '%s' (Reshape): target shape must be a constant int64 initializer in v0 (got a computed/missing tensor for '%s')", n->name, n->inputs[1]); continue; }
+            int64_t total = 1; for (uint32_t k = 0; k < an; k++) total *= da[k];
+            int64_t out_dims[ONNX_MAX_DIMS]; uint32_t out_ndim = (uint32_t)shape_t->idata_count;
+            if (out_ndim > ONNX_MAX_DIMS) { ONNX_UNSUPPORTED(g, "node '%s' (Reshape): target rank %u exceeds v0 limit", n->name, out_ndim); continue; }
+            int64_t known_product = 1; int neg_one_axis = -1; int bad = 0;
+            for (uint32_t k = 0; k < out_ndim; k++) {
+                int64_t v = shape_t->idata[k];
+                if (v == -1) { neg_one_axis = (int)k; out_dims[k] = -1; }
+                else if (v == 0) {
+                    if (k >= an) { ONNX_ERROR(g, "node '%s' (Reshape): dim 0 (copy-from-input) at axis %u has no matching input axis", n->name, k); bad = 1; break; }
+                    out_dims[k] = da[k]; known_product *= out_dims[k];
+                } else { out_dims[k] = v; known_product *= v; }
+            }
+            if (bad) continue;
+            if (neg_one_axis >= 0) {
+                if (known_product == 0 || total % known_product != 0) { ONNX_ERROR(g, "node '%s' (Reshape): -1 dim not evenly divisible (%lld elements, %lld known product)", n->name, (long long)total, (long long)known_product); continue; }
+                out_dims[neg_one_axis] = total / known_product; known_product *= out_dims[neg_one_axis];
+            }
+            if (known_product != total) { ONNX_ERROR(g, "node '%s' (Reshape): target shape element count (%lld) does not match input (%lld)", n->name, (long long)known_product, (long long)total); continue; }
+            memcpy(n->out_dims, out_dims, sizeof(int64_t) * out_ndim); n->out_ndim = out_ndim; n->shape_ok = 1;
         } else {
-            ONNX_UNSUPPORTED(g, "node '%s': op_type '%s' is not in the v0 subset (MatMul/Gemm/Add/Relu)", n->name, n->op_type);
+            ONNX_UNSUPPORTED(g, "node '%s': op_type '%s' is not in the v0 subset (MatMul/Gemm/Add/Relu/Conv/MaxPool/Reshape)", n->name, n->op_type);
         }
     }
 }
@@ -371,11 +531,25 @@ static int onnx_validate_topology(OnnxGraph *g) {
 
 static int onnx_validate_storage_and_types(OnnxGraph *g) {
     int ok = 1;
-    for (uint32_t i = 0; i < g->n_inputs; i++) if (!g->inputs[i].has_type || g->inputs[i].elem_type != 1) { ONNX_UNSUPPORTED(g, "graph input '%s': v0 requires explicit float32 tensor type", g->inputs[i].name); ok = 0; }
+    for (uint32_t i = 0; i < g->n_inputs; i++) {
+        /* Older ONNX IR (this project's CNN fixtures use ir_version=3,
+         * opset=8) requires every initializer to also be listed as a graph
+         * input — that duplicate listing is a storage convention, not a
+         * second runtime input, and its type is governed by the
+         * initializer check below (which allows float32 weights AND
+         * int64 shape tensors), not this float32-only check. */
+        int shadowed_by_initializer = onnx_find_initializer(g, g->inputs[i].name) != NULL;
+        if (shadowed_by_initializer) continue;
+        if (!g->inputs[i].has_type || g->inputs[i].elem_type != 1) { ONNX_UNSUPPORTED(g, "graph input '%s': v0 requires explicit float32 tensor type", g->inputs[i].name); ok = 0; }
+    }
     for (uint32_t i = 0; i < g->n_outputs; i++) if (!g->outputs[i].has_type || g->outputs[i].elem_type != 1) { ONNX_UNSUPPORTED(g, "graph output '%s': v0 requires explicit float32 tensor type", g->outputs[i].name); ok = 0; }
     for (uint32_t i = 0; i < g->n_initializers; i++) {
         OnnxTensor *t = &g->initializers[i];
-        if (t->data_type != 1) { ONNX_UNSUPPORTED(g, "initializer '%s': dtype %d is not float32", t->name, t->data_type); ok = 0; }
+        if (t->data_type == 7) { /* INT64 shape tensor (e.g. Reshape's second operand) */
+            if (!t->idata || t->idata_count != t->count) { ONNX_UNSUPPORTED(g, "initializer '%s': v0 requires inline int64 data matching declared shape (%llu declared, %llu present)", t->name, (unsigned long long)t->count, (unsigned long long)t->idata_count); ok = 0; }
+            continue;
+        }
+        if (t->data_type != 1) { ONNX_UNSUPPORTED(g, "initializer '%s': dtype %d is not float32 or int64", t->name, t->data_type); ok = 0; }
         if (!t->data || t->data_count != t->count) { ONNX_UNSUPPORTED(g, "initializer '%s': v0 requires inline data matching declared shape (%llu declared, %llu present)", t->name, (unsigned long long)t->count, (unsigned long long)t->data_count); ok = 0; }
     }
     return ok;
