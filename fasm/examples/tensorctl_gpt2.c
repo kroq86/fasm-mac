@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/resource.h>
+#include <time.h>
 
 #if M != 768 || H != 12 || D != 64 || QW != 2304 || MAXCACHE != 64
 #error "tensorctl_gpt2.c requires the real GPT-2 124M shape macros"
@@ -106,6 +108,18 @@ static int ascii_only(const char *text) {
     return 1;
 }
 
+static double monotonic_ms(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1000000.0;
+}
+
+static double peak_rss_mb(void) {
+    struct rusage usage;
+    if (getrusage(RUSAGE_SELF, &usage)) return -1.0;
+    return (double)usage.ru_maxrss / (1024.0 * 1024.0);
+}
+
 int run_gpt2(int argc, char **argv) {
     const char *model = getenv("GPT2_SAFETENSORS");
     const char *tokenizer = getenv("GPT2_TOKENIZER_FIXTURE_DIR");
@@ -139,13 +153,16 @@ int run_gpt2(int argc, char **argv) {
         snprintf(merges, sizeof merges, "%s/merges.txt", tokenizer) >= (int)sizeof merges) {
         fprintf(stderr, "tensorctl gpt2: tokenizer path too long\n"); return 2;
     }
+    const double load_start = monotonic_ms();
     fprintf(stderr, "Loading GPT-2 124M...\n");
     if (gpt2_load_weights(&cli_weights, model, "248dfc3911869ec493c76e65bf2fcf7f615828b0254c12b473182f0f81d3a707")) {
         fprintf(stderr, "tensorctl gpt2: model load or SHA-256 verification failed\n"); return 3;
     }
+    const double model_loaded = monotonic_ms();
     if (gpt2_bpe_load(&cli_bpe, vocab, merges)) {
         fprintf(stderr, "tensorctl gpt2: tokenizer load failed under %s\n", tokenizer); return 3;
     }
+    const double tokenizer_loaded = monotonic_ms();
     int ids[GPT2_CLI_MAX_TOKENS];
     int prompt_count = gpt2_bpe_encode(&cli_bpe, prompt, (int)strlen(prompt), ids, GPT2_CLI_MAX_TOKENS);
     if (prompt_count < 1) { fprintf(stderr, "tensorctl gpt2: prompt tokenization failed\n"); return 3; }
@@ -156,17 +173,49 @@ int run_gpt2(int argc, char **argv) {
     for (int i = 0; i < GPT2_NLAYER; i++) if (cli_layer_setup(&cli_layers[i])) {
         fprintf(stderr, "tensorctl gpt2: graph compilation failed\n"); return 3;
     }
+    const double inference_start = monotonic_ms();
     cli_prefill(ids, prompt_count - 1);
+    const double prefill_done = monotonic_ms();
     static float logits[GPT2_VOCAB];
+    double first_token_done = 0.0;
     for (int step = 0; step < generated; step++) {
         int position = prompt_count + step - 1;
         if (cli_decode(ids[position], position, logits)) { fprintf(stderr, "tensorctl gpt2: execution failed\n"); return 3; }
         ids[prompt_count + step] = argmax(logits, GPT2_VOCAB);
+        if (step == 0) first_token_done = monotonic_ms();
     }
+    const double inference_done = monotonic_ms();
     char output[16384];
     int bytes = gpt2_bpe_decode(&cli_bpe, ids, prompt_count + generated, output, (int)sizeof output - 1);
     if (bytes < 0) { fprintf(stderr, "tensorctl gpt2: output decoding failed\n"); return 3; }
     output[bytes] = '\0';
     printf("%s\n", output);
+    const double decode_ms = inference_done - first_token_done;
+    const double decode_tps = generated > 1 && decode_ms > 0.0
+        ? (double)(generated - 1) * 1000.0 / decode_ms : 0.0;
+    fprintf(stderr,
+        "\nGPT-2 runtime metadata\n"
+        "  backend: %s\n"
+        "  model: gpt2-124m (layers=%d hidden=%d heads=%d vocab=%d)\n"
+        "  model_sha256: 248dfc3911869ec493c76e65bf2fcf7f615828b0254c12b473182f0f81d3a707\n"
+        "  prompt_tokens: %d\n"
+        "  generated_tokens: %d\n"
+        "  context_tokens: %d/%d\n"
+        "  model_load_ms: %.3f\n"
+        "  tokenizer_load_ms: %.3f\n"
+        "  prefill_ms: %.3f\n"
+        "  ttft_ms: %.3f\n"
+        "  decode_ms_after_first: %.3f\n"
+        "  decode_tokens_per_sec: %.3f\n"
+        "  inference_total_ms: %.3f\n"
+        "  peak_rss_mb: %.3f\n"
+        "  sampling: greedy_argmax\n"
+        "  kv_cache: canonical_persistent (capacity=%d)\n",
+        backend, GPT2_NLAYER, GPT2_M, GPT2_H, GPT2_VOCAB,
+        prompt_count, generated, prompt_count + generated, GPT2_CLI_MAX_TOKENS,
+        model_loaded - load_start, tokenizer_loaded - model_loaded,
+        prefill_done - inference_start, first_token_done - inference_start,
+        decode_ms, decode_tps, inference_done - inference_start,
+        peak_rss_mb(), MAXCACHE);
     return 0;
 }

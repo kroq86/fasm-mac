@@ -21,6 +21,13 @@ expected="The quick brown foxes are a great way to get a little bit of a"
 scalar="$("${run[@]}" --backend scalar --prompt "The quick brown fox" --tokens 12 2>/dev/null)"
 [[ "$scalar" == "$actual" ]] || { echo "scalar/Accelerate token output mismatch" >&2; exit 1; }
 grep -q '^Loading GPT-2 124M' "$OUT_DIR/stderr"
+grep -q '^GPT-2 runtime metadata' "$OUT_DIR/stderr"
+grep -q '^  backend: accelerate$' "$OUT_DIR/stderr"
+grep -q '^  prompt_tokens: 4$' "$OUT_DIR/stderr"
+grep -q '^  generated_tokens: 12$' "$OUT_DIR/stderr"
+grep -q '^  ttft_ms: [0-9]' "$OUT_DIR/stderr"
+grep -q '^  decode_tokens_per_sec: [0-9]' "$OUT_DIR/stderr"
+grep -q '^  peak_rss_mb: [0-9]' "$OUT_DIR/stderr"
 
 if "${run[@]}" --prompt "" --tokens 1 >/dev/null 2>&1; then echo "empty prompt accepted" >&2; exit 1; fi
 if "${run[@]}" --prompt "hello" --tokens 0 >/dev/null 2>&1; then echo "zero token count accepted" >&2; exit 1; fi

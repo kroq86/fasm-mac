@@ -595,6 +595,11 @@ the scalar fallback; its product gate requires identical generated text from
 both backends. A formal warmup+10-rep E2E benchmark remains open, so the exact
 multiplier is engineering evidence, not a general performance claim. No
 planner, Metal/MPS, or general runtime-superiority claim is made here.
+The CLI emits runtime metadata to stderr on every generation: selected backend,
+model identity and SHA-256, model dimensions, prompt/generated/context token
+counts, model/tokenizer load time, prefill, TTFT, post-first-token decode time
+and throughput, total inference time, peak RSS, sampling policy and KV-cache
+kind/capacity. Generated text remains the only stdout payload.
 
 ## Ordered roadmap after the real-block gate
 
