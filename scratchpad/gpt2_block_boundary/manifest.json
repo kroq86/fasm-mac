@@ -1,0 +1,66 @@
+{
+  "model": "gpt2",
+  "revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e",
+  "token_ids": [
+    464,
+    3290,
+    3332,
+    2159,
+    0,
+    1,
+    50256,
+    464
+  ],
+  "T": 8,
+  "n_embd": 768,
+  "n_head": 12,
+  "layer_norm_epsilon": 1e-05,
+  "weight_fingerprints_sha256": {
+    "model.safetensors": "248dfc3911869ec493c76e65bf2fcf7f615828b0254c12b473182f0f81d3a707"
+  },
+  "note": "reference/oracle tensors only -- weights are read from the real checkpoint by the C loader, not dumped here",
+  "reference_fingerprints_sha256": {
+    "x0_input_hidden.f32": "c660d0e086d818a8b88cfb73002b71f0b6576ec0d4277d68f2cfd24b5699e085",
+    "boundary_ln1_real_affine.f32": "c65f9bf0ead3b19c8a563a96e483122292f61104b0201e5f3e10f398742cd956",
+    "boundary_qkv.f32": "5b7a653759f9677ccd860a49623fa012e0c8163fbeb819afd3410c5ad7c3eb32",
+    "boundary_attn_output.f32": "171a92ec668b9d072b2d744bbf74e604dec8d8d10e64a9b99bdcf9f3913618d2",
+    "boundary_res1.f32": "e7b103c3634c39cc61959813c70ffe455e5630ff8c68777d4f3477ecf2f5ba97",
+    "boundary_ln2_real_affine.f32": "00768e54bf88f58d919458e68af8a153834b24c56211348adad9508fde8e8c5e",
+    "boundary_gelu.f32": "65dce424c581750346305ea248db4500d3ff38feb887df701e00ca70c6ce155b",
+    "h1_reference_output.f32": "7fa33e92fc0fb4121d2817c500a629d4b7b52b3209a9cd16a9e42a435c7427b2"
+  },
+  "shapes": {
+    "x0_input_hidden": [
+      8,
+      768
+    ],
+    "h1_reference_output": [
+      8,
+      768
+    ],
+    "boundary_ln1_real_affine": [
+      8,
+      768
+    ],
+    "boundary_qkv": [
+      8,
+      2304
+    ],
+    "boundary_attn_output": [
+      8,
+      768
+    ],
+    "boundary_res1": [
+      8,
+      768
+    ],
+    "boundary_ln2_real_affine": [
+      8,
+      768
+    ],
+    "boundary_gelu": [
+      8,
+      3072
+    ]
+  }
+}

@@ -37,3 +37,6 @@
 
 # Python bytecode cache
 __pycache__/
+
+# External ML oracle environments must never be part of the checkout.
+/scratchpad/gpt2_block_boundary/venv*/

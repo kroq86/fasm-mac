@@ -91,7 +91,7 @@
 #define PHOUT (PHIN / PPH)
 #define PWOUT (PWIN / PPW)
 
-enum { LEAF, MATMUL, BIAS_ADD, RELU, MSE, ATTENTION, RESIDUAL, LAYERNORM, CONTIGUOUS, CONV, POOL, REDUCE_MEAN_ROWS, SIGMOID, BINARY_CROSS_ENTROPY, OP_COUNT };
+enum { LEAF, MATMUL, BIAS_ADD, RELU, MSE, ATTENTION, RESIDUAL, LAYERNORM, CONTIGUOUS, CONV, POOL, REDUCE_MEAN_ROWS, SIGMOID, BINARY_CROSS_ENTROPY, EMBED_LOOKUP, CAUSAL_ATTENTION, GELU, SOFTMAX_ROWS, OP_COUNT };
 /* Storage/ownership role occupies the low nibble. RETAIN_GRAD is an
  * orthogonal semantic request: materialize this tensor's gradient even
  * when it is not trainable. It does not make a leaf an optimizer target. */
@@ -214,6 +214,70 @@ static void k_sigmoid_bwd(Node *self, Node *a, Node *b, uint32_t mask) {
         a->tensor.grad[i] += self->tensor.grad[i] * y * (1.0f - y);
     }
 }
+/* Decoder-runtime Etap 2, operation 4/10: GELU. The tanh approximation
+ * GPT-2's own reference code uses (not the exact erf-based GELU) --
+ * matters because a later real-weight vertical slice needs to reproduce
+ * GPT-2's own numerics, not a mathematically-cleaner but different
+ * activation. Same constants (sqrt(2/pi), 0.044715) as the original GPT-2
+ * and nanoGPT/llm.c reference implementations. */
+static void k_gelu_fwd(Node *self, Node *a, Node *b) {
+    (void)b;
+    const float c0 = 0.7978845608028654f, c1 = 0.044715f;
+    uint32_t n = self->tensor.rows * self->tensor.cols;
+    for (uint32_t i = 0; i < n; i++) {
+        float x = a->tensor.data[i];
+        float u = c0 * (x + c1 * x * x * x);
+        self->tensor.data[i] = 0.5f * x * (1.0f + tanhf(u));
+    }
+}
+static void k_gelu_bwd(Node *self, Node *a, Node *b, uint32_t mask) {
+    (void)b;
+    if (!(mask & 1)) return;
+    const float c0 = 0.7978845608028654f, c1 = 0.044715f;
+    uint32_t n = self->tensor.rows * self->tensor.cols;
+    for (uint32_t i = 0; i < n; i++) {
+        float x = a->tensor.data[i];
+        float u = c0 * (x + c1 * x * x * x);
+        float t = tanhf(u);
+        float sech2 = 1.0f - t * t;
+        float du_dx = c0 * (1.0f + 3.0f * c1 * x * x);
+        float dgelu = 0.5f * (1.0f + t) + 0.5f * x * sech2 * du_dx;
+        a->tensor.grad[i] += self->tensor.grad[i] * dgelu;
+    }
+}
+/* Decoder-runtime Etap 2, operation 5/10: numerically stable softmax as
+ * its own reusable op (row-wise, last-axis) -- for the final
+ * logits->vocab-probability step, distinct from the softmax already
+ * baked inside k_attention_fwd/k_causal_attention_fwd's score
+ * computation (that one is internal to attention and not reachable as a
+ * standalone graph node). Same max-subtraction stability trick. Backward
+ * reuses the exact softmax-Jacobian formula already validated inside
+ * k_attention_bwd's dprob->dscore step (dscore=prob*(dprob-dot)) --
+ * applied here row-wise instead of per (head,query) pair. */
+static void k_softmax_rows_fwd(Node *self, Node *a, Node *b) {
+    (void)b;
+    uint32_t rows = self->tensor.rows, cols = self->tensor.cols;
+    for (uint32_t i = 0; i < rows; i++) {
+        float mx = -INFINITY;
+        for (uint32_t j = 0; j < cols; j++) mx = fmaxf(mx, a->tensor.data[i * cols + j]);
+        float total = 0;
+        for (uint32_t j = 0; j < cols; j++) { float e = expf(a->tensor.data[i * cols + j] - mx); self->tensor.data[i * cols + j] = e; total += e; }
+        for (uint32_t j = 0; j < cols; j++) self->tensor.data[i * cols + j] /= total;
+    }
+}
+static void k_softmax_rows_bwd(Node *self, Node *a, Node *b, uint32_t mask) {
+    (void)b;
+    if (!(mask & 1)) return;
+    uint32_t rows = self->tensor.rows, cols = self->tensor.cols;
+    for (uint32_t i = 0; i < rows; i++) {
+        float dot = 0;
+        for (uint32_t j = 0; j < cols; j++) dot += self->tensor.grad[i * cols + j] * self->tensor.data[i * cols + j];
+        for (uint32_t j = 0; j < cols; j++) {
+            float y = self->tensor.data[i * cols + j];
+            a->tensor.grad[i * cols + j] += y * (self->tensor.grad[i * cols + j] - dot);
+        }
+    }
+}
 static void k_bce_fwd(Node *self, Node *a, Node *b) {
     uint32_t n = a->tensor.rows * a->tensor.cols;
     float loss = 0;
@@ -324,6 +388,43 @@ static void k_attention_fwd(Node *self, Node *a, Node *b) {
         }
     }
 }
+/* Decoder-runtime Etap 2, operation 3/10: causal attention mask. Same
+ * computation as k_attention_fwd, with future positions (j>i) masked to
+ * -inf before softmax, so their softmax weight is exactly 0.0, not just
+ * small -- token i never sees token i+1..T-1. No new backward kernel:
+ * k_attention_bwd is reused as-is below, because every gradient term it
+ * produces for a masked position is multiplied by that position's own
+ * prob (which is exactly 0 here), so the existing math already zeroes
+ * out future-position contributions without needing to know about the
+ * mask itself. */
+static void k_causal_attention_fwd(Node *self, Node *a, Node *b) {
+    (void)b;
+    const float *qkv = a->tensor.data;
+    float *prob = self->tensor.aux;
+    float scale = 1.0f / sqrtf((float)D);
+    for (int h = 0; h < H; h++) for (int i = 0; i < T; i++) {
+        float score[T], mx = -INFINITY;
+        for (int j = 0; j < T; j++) {
+            float s;
+            if (j > i) { s = -INFINITY; }
+            else {
+                s = 0;
+                for (int d = 0; d < D; d++) s += qkv[i * QW + h * D + d] * qkv[j * QW + M + h * D + d];
+                s *= scale;
+            }
+            score[j] = s;
+            mx = fmaxf(mx, s);
+        }
+        float total = 0;
+        for (int j = 0; j < T; j++) { float e = j > i ? 0.0f : expf(score[j] - mx); prob[(h * T + i) * T + j] = e; total += e; }
+        for (int j = 0; j < T; j++) prob[(h * T + i) * T + j] /= total;
+        for (int d = 0; d < D; d++) {
+            float s = 0;
+            for (int j = 0; j <= i; j++) s += prob[(h * T + i) * T + j] * qkv[j * QW + 2 * M + h * D + d];
+            self->tensor.data[(h * T + i) * D + d] = s;
+        }
+    }
+}
 static void k_attention_bwd(Node *self, Node *a, Node *b, uint32_t mask) {
     (void)b;
     if (!(mask & 1)) return;
@@ -426,12 +527,40 @@ static void k_pool_bwd(Node *self, Node *a, Node *b, uint32_t mask) {
     }
 }
 
+/* --- EMBED_LOOKUP: decoder-runtime step 1 (Etap 2 of the GPT-2 ladder).
+ * Gathers rows from an embedding table by integer index -- `a` is the
+ * table [VOCAB, DIM], `b` holds SEQ token ids as a [1, SEQ] row of
+ * floats. Storing indices as float is exact for any realistic vocab:
+ * float32 represents integers exactly up to 2^24, far past GPT-2's
+ * 50257-token vocabulary, so there is no precision loss to round-trip
+ * through. Indices never need a gradient (they are not learned, only
+ * `a`'s rows are) -- expressed here simply by k_embed_bwd never touching
+ * `b`, the same convention k_sigmoid_bwd/k_relu_bwd already use for an
+ * unused second operand. Output is [SEQ, DIM], one row per token. */
+static void k_embed_fwd(Node *self, Node *a, Node *b) {
+    uint32_t seq = self->tensor.rows, dim = self->tensor.cols;
+    for (uint32_t t = 0; t < seq; t++) {
+        uint32_t idx = (uint32_t)(b->tensor.data[t] + 0.5f); /* round-to-nearest guards a stored-as-float integer */
+        for (uint32_t d = 0; d < dim; d++) self->tensor.data[t * dim + d] = a->tensor.data[idx * dim + d];
+    }
+}
+static void k_embed_bwd(Node *self, Node *a, Node *b, uint32_t mask) {
+    if (!(mask & 1)) return;
+    uint32_t seq = self->tensor.rows, dim = self->tensor.cols;
+    for (uint32_t t = 0; t < seq; t++) {
+        uint32_t idx = (uint32_t)(b->tensor.data[t] + 0.5f);
+        for (uint32_t d = 0; d < dim; d++) a->tensor.grad[idx * dim + d] += self->tensor.grad[t * dim + d];
+    }
+}
+
 static const FwdFn FWD[OP_COUNT] = {
     [MATMUL] = k_matmul_fwd, [BIAS_ADD] = k_bias_fwd, [RELU] = k_relu_fwd, [MSE] = k_mse_fwd,
     [ATTENTION] = k_attention_fwd, [RESIDUAL] = k_residual_fwd, [LAYERNORM] = k_layernorm_fwd, [CONTIGUOUS] = k_contiguous_fwd,
     [REDUCE_MEAN_ROWS] = k_reduce_mean_rows_fwd,
     [SIGMOID] = k_sigmoid_fwd, [BINARY_CROSS_ENTROPY] = k_bce_fwd,
     [CONV] = k_conv_fwd, [POOL] = k_pool_fwd,
+    [EMBED_LOOKUP] = k_embed_fwd, [CAUSAL_ATTENTION] = k_causal_attention_fwd, [GELU] = k_gelu_fwd,
+    [SOFTMAX_ROWS] = k_softmax_rows_fwd,
 };
 static const BwdFn BWD[OP_COUNT] = {
     [MATMUL] = k_matmul_bwd, [BIAS_ADD] = k_bias_bwd, [RELU] = k_relu_bwd, [MSE] = k_mse_bwd,
@@ -439,6 +568,8 @@ static const BwdFn BWD[OP_COUNT] = {
     [REDUCE_MEAN_ROWS] = k_reduce_mean_rows_bwd,
     [SIGMOID] = k_sigmoid_bwd, [BINARY_CROSS_ENTROPY] = k_bce_bwd,
     [CONV] = k_conv_bwd, [POOL] = k_pool_bwd,
+    [EMBED_LOOKUP] = k_embed_bwd, [CAUSAL_ATTENTION] = k_attention_bwd, [GELU] = k_gelu_bwd,
+    [SOFTMAX_ROWS] = k_softmax_rows_bwd,
 };
 
 static int action(void *opaque) {
@@ -468,7 +599,7 @@ static int validate(const Node *g, uint32_t n) {
             continue;
         }
         if (g[i].lhs >= i ||
-            (g[i].op != RELU && g[i].op != LAYERNORM && g[i].op != CONTIGUOUS && g[i].op != ATTENTION && g[i].op != POOL && g[i].op != REDUCE_MEAN_ROWS && g[i].op != SIGMOID && g[i].rhs >= i))
+            (g[i].op != RELU && g[i].op != LAYERNORM && g[i].op != CONTIGUOUS && g[i].op != ATTENTION && g[i].op != CAUSAL_ATTENTION && g[i].op != POOL && g[i].op != REDUCE_MEAN_ROWS && g[i].op != SIGMOID && g[i].op != GELU && g[i].op != SOFTMAX_ROWS && g[i].rhs >= i))
             return -2;
         const Tensor *a = &g[g[i].lhs].tensor, *b = g[i].rhs == NONE ? NULL : &g[g[i].rhs].tensor, *o = &g[i].tensor;
         if (g[i].op == MATMUL && (a->cols != b->rows || o->rows != a->rows || o->cols != b->cols)) return -3;
@@ -477,10 +608,13 @@ static int validate(const Node *g, uint32_t n) {
         if (g[i].op == MSE && (a->rows != b->rows || a->cols != b->cols || o->rows != 1 || o->cols != 1)) return -3;
         if (g[i].op == BINARY_CROSS_ENTROPY && (a->rows != b->rows || a->cols != b->cols || o->rows != 1 || o->cols != 1)) return -3;
         if (g[i].op == SIGMOID && (a->rows != o->rows || a->cols != o->cols)) return -3;
+        if (g[i].op == GELU && (a->rows != o->rows || a->cols != o->cols)) return -3;
+        if (g[i].op == SOFTMAX_ROWS && (a->rows != o->rows || a->cols != o->cols)) return -3;
         if (g[i].op == RESIDUAL && (a->rows != o->rows || a->cols != o->cols || b->rows != o->rows || b->cols != o->cols)) return -3;
         if (g[i].op == LAYERNORM && (a->rows != o->rows || a->cols != o->cols || !o->aux || o->aux_count < 2 * o->rows)) return -3;
         if (g[i].op == CONTIGUOUS && a->rows * a->cols != o->rows * o->cols) return -3;
         if (g[i].op == ATTENTION && (o->rows * o->cols != (uint32_t)(H * T * D) || !o->aux || o->aux_count < (uint32_t)(H * T * T))) return -3;
+        if (g[i].op == CAUSAL_ATTENTION && (o->rows * o->cols != (uint32_t)(H * T * D) || !o->aux || o->aux_count < (uint32_t)(H * T * T))) return -3;
         if (g[i].op == CONV && (a->rows != 1 || a->cols != (uint32_t)(HIN * WIN * CIN) || b->rows != (uint32_t)COUT ||
                                  b->cols != (uint32_t)(CIN * KH * KW) || o->rows != 1 || o->cols != (uint32_t)(HOUT * WOUT * COUT)))
             return -3;
@@ -488,6 +622,7 @@ static int validate(const Node *g, uint32_t n) {
                                  o->cols != (uint32_t)(PHOUT * PWOUT * PCIN) || !o->aux || o->aux_count < (uint32_t)(PHOUT * PWOUT * PCIN)))
             return -3;
         if (g[i].op == REDUCE_MEAN_ROWS && (o->rows != 1 || o->cols != a->cols)) return -3;
+        if (g[i].op == EMBED_LOOKUP && (b->rows != 1 || b->cols != o->rows || a->cols != o->cols)) return -3;
     }
     return 0;
 }

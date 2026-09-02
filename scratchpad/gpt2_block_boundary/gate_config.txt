@@ -1,0 +1,14 @@
+T=8
+M=768
+H=12
+D=64
+QW=2304
+F=3072
+layer_norm_epsilon=1e-05
+model_id=gpt2
+revision=607a30d783dfa663caf39e06633721c8d4cfcd7e
+source_url=https://huggingface.co/gpt2/resolve/607a30d783dfa663caf39e06633721c8d4cfcd7e/model.safetensors
+license=MIT
+weight_file=model.safetensors
+weight_size=548105171
+weight_sha256=248dfc3911869ec493c76e65bf2fcf7f615828b0254c12b473182f0f81d3a707
