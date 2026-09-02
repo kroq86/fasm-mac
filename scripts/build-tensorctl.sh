@@ -8,6 +8,11 @@ trap 'rm -rf "$OBJ_DIR"' EXIT
 mkdir -p "$(dirname "$OUT")"
 
 fasm --emit=macho-obj "$ROOT/fasm/spikes/tensor_transformer_executor_f32.asm" "$OBJ_DIR/executor.o" >/dev/null
+clang -arch x86_64 -O2 -I"$ROOT/fasm/spikes" \
+  -DM=768 -DH=12 -DD=64 -DQW=2304 -DF=3072 -DMAXCACHE=64 -DGPT2_MAXT=64 \
+  -c "$ROOT/fasm/examples/tensorctl_gpt2.c" -o "$OBJ_DIR/gpt2.o"
+clang -arch x86_64 -O2 -DACCELERATE_NEW_LAPACK \
+  -c "$ROOT/fasm/examples/tensorctl_gpt2_accelerate.c" -o "$OBJ_DIR/gpt2_accelerate.o"
 # Embedded in the layout-decision profile cache key: a cache built by a
 # differently-optimized binary (e.g. -O0 debug build) must not be trusted by
 # this one, since -O3 vs -fno-vectorize has already been shown to flip
@@ -21,7 +26,11 @@ clang -arch x86_64 -O2 -I"$ROOT/fasm/spikes" -DTENSORCTL_BUILD_CONFIG=\"arch=x86
   "$ROOT/fasm/examples/tensorctl_inspect.c" \
   "$ROOT/fasm/examples/tensorctl_build.c" \
   "$ROOT/fasm/examples/tensorctl_verify.c" \
+  "$ROOT/fasm/examples/tensorctl_capabilities.c" \
+  "$OBJ_DIR/gpt2.o" \
+  "$OBJ_DIR/gpt2_accelerate.o" \
   "$OBJ_DIR/executor.o" \
+  -framework Accelerate \
   -o "$OUT"
 chmod +x "$OUT"
 

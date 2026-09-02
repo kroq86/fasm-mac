@@ -1,0 +1,38 @@
+GPT-2 124M performance benchmark provenance -- 2026-09-02
+
+Machine: Apple M1, MacBookPro17,1, 8GB unified memory
+OS: Darwin 25.2.0 (Darwin Kernel Version 25.2.0, RELEASE_ARM64_T8103, arm64)
+Compiler: Apple clang version 17.0.0 (clang-1700.6.3.2)
+
+fasm-mac build flags (algorithm experiment, both modes, same binary):
+  clang -arch x86_64 -std=c11 -O2 -Wall -Wextra -Wno-unused-parameter -Wno-unused-function
+    -DM=768 -DH=12 -DD=64 -DQW=2304 -DF=3072 -DMAXCACHE=128 -DGPT2_MAXT=128
+  Runs under Rosetta 2 (x86_64 binary on arm64 host) -- this project's canonical
+  executor (fasm/spikes/tensor_transformer_executor_f32.asm) is x86_64 FASM only.
+
+llm.c build flags (reference, for the currently-BLOCKED cross-runtime experiment):
+  cc -O3 -march=native -Xclang -fopenmp -DOMP
+  Native arm64 binary.
+
+Artifact fingerprints:
+  GPT-2 124M safetensors (fasm-mac path):
+    huggingface.co/gpt2, revision 607a30d783dfa663caf39e06633721c8d4cfcd7e
+    model.safetensors, 548105171 bytes
+    sha256: 248dfc3911869ec493c76e65bf2fcf7f615828b0254c12b473182f0f81d3a707
+  llm.c gpt2_124M.bin (llm.c's own weight format, NOT verified bit-identical
+  to the safetensors file above -- same named public model, different
+  serialization, no cross-format equivalence check performed):
+    sha256: 3da8b207584030bcdcd207cf7a99952e3421dce92da218b351071857511bf162
+  llm.c repository commit: f1e2ace651495b74ae22d45d1723443fd00ecd3a
+    (github.com/karpathy/llm.c, cloned --depth 1, so only this exact commit
+    is available locally)
+  bench_algorithm.c (this benchmark's source) sha256:
+    19d3aaa7bcac98f25d426c6d82a6778fb98d48c9cf660be67412f6e34a46550e
+
+CROSS_RUNTIME_INCONCLUSIVE: fasm-mac (x86_64/Rosetta) vs llm.c (native arm64)
+performance numbers exist from earlier exploratory runs but are NOT a valid
+comparison and must not be cited as one. Blocking difference: ISA mismatch
+(Rosetta-translated x86_64 vs native arm64) confounds any latency comparison
+beyond recovery by measurement alone. Unblocking requires a native arm64
+implementation of this project's canonical executor ABI (ExecStep contract)
+-- a separate, not-yet-scoped engineering task, not attempted here.

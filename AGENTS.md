@@ -1,5 +1,43 @@
 # Repository Working Rules
 
+## Canonical Project Direction
+
+Read `STATUS.md` before substantive work. It is the single current roadmap and
+verdict map. Historical scratchpads are evidence, not active direction. Update
+`STATUS.md` whenever a result changes the active gate or a final verdict; do not
+start work outside its active direction without explicit user approval.
+
+## Three-Agent Working Rule
+
+In this repository, `Claude` and `Cursor` mean the real installed external
+CLIs (`claude` and `cursor-agent`). Never represent Codex subagents as Claude
+or Cursor. External prompts and results must be persisted under `.agents/runs/`
+so their identity and token usage remain auditable.
+
+For substantive repository work, begin by separating independent work across
+the primary Codex agent, Claude, and Cursor whenever those agents are
+available and the task has genuinely parallel parts.
+
+- The primary agent always owns the integration-critical path and must make
+  concrete progress itself while delegated work runs. It must not become a
+  dispatcher that only polls or summarizes other agents.
+- Give Claude a bounded implementation, experiment, or contract-design task
+  that does not overlap files currently being changed on the primary path.
+- Give Cursor a separate review, negative-test, compatibility, or
+  evidence-checking task, preferably read-only unless an isolated edit is
+  explicitly useful.
+- State the division of responsibility before starting, then continue local
+  work without repeatedly polling agents. Collect their results only at a
+  natural integration point.
+- Preserve user changes and use isolated worktrees for delegated edits when
+  overlap is possible. The primary agent reviews and integrates; delegated
+  output is never accepted blindly.
+- Do not invent parallelism for a tiny or indivisible task. If an agent is
+  unavailable, blocked, or has no independent useful subtask, continue the
+  critical path locally and report that constraint briefly.
+- Completion still requires the primary agent to run the relevant regression
+  gates and provide one evidence-backed verdict for the combined result.
+
 ## Rule (summary)
 
 - **`fasm/core/*.inc` is the growing stdlib** — reusable behavior lives here, not in apps.
@@ -66,4 +104,3 @@ this repo should:
 - solve a real macOS/developer workflow problem;
 - exercise and improve reusable core infrastructure;
 - ship with a check script and release packaging path.
-

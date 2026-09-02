@@ -1,0 +1,37 @@
+{
+  "token_ids": [
+    464,
+    3290,
+    3332,
+    2159,
+    0,
+    1,
+    50256,
+    464
+  ],
+  "T": 8,
+  "n_embd": 768,
+  "n_head": 12,
+  "n_layer": 12,
+  "vocab_size": 50257,
+  "layer_norm_epsilon": 1e-05,
+  "note": "full-model reference/oracle tensors only",
+  "shapes": {
+    "full_layer5_output": [
+      8,
+      768
+    ],
+    "full_layer11_output": [
+      8,
+      768
+    ],
+    "full_ln_f_output": [
+      8,
+      768
+    ],
+    "full_logits": [
+      8,
+      50257
+    ]
+  }
+}

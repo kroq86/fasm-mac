@@ -298,6 +298,304 @@ inside the checkout, unlike the newer `generate_reference.py`'s
 `GPT2_ORACLE_OUT`-outside-checkout convention — bringing it in line with that
 convention is a reasonable follow-up, not yet done.
 
+## Self-written tokenizer (roadmap item 2): COMPLETE (ASCII scope)
+
+`fasm/spikes/tensor_gpt2_bpe.h` (loader/encode/decode), differential/property
+check `fasm/spikes/tensor_gpt2_bpe_differential_check.c` + embedded oracle
+test cases `tensor_gpt2_bpe_test_cases.h`, gated by
+`scripts/check_tensor_gpt2_bpe_spike.sh`, wired into
+`scripts/check_tensor_runtime_spikes.sh`. Real, pinned `vocab.json`
+(1042301 bytes, sha256 `19613966...`) / `merges.txt` (456318 bytes, sha256
+`1ce16647...`), huggingface.co/gpt2, revision `607a30d7...` (same repo as
+the model weights), fetched by the new `scripts/fetch-gpt2-tokenizer.sh`
+(same pinned-size/SHA-256/atomic-publish pattern as `fetch-gpt2-124m.sh`).
+
+**Scope decision, made explicitly with the user before implementation:**
+GPT-2's real pre-tokenization regex classifies letters/digits via Unicode
+`\p{L}`/`\p{N}` categories; this project has no Unicode category tables, so
+that classification is ASCII-only here. The byte<->codepoint table itself
+(the other half of real byte-level BPE) is the complete, real algorithm —
+only pre-tokenization's classification of the input text is scoped down.
+Round-trip correctness is therefore claimed for ASCII input only; non-ASCII
+bytes still reach BPE merging (falling into the "other" class rather than
+being letter/number-classified) and are required not to crash, not claimed
+correct.
+
+21 embedded test cases (contractions, multi-space/tab/newline runs,
+punctuation, digits, case mixing, empty/whitespace-only/single-char
+boundaries, vocab id 0 and id 50256) generated from an independent
+from-scratch Python oracle run against the same pinned files — 21/21 match
+on encode ids, and ASCII round-trip (encode→decode) is exact on every
+nonempty case. Additional property checks: non-ASCII input handled without
+crash (scope not claimed), vocab-boundary ids (0, 50256 = the real
+`<|endoftext|>` piece) decode correctly, out-of-range token id fails closed
+on decode. Reran twice, byte-identical native output both times.
+
+**Two real bugs this check caught before it passed** (full detail in the
+differential-check file's header comment):
+1. The BPE merge loop merged only the first occurrence of the winning-rank
+   pair per iteration; the reference algorithm merges every non-overlapping
+   occurrence in one pass — these can diverge. Fixed to match.
+2. The independent Python oracle itself had a bug: its merges.txt parser
+   treated any line whose first piece is the literal `#` character as a
+   comment (correct only for line 0), silently dropping 8 real merge rules
+   (including the legitimate rule `# $`) and producing wrong "expected"
+   values for cases exercising them. Found by checking a failing case's
+   ranks against the raw file directly rather than assuming the new C code
+   was at fault; fixed by only slicing off the header line, matching
+   OpenAI's reference `encoder.py` exactly.
+
+Known, explicit non-goals per the roadmap: no special-token handling
+(`"<|endoftext|>"` literal text encodes as ordinary BPE pieces, not id
+50256 — both the oracle and this implementation agree on that, it is not a
+claim about special-token correctness); no generation loop yet (item 3).
+
+## Generation correctness (roadmap item 3): COMPLETE
+
+`fasm/spikes/tensor_gpt2_forward.h` (new: a runtime-sequence-length GPT-2
+forward pass — this project's canonical compiler bakes every shape,
+including `T`, into compile-time macros, so one compiled graph only ever
+executes at one fixed length; a generation loop needs a growing length at
+every step). Mirrors the canonical graph's exact per-op formulas as plain
+runtime-`n`-parameterized C, the same "hand-rolled runtime reference,
+anchored once against the real canonical op at a fixed shape" pattern
+already used for the toy KV-cache/autoregressive-loop checks — now with
+the real GPT-2 124M weights and all 12 real blocks. Differential check
+`fasm/spikes/tensor_gpt2_generation_differential_check.c`, gated by
+`scripts/check_tensor_gpt2_generation_spike.sh`, wired into
+`scripts/check_tensor_runtime_spikes.sh` (~2-2.5min per run — a real 124M
+forward pass at growing context, unoptimized scalar C, no KV-cache yet by
+design; performance is item 5+, not this gate).
+
+**Anchor:** `gpt2_forward_ex`'s logits at the same fixed `n=8` input this
+project already ran through the real canonical `compile()`+executor
+(`tensor_gpt2_full_differential_check.c`) are compared against that same
+PyTorch reference fixture — 402056 elements, max abs err 2.98e-04, max rel
+err 3.41e-06, 0 fails against the same preregistered tolerance as the
+full-logits gate. This transitively anchors the runtime-`n` forward pass to
+the already-verified canonical/executor path: same weights, same math,
+same external reference. This proves single-step logits agreement at one
+fixed length only — it does NOT by itself prove the generation loop (repeated
+forward + argmax + append) tracks the real model over many steps, which is
+why item 1b below exists as a separate, stronger check (added after review:
+the anchor plus internal self-consistency was correctly flagged as
+insufficient to claim "our greedy generation matches PyTorch's").
+
+**Token-for-token greedy cross-check (the actual generation-loop claim,
+not just single-step logits):** real PyTorch greedy sequences for 4 prompts
+(`scratchpad/gpt2_block_boundary/greedy_reference.txt`, generated by
+`generate_greedy_reference.py` in the same directory, torch==2.13.0/
+transformers==5.16.1 in a disposable external venv) — 12 generated tokens
+each, compared one by one against this project's own greedy generation from
+the same prompts. **48/48 tokens match exactly across all 4 prompts**,
+including a deliberately out-of-distribution prompt (`[1,2,3,4,5]`) where
+real GPT-2's own greedy decoding degenerates into a repeating `2,5,2,5,...`
+loop — this project's runtime reproduces that exact degenerate repetition,
+not just "plausible-looking" output. (One prompt, `[464,3290,3332,2159]`,
+was independently cross-checked by the user running PyTorch by hand outside
+this gate, with a matching result, before this formal embedded check
+existed.) Environment note: a length-1 initial sequence reliably crashes
+this machine's torch/transformers build with SIGBUS (reproduced directly,
+no Python traceback) — an oracle-environment issue, not a bug in this
+project's code; no length-1 prompt is used, shortest tested is 2 tokens.
+
+**Properties, all real GPT-2 124M, no toy weights:**
+- Greedy generation: two independent runs from the same prompt produce a
+  byte-identical 10-token sequence.
+- Temperature/top-k generation (using the already-gated
+  `sample_top_k_temperature` contract): same seed reproduces an identical
+  10-token sequence; an 8-token generation from the same seed is an exact
+  prefix of the 10-token one.
+- Real end-to-end demo (encode → generate → decode, this project's own
+  tokenizer both ends): prompt `"The quick brown fox"`, 12 tokens greedy
+  continuation → `"The quick brown foxes are a great way to get a little
+  bit of a"` — legible, grammatical English, produced by the real GPT-2
+  124M weights running entirely through this project's self-written
+  runtime (canonical-graph-equivalent math, safetensors loader, BPE
+  tokenizer). Not itself a pass/fail gate (no "good continuation" oracle
+  exists) but required to encode/generate/decode without error.
+
+Not done here, explicitly deferred to later roadmap items: KV-cache (item
+4 — every step above is a full recompute from scratch); performance
+measurement (item 5+); backward/training (items 6-8); the planner
+experiment (item 9); GPU (item 10).
+
+## Canonical KV-cache integration (roadmap item 4): CORE CLAIM COMPLETE
+
+A new canonical op, `CAUSAL_ATTENTION_CACHED`, was added to
+`tensor_semantic_compiler.h` (design confirmed with the user before
+implementation: a new op taking one new token's Q/K/V — T=1 — plus an
+externally-owned cache tensor, rather than trying to make `T` itself
+runtime-variable, which the shared compiler's fixed-shape-macro
+architecture cannot support without a much larger rewrite). Full doc
+comment in that file explains the design; two real bugs were caught and
+fixed while landing it (both documented there and in the differential
+check's header): validate()'s blanket "every tensor has rows≥1" rule
+rejects a brand-new empty cache, fixed by making `rows` the fixed capacity
+and `aux_count` the mutable position counter instead; and the cache leaf
+was first flagged `PARAM`, colliding with an unrelated existing convention
+(`PARAM` + non-null `aux` means optimizer metadata) — fixed by using
+`INPUT` (this cache is inference-only state, never an optimizer target).
+
+**Isolated verification** (toy data, `fasm/spikes/
+tensor_causal_attention_cached_differential_check.c`, gated by
+`scripts/check_tensor_causal_attention_cached_spike.sh`): three-way
+cross-check at T=7/8/9 — the new canonical op vs. this project's own
+already-anchored runtime-n full-recompute reference vs. the earlier toy
+KV-cache spike's hand-rolled incremental function — exact agreement at
+every step, cache-state (`aux_count`) advances correctly as the kernel's
+one documented side effect, non-retroactivity holds, and a full cache is
+correctly rejected by `validate()` (fail-closed, exercised directly).
+
+**Real-model integration** (`fasm/spikes/
+tensor_gpt2_cached_generation_differential_check.c`, gated by
+`scripts/check_tensor_gpt2_cached_generation_spike.sh`): real GPT-2 124M,
+same fingerprinted checkpoint as every other gate. Scope, deliberately
+narrow: only the attention step of each decode step needs cache state, so
+only that step is a real `compile()`+executor call against the new op;
+prefill and the surrounding MATMUL/BIAS_ADD/RESIDUAL/GELU stay the
+already-anchored plain runtime-n C (no caching concern for stateless
+per-position ops). Result: for 3 prompts, 7 cached-decode steps each — 21
+steps total — after a refactor to a persistent-graph pattern (`compile()`
+once per layer, execute many times, reusing the same `Node` array across
+steps instead of rebuilding it per token), the cached path's logits agreed
+with full recomputation **bit-exactly (worst_abs=0)**, not just within the
+originally-preregistered 1e-3 tolerance, and produced byte-identical
+greedy tokens at every single step, not just a final spot check. One
+prompt's cached-decode output was independently cross-checked
+against the real PyTorch greedy sequence (`greedy_reference.txt`) too:
+exact token match, 12 tokens. Runs in ~30-36s (faster than the
+full-recompute generation gate's ~2-2.5min for a comparable prompt/length,
+but this is NOT a performance measurement — no controlled/matched timing
+methodology, no repeated runs, no isolation from other system load; item 5
+is where performance actually gets measured, not this gate).
+
+**What this proves and what it doesn't, precisely:** the cache is real
+canonical `Node`/`Tensor` state — its data buffers (`data`=K, `aux`=V) are
+genuine Tensor fields the kernel reads and mutates during each
+`compile()`+executor call, not synthetic bookkeeping bolted on afterward.
+It is **available to a future planner, not yet "planner-visible" in any
+operative sense** — no planner pass exists yet that inspects, chooses
+layout for, or schedules this op; that's item 9's job, not done here. The
+KV **position** counter IS now continuously resident in a persistent
+Tensor: `compile()` runs once per layer at setup, and every subsequent
+step reuses that same `Node` array and calls the executor directly — the
+cache's `aux_count` field is mutated in place by the kernel itself, with
+no external C struct copying position in or out between calls. (An
+earlier version of this integration did copy position via an external
+`LayerCache.pos` struct field, rebuilding the `Node` array every call;
+that was flagged as architecturally weaker and replaced by this
+persistent-graph pattern.) It does NOT mean the planner can choose
+anything about this cache's
+layout/placement/scheduling; it does NOT establish speed (item 5); it does
+NOT mean generation as a whole "became canonical" — only the cached-attention
+step per layer runs through `compile()`+executor, everything else in the
+block (MATMUL/BIAS_ADD/RESIDUAL/GELU, the LM head, prefill) remains
+hand-written C, unchanged from before this integration. Backward is
+deliberately unset for this op (inference-only, item 6 is a separate
+undertaking). Prefill still uses full recompute rather than its own
+cache-building op — populating
+the cache from prefill's already-computed K/V is a data copy, not a new
+computation, so this was judged not to need its own canonical op.
+
+## Performance measurement (roadmap item 5): ALGORITHM EXPERIMENT + SUSTAINED GENERATION DONE, MEMORY PARTIAL, CROSS-RUNTIME BLOCKED
+
+Full harness, raw data, provenance: `scratchpad/gpt2_perf_bench/`
+(`bench_algorithm.c`, `raw_algorithm.tsv`, `summary_algorithm.txt`,
+`PROVENANCE.txt`, `README.md`). Real GPT-2 124M, same fingerprinted
+checkpoint as every other gate. Warmup=3 discarded, 10 measured
+repetitions per point, mode order alternated each repetition, every
+single sample's token AND logits max-abs-diff recorded and checked
+against a 1e-3 bound (matching the block-0 gate's own tolerance) before
+being kept — a mismatch aborts the run (did not happen; observed max abs
+diff was exactly 0 across all samples in the most recent run).
+Correctness here is a **self-consistency check** between this project's
+own two paths, not an independent oracle run inside this program — both
+paths were already independently anchored to real PyTorch by separate,
+earlier gates, which is what makes self-consistency an adequate bar for
+a *performance* harness specifically.
+
+**Algorithm experiment (VALID — same binary, same ISA):** fasm-mac
+full-recompute vs. fasm-mac canonical-KV-cache, marginal cost of one
+decode step at context lengths 4/16/32/64 (most recent run; numbers vary
+run to run on a shared dev machine, the qualitative pattern is what's
+load-bearing):
+
+| ctxlen | cached median | full median | ratio |
+|---|---|---|---|
+| 4 | 164ms | 497ms | 3.0x |
+| 16 | 297ms | 2004ms | 6.8x |
+| 32 | 327ms | 3961ms | 12.1x |
+| 64 | 280ms | 7457ms | 26.6x |
+
+**Complexity, precisely (corrected after review — an earlier version of
+this section wrongly said cached decode is O(1)):** the cached step is
+**O(L)**, not O(1) — the new token's query still attends over all L
+cached K/V pairs; only the surrounding per-token projections are O(1) in
+L. Full recompute is **O(L²)** (each of L positions attends over up to L
+others) plus O(L) projections. The measured cached times above are
+visibly not flat across L, consistent with O(L). What this experiment
+supports: cached decode grows much more slowly with context than full
+recompute (O(L) vs O(L²)) — expected, now measured, not a discovery, and
+not "constant time".
+
+**Sustained end-to-end generation (`bench_sustained.c`):** one continuous
+prefill+decode run (prompt_len=4, gen_len=40), not isolated marginal
+steps. A real bug was found and fixed here (see `README.md` §1b): the
+first version double-wrote a cache entry for the last prompt token,
+corrupting the cache from step 0 and producing an unnoticed-until-step-24
+argmax flip; root-caused by comparing the live incremental path against
+fresh full recompute at every step, not just at the sequence's end. After
+the fix, bit-exact (`max_abs=0`) agreement at all 40 steps. Result (single
+run, not yet warmup/repeated like the algorithm experiment above):
+
+| mode | ttft_ms | decode tokens | tokens/sec |
+|---|---|---|---|
+| cached | 590.0 | 39 | 6.47 |
+| full | 508.0 | 39 | 0.33 |
+
+~19.4x sustained throughput ratio, consistent in direction with the
+algorithm experiment. TTFT is comparable here only because the prompt is
+short; not yet measured at longer prompts.
+
+**Still not measured, so item 5 is not fully closed:** mode-attributable
+memory beyond KV-cache capacity (the recorded `process_peak_rss_kb` is a
+whole-process high-water mark shared by both modes in one process, not a
+per-mode number; the one genuinely mode-specific memory figure is the
+KV-cache capacity itself, ~9MB total, reported in the harness's
+PROVENANCE line); and repeated/warmup-controlled sustained-generation
+runs (currently a single sample).
+
+**Implementation experiment (fasm-mac vs. llm.c): BLOCKED,
+`CROSS_RUNTIME_INCONCLUSIVE`.** fasm-mac's canonical executor is x86_64
+FASM only (`tensor_transformer_executor_f32.asm`); this machine is Apple
+M1, so fasm-mac runs under Rosetta while llm.c runs native arm64. No
+timing methodology corrects for an ISA mismatch. Earlier informal
+single-run numbers comparing the two (no warmup, no repeats, mixed ISA)
+were reported before this methodology existed and are superseded — not
+evidence, must not be cited. Two possible unblock paths, neither
+attempted yet: a native arm64 implementation of the canonical executor's
+`ExecStep` ABI (a separate, not-yet-scoped port), or — likely the smaller
+lift — building llm.c itself under x86_64/Rosetta so both sides share
+fasm-mac's current ISA instead of porting fasm-mac.
+
+**Accelerate SGEMM spike and CLI integration (`bench_accelerate_sgemm.c`,
+`bench_accelerate_e2e.c`):** per-op profiling showed >99% of wall time in
+matmul-shaped ops (`profile_ops.txt`). Isolated-kernel swap (scalar loop
+vs. `cblas_sgemm`, real weights, verified output, 1e-3 tolerance,
+warmup+10 alternating reps): 6-136x speedup depending on shape,
+independently reproduced. Wired into the real prefill+cached-decode path
+(same pattern as `tensorctl gpt2`, not a modification of it): generated
+token sequences byte-identical to the scalar baseline across repeated
+runs, sustained decode throughput 6-10x faster end-to-end (lower than the
+isolated-kernel number, as expected — Amdahl's law, real decode steps
+spend time outside the swapped matmuls too). `tensorctl gpt2` now exposes
+`--backend accelerate|scalar`, defaults to Accelerate on macOS, and retains
+the scalar fallback; its product gate requires identical generated text from
+both backends. A formal warmup+10-rep E2E benchmark remains open, so the exact
+multiplier is engineering evidence, not a general performance claim. No
+planner, Metal/MPS, or general runtime-superiority claim is made here.
+
 ## Ordered roadmap after the real-block gate
 
 The portability work is complete. Each item below starts only after the
@@ -308,16 +606,44 @@ preceding gate passes:
    the tied token-embedding/LM head from fixed token IDs; final hidden states
    and raw logits matched the independent oracle within preregistered
    tolerance, including exact greedy top-5 agreement. No tokenizer was used.
-2. **Self-written tokenizer:** implement GPT-2 byte-level BPE in the native
-   product path and verify token IDs and byte round-trips against a fixed corpus
-   containing ASCII, whitespace, Unicode and byte-fallback cases. External
-   tokenizer libraries remain test oracles only.
-3. **Generation correctness:** connect tokenizer, full logits and the already
-   gated sampling contract; verify greedy generation exactly and stochastic
-   generation by deterministic seed replay plus distribution/property tests.
-4. **Canonical KV-cache integration:** replace the hand-written toy cache path
-   with planner-visible runtime-length state, then compare every generated-step
-   logit against full recomputation before measuring speed.
+2. **Self-written tokenizer — DONE (ASCII scope), see "Self-written tokenizer
+   (roadmap item 2): COMPLETE (ASCII scope)" above.** Implemented GPT-2
+   byte-level BPE in the native product path; verified token IDs and ASCII
+   byte round-trips against 21 cases from an independent oracle, all
+   matching, plus fail-closed/boundary property tests. Full Unicode
+   `\p{L}`/`\p{N}` pre-tokenization classification was explicitly descoped
+   (no Unicode category tables in this project) — an open item if ever
+   needed, not silently claimed done.
+3. **Generation correctness — DONE, see "Generation correctness (roadmap item
+   3): COMPLETE" above.** Connected the tokenizer, full logits and the
+   already-gated sampling contract; greedy generation verified exactly
+   token-for-token against real PyTorch on 4 prompts (48/48 tokens),
+   stochastic generation verified by deterministic seed replay plus
+   prefix-stability. **Important boundary of this result:** the generation
+   path (`tensor_gpt2_forward.h`) is a hand-written runtime-length C forward
+   pass, not the canonical `compile()`/executor/planner path (which cannot
+   represent a growing sequence length at all — every shape is a
+   compile-time macro). Its correctness is proven by anchoring its logits
+   to the same real PyTorch reference the canonical path was itself already
+   verified against, not by literally running through the canonical
+   executor at every generation step. Item 4 below is what actually brings
+   generation under the canonical/planner path.
+4. **Canonical KV-cache integration — CORE CLAIM DONE, see "Canonical
+   KV-cache integration (roadmap item 4): CORE CLAIM COMPLETE" above.** A
+   new canonical op (`CAUSAL_ATTENTION_CACHED`) makes the cache real
+   `Node`/`Tensor` state, available to a future planner (no planner
+   analyzes it yet); real GPT-2 124M decode through real
+   `compile()`+executor calls against it agrees with full recomputation
+   within 1e-3 (not bit-exact) at every generated step (21/21 steps across
+   3 prompts) with byte-identical greedy tokens, and matches real PyTorch
+   greedy generation. Speed was NOT measured (that's item 5, and no
+   controlled methodology exists yet even informally). Only the
+   cached-attention step per layer runs through `compile()`+executor —
+   MATMUL/BIAS_ADD/RESIDUAL/GELU, the LM head, and prefill remain
+   hand-written runtime-length `tensor_gpt2_forward.h`
+   kernels (deliberately narrow scope — those ops have no caching concern
+   of their own); bringing them under canonical `compile()` calls too,
+   if ever wanted, is a separate, not-yet-justified undertaking.
 5. **Planner as a virtual CGRA experiment:** on the now-correct real model,
    compare fixed lowering with planner-selected CPU kernels, layouts, copies,
    fusion, save/rematerialize and memory placement. The preregistered question
@@ -364,7 +690,57 @@ contribution.
 The Stage-3 milestone is complete: a clean detached worktree can consume the
 pinned GPT-2 artifact through the explicit offline path (or obtain it with the
 pinned fetch helper), reproduce its fingerprint, execute block 0, and match all
-reference boundaries within the preregistered tolerance. Current project
-status: **decoder-runtime op-matrix complete; real GPT-2 124M block 0 complete;
-the active Stage-4 gate is all 12 blocks plus final LayerNorm and tied LM-head
-logits from fixed token IDs**.
+reference boundaries within the preregistered tolerance.
+
+Stage-4 (all 12 blocks + final LayerNorm + tied LM-head logits from fixed
+token IDs) also passes locally now — see "Full-logits gate (roadmap item 1):
+COMPLETE" above — including exact greedy-token agreement with the oracle, not
+just small numerical error. It has not yet been proven from a clean detached
+worktree the way Stage-3 was (the full-model fixture generator still writes
+inside the checkout); that portability step is the honest gap before calling
+Stage-4 complete by the same bar as Stage-3.
+
+Stage-5 (self-written GPT-2 byte-level BPE tokenizer, ASCII scope) also
+passes locally now — see "Self-written tokenizer (roadmap item 2): COMPLETE
+(ASCII scope)" above. Same portability caveat as Stage-4: proven on this
+machine with locally-fetched `vocab.json`/`merges.txt`, not yet from a clean
+detached worktree the way Stage-3 was.
+
+Stage-6 (generation correctness) also passes locally now — see "Generation
+correctness (roadmap item 3): COMPLETE" above — with real text out of real
+GPT-2 124M weights running through this project's own runtime, and 48/48
+tokens matching real PyTorch greedy generation across 4 prompts token-for-
+token, not just single-step logits. Same portability caveat as Stage-4/5;
+same "bypasses the canonical planner/executor" boundary noted in roadmap
+item 3 above — this generation path is a hand-written runtime-length C
+forward pass anchored to, but not literally running through, the canonical
+compile()/executor.
+
+Stage-7 (canonical KV-cache integration) also passes its core claim locally
+now — see "Canonical KV-cache integration (roadmap item 4): CORE CLAIM
+COMPLETE" above — a new canonical op makes the cache real Tensor state, and
+real GPT-2 124M decode through real compile()+executor calls against it
+matches full recomputation at every generated step and matches real
+PyTorch greedy generation. Speed not yet measured (item 5); the surrounding
+per-position ops (MATMUL/BIAS_ADD/RESIDUAL/GELU) and prefill still use the
+hand-written runtime-length kernels, deliberately, not yet brought under
+canonical compile() calls of their own.
+
+Current project status: **decoder-runtime op-matrix complete; real GPT-2 124M
+block 0 complete and clean-worktree-portable; all 12 blocks + ln_f + tied LM
+head logits match the oracle locally; a self-written ASCII-scope BPE
+tokenizer matches an independent oracle locally (full Unicode
+pre-tokenization classification explicitly out of scope); real end-to-end
+generation works locally with 48/48 tokens matching real PyTorch greedy
+generation across 4 prompts; a new canonical `CAUSAL_ATTENTION_CACHED` op
+makes the KV cache real `Node`/`Tensor` state (available to, not yet
+analyzed by, a future planner), and real GPT-2 124M decode through it
+agrees with full recomputation within 1e-3 at every step (21/21) with
+identical greedy tokens, and matches real PyTorch greedy generation;
+Stage-4/5/6/7 portability to a clean worktree not yet proven; known open
+gaps in the item-4 gates themselves (missing-model/fixture treated as a
+silent PASS-via-skip rather than a required failure, no `--required` mode
+like the block-0/full-model gates have, `greedy_reference.txt` parsed
+without validating each read, no printed actual max-delta) are the
+honest next fix, before either performance measurement (item 5) or the
+llm.c cross-check noted under roadmap item 3's "сейчас" framing**.

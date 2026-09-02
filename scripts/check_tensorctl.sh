@@ -6,6 +6,19 @@ trap 'rm -rf "$OUT_DIR"' EXIT
 
 "$ROOT/scripts/build-tensorctl.sh" "$OUT_DIR/tensorctl" >/dev/null
 
+capabilities="$(arch -x86_64 "$OUT_DIR/tensorctl" capabilities)"
+for row in $'MatMul\tyes\tyes' $'Gemm\tyes\tyes' $'Add\tyes\tyes' $'Relu\tyes\tyes' \
+           $'Conv\tyes\tyes' $'MaxPool\tyes\tyes' $'Reshape\tyes\tyes'; do
+  if [[ "$(grep -Fxc "$row" <<<"$capabilities")" -ne 1 ]]; then
+    printf 'FAIL: capability contract missing or duplicated row %q:\n%s\n' "$row" "$capabilities" >&2
+    exit 1
+  fi
+done
+if [[ "$(tail -n +3 <<<"$capabilities" | wc -l | tr -d ' ')" -ne 7 ]]; then
+  printf 'FAIL: capability contract contains an unexpected op:\n%s\n' "$capabilities" >&2
+  exit 1
+fi
+
 mlp_out="$(arch -x86_64 "$OUT_DIR/tensorctl" mlp)"
 if ! grep -q "correct=4/4" <<<"$mlp_out"; then
   printf 'FAIL: tensorctl mlp did not converge to the XOR truth table:\n%s\n' "$mlp_out" >&2
@@ -161,4 +174,4 @@ if ! grep -q "verified: numerical_equivalence=yes merge_never_written=yes" <<<"$
   exit 1
 fi
 
-printf 'tensorctl check passed: mlp_converges=yes transformer_converges=yes memory_decision_flips=yes explain_and_alternatives=yes counterfactual=yes trace_execution_consistency=yes plan_diff=human+tsv+safe plan_mode_exits_early=yes plan_buffer_table_in_bounds=yes profile_cache_hit_and_miss=yes corrupted_cache_ignored=yes usage_exit_code=nonzero\n'
+printf 'tensorctl check passed: onnx_capability_contract=machine-readable mlp_converges=yes transformer_converges=yes memory_decision_flips=yes explain_and_alternatives=yes counterfactual=yes trace_execution_consistency=yes plan_diff=human+tsv+safe plan_mode_exits_early=yes plan_buffer_table_in_bounds=yes profile_cache_hit_and_miss=yes corrupted_cache_ignored=yes usage_exit_code=nonzero\n'

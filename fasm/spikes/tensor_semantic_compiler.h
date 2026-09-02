@@ -53,6 +53,9 @@
 #ifndef QW
 #define QW 1
 #endif
+#ifndef MAXCACHE
+#define MAXCACHE 1
+#endif
 #ifndef HIN
 #define HIN 1
 #endif
@@ -91,7 +94,7 @@
 #define PHOUT (PHIN / PPH)
 #define PWOUT (PWIN / PPW)
 
-enum { LEAF, MATMUL, BIAS_ADD, RELU, MSE, ATTENTION, RESIDUAL, LAYERNORM, CONTIGUOUS, CONV, POOL, REDUCE_MEAN_ROWS, SIGMOID, BINARY_CROSS_ENTROPY, EMBED_LOOKUP, CAUSAL_ATTENTION, GELU, SOFTMAX_ROWS, OP_COUNT };
+enum { LEAF, MATMUL, BIAS_ADD, RELU, MSE, ATTENTION, RESIDUAL, LAYERNORM, CONTIGUOUS, CONV, POOL, REDUCE_MEAN_ROWS, SIGMOID, BINARY_CROSS_ENTROPY, EMBED_LOOKUP, CAUSAL_ATTENTION, GELU, SOFTMAX_ROWS, CAUSAL_ATTENTION_CACHED, OP_COUNT };
 /* Storage/ownership role occupies the low nibble. RETAIN_GRAD is an
  * orthogonal semantic request: materialize this tensor's gradient even
  * when it is not trainable. It does not make a leaf an optimizer target. */
@@ -277,6 +280,72 @@ static void k_softmax_rows_bwd(Node *self, Node *a, Node *b, uint32_t mask) {
             a->tensor.grad[i * cols + j] += y * (self->tensor.grad[i * cols + j] - dot);
         }
     }
+}
+/* Decoder-runtime roadmap item 4: attention with an externally-owned KV
+ * cache, for one new token (T=1) at a time -- the canonical-graph-visible
+ * alternative to a hand-written cache outside the compiler. Every other
+ * op in this project keeps T (and every other shape) as a compile-time
+ * macro, so ONE compile() call can only ever process a fixed sequence
+ * length; a generation loop needs a growing length. This op sidesteps
+ * that by keeping the GRAPH itself tiny and fixed (always T=1: "attend
+ * this one new token against whatever's cached so far"), while the
+ * cache's logical length grows across repeated compile()+execute() calls
+ * via ordinary Tensor state the caller owns and this kernel mutates.
+ *
+ * `a` (lhs): this step's freshly-projected qkv, shape [1, QW] (Q at
+ *   offset 0, K at M, V at 2M, same packed layout CAUSAL_ATTENTION uses).
+ * `b` (rhs): the cache tensor. `b->data` is the K cache [MAXCACHE, M],
+ *   `b->aux` is the V cache [MAXCACHE, M] (reusing the aux-buffer
+ *   convention LAYERNORM/ATTENTION already use for kernel-owned extra
+ *   state, not gradient-related here). `b->rows` is the cache's FIXED
+ *   CAPACITY (always MAXCACHE -- validate()'s blanket "every tensor has
+ *   rows>=1" rule means `rows` can't double as "current length" starting
+ *   from an empty 0; a brand-new empty cache would otherwise be rejected
+ *   before this op's own validate() case ever runs). `b->aux_count` is
+ *   instead read as the number of ALREADY-cached positions (pos) before
+ *   this call, and is incremented by this kernel as its one deliberate,
+ *   documented side effect -- the mechanism by which "growing sequence
+ *   length" becomes real, planner-visible Tensor state instead of a
+ *   hand-rolled counter external to the graph. validate() requires
+ *   `b->aux_count < b->rows` (room for one more) and `b->aux` present.
+ * output (self): this position's merged multi-head attention output,
+ *   shape [1, M] -- already merged/concatenated across heads (T=1 means
+ *   CONTIGUOUS's reshape is a no-op), ready to feed the next MATMUL
+ *   (output projection) directly, same as CAUSAL_ATTENTION -> CONTIGUOUS
+ *   would for a full-T graph.
+ *
+ * No backward: this op is for inference-time generation only. Leaving
+ * BWD[CAUSAL_ATTENTION_CACHED] unset is safe as long as no leaf feeding
+ * it carries RETAIN_GRAD/PARAM-needing-grad flags -- compile() then never
+ * emits a BACKWARD step for it (see compile()'s needs[] derivation). */
+static void k_causal_attention_cached_fwd(Node *self, Node *a, Node *b) {
+    const float *qkv = a->tensor.data;
+    Tensor *cache = &b->tensor;
+    uint32_t pos = cache->aux_count;
+    for (uint32_t d = 0; d < (uint32_t)M; d++) {
+        cache->data[pos * M + d] = qkv[M + d];
+        cache->aux[pos * M + d] = qkv[2 * M + d];
+    }
+    float scale = 1.0f / sqrtf((float)D);
+    for (int h = 0; h < H; h++) {
+        float score[MAXCACHE], mx = -INFINITY;
+        for (uint32_t j = 0; j <= pos; j++) {
+            float s = 0;
+            for (int d = 0; d < D; d++) s += qkv[h * D + d] * cache->data[j * M + h * D + d];
+            s *= scale;
+            score[j] = s;
+            mx = fmaxf(mx, s);
+        }
+        float total = 0, prob[MAXCACHE];
+        for (uint32_t j = 0; j <= pos; j++) { float e = expf(score[j] - mx); prob[j] = e; total += e; }
+        for (uint32_t j = 0; j <= pos; j++) prob[j] /= total;
+        for (int d = 0; d < D; d++) {
+            float s = 0;
+            for (uint32_t j = 0; j <= pos; j++) s += prob[j] * cache->aux[j * M + h * D + d];
+            self->tensor.data[h * D + d] = s;
+        }
+    }
+    cache->aux_count = pos + 1;
 }
 static void k_bce_fwd(Node *self, Node *a, Node *b) {
     uint32_t n = a->tensor.rows * a->tensor.cols;
@@ -560,7 +629,7 @@ static const FwdFn FWD[OP_COUNT] = {
     [SIGMOID] = k_sigmoid_fwd, [BINARY_CROSS_ENTROPY] = k_bce_fwd,
     [CONV] = k_conv_fwd, [POOL] = k_pool_fwd,
     [EMBED_LOOKUP] = k_embed_fwd, [CAUSAL_ATTENTION] = k_causal_attention_fwd, [GELU] = k_gelu_fwd,
-    [SOFTMAX_ROWS] = k_softmax_rows_fwd,
+    [SOFTMAX_ROWS] = k_softmax_rows_fwd, [CAUSAL_ATTENTION_CACHED] = k_causal_attention_cached_fwd,
 };
 static const BwdFn BWD[OP_COUNT] = {
     [MATMUL] = k_matmul_bwd, [BIAS_ADD] = k_bias_bwd, [RELU] = k_relu_bwd, [MSE] = k_mse_bwd,
@@ -623,6 +692,10 @@ static int validate(const Node *g, uint32_t n) {
             return -3;
         if (g[i].op == REDUCE_MEAN_ROWS && (o->rows != 1 || o->cols != a->cols)) return -3;
         if (g[i].op == EMBED_LOOKUP && (b->rows != 1 || b->cols != o->rows || a->cols != o->cols)) return -3;
+        if (g[i].op == CAUSAL_ATTENTION_CACHED && (a->rows != 1 || a->cols != (uint32_t)QW || b->cols != (uint32_t)M ||
+                                                     b->rows != (uint32_t)MAXCACHE || b->aux_count >= b->rows || !b->aux ||
+                                                     o->rows != 1 || o->cols != (uint32_t)M))
+            return -3;
     }
     return 0;
 }

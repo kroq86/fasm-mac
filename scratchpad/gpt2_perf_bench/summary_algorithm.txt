@@ -1,0 +1,17 @@
+ ctxlen     mode   n  median_ms     min_ms     max_ms
+      4   cached  10     164.08     148.25     238.39
+      4     full  10     496.66     474.42    1041.97
+     16   cached  10     296.95     160.00     359.28
+     16     full  10    2003.90    1779.55    2270.35
+     32   cached  10     327.32     162.57     494.38
+     32     full  10    3960.72    3628.16    4414.06
+     64   cached  10     280.35     242.64     318.75
+     64     full  10    7457.08    6811.41    9124.24
+
+worst logits_max_abs_diff observed across all samples (warmup included): 0 (bound: 1e-3)
+
+ratio (full_median / cached_median):
+  ctxlen=4: cached=164.08ms full=496.66ms ratio=3.03x
+  ctxlen=16: cached=296.95ms full=2003.90ms ratio=6.75x
+  ctxlen=32: cached=327.32ms full=3960.72ms ratio=12.10x
+  ctxlen=64: cached=280.35ms full=7457.08ms ratio=26.60x
