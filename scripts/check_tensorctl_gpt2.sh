@@ -28,11 +28,18 @@ grep -q '^  generated_tokens: 12$' "$OUT_DIR/stderr"
 grep -q '^  ttft_ms: [0-9]' "$OUT_DIR/stderr"
 grep -q '^  decode_tokens_per_sec: [0-9]' "$OUT_DIR/stderr"
 grep -q '^  peak_rss_mb: [0-9]' "$OUT_DIR/stderr"
+grep -q '^  sampling: greedy_argmax$' "$OUT_DIR/stderr"
+
+sample1="$("${run[@]}" --prompt "how many stars?" --tokens 8 --temperature 0.8 --top-k 40 --seed 42 2>/dev/null)"
+sample2="$("${run[@]}" --prompt "how many stars?" --tokens 8 --temperature 0.8 --top-k 40 --seed 42 2>/dev/null)"
+[[ "$sample1" == "$sample2" ]] || { echo "seeded sampling replay mismatch" >&2; exit 1; }
 
 if "${run[@]}" --prompt "" --tokens 1 >/dev/null 2>&1; then echo "empty prompt accepted" >&2; exit 1; fi
 if "${run[@]}" --prompt "hello" --tokens 0 >/dev/null 2>&1; then echo "zero token count accepted" >&2; exit 1; fi
 if "${run[@]}" --prompt "привет" --tokens 1 >/dev/null 2>&1; then echo "unsupported Unicode prompt accepted" >&2; exit 1; fi
 if "${run[@]}" --backend bogus --prompt "hello" --tokens 1 >/dev/null 2>&1; then echo "invalid backend accepted" >&2; exit 1; fi
+if "${run[@]}" --temperature nan --prompt "hello" --tokens 1 >/dev/null 2>&1; then echo "NaN temperature accepted" >&2; exit 1; fi
+if "${run[@]}" --top-k 257 --prompt "hello" --tokens 1 >/dev/null 2>&1; then echo "oversized top-k accepted" >&2; exit 1; fi
 if arch -x86_64 "$OUT_DIR/tensorctl" gpt2 --model "$OUT_DIR/missing.safetensors" --tokenizer "$TOKENIZER" --prompt "hello" --tokens 1 >/dev/null 2>&1; then
   echo "missing model accepted" >&2; exit 1
 fi

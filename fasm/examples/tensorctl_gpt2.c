@@ -1,6 +1,7 @@
 #include "tensor_semantic_compiler.h"
 #include "tensor_gpt2_forward.h"
 #include "tensor_gpt2_bpe.h"
+#include "tensor_sampling.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -126,6 +127,9 @@ int run_gpt2(int argc, char **argv) {
     const char *prompt = NULL;
     const char *backend = "accelerate";
     int generated = 12;
+    int top_k = 40;
+    float temperature = 0.0f;
+    uint32_t seed = 42;
     if (!model) model = "/Users/ll/.cache/huggingface/hub/models--gpt2/snapshots/607a30d783dfa663caf39e06633721c8d4cfcd7e/model.safetensors";
     if (!tokenizer) tokenizer = "scratchpad/gpt2_tokenizer_fixture";
     for (int i = 1; i < argc; i++) {
@@ -134,8 +138,11 @@ int run_gpt2(int argc, char **argv) {
         else if (!strcmp(argv[i], "--model") && i + 1 < argc) model = argv[++i];
         else if (!strcmp(argv[i], "--tokenizer") && i + 1 < argc) tokenizer = argv[++i];
         else if (!strcmp(argv[i], "--backend") && i + 1 < argc) backend = argv[++i];
+        else if (!strcmp(argv[i], "--temperature") && i + 1 < argc) temperature = strtof(argv[++i], NULL);
+        else if (!strcmp(argv[i], "--top-k") && i + 1 < argc) top_k = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "--seed") && i + 1 < argc) seed = (uint32_t)strtoul(argv[++i], NULL, 10);
         else {
-            fprintf(stderr, "usage: tensorctl gpt2 --prompt TEXT [--tokens N] [--backend accelerate|scalar] [--model FILE] [--tokenizer DIR]\n");
+            fprintf(stderr, "usage: tensorctl gpt2 --prompt TEXT [--tokens N] [--temperature F] [--top-k N] [--seed N] [--backend accelerate|scalar] [--model FILE] [--tokenizer DIR]\n");
             return 2;
         }
     }
@@ -147,6 +154,8 @@ int run_gpt2(int argc, char **argv) {
     if (!prompt || !*prompt) { fprintf(stderr, "tensorctl gpt2: --prompt must not be empty\n"); return 2; }
     if (!ascii_only(prompt)) { fprintf(stderr, "tensorctl gpt2: only ASCII prompts are currently supported\n"); return 2; }
     if (generated < 1 || generated >= GPT2_CLI_MAX_TOKENS) { fprintf(stderr, "tensorctl gpt2: --tokens must be in [1,63]\n"); return 2; }
+    if (!isfinite(temperature) || temperature < 0.0f) { fprintf(stderr, "tensorctl gpt2: --temperature must be finite and >= 0\n"); return 2; }
+    if (top_k < 0 || top_k > 256) { fprintf(stderr, "tensorctl gpt2: --top-k must be in [0,256]\n"); return 2; }
 
     char vocab[1024], merges[1024];
     if (snprintf(vocab, sizeof vocab, "%s/vocab.json", tokenizer) >= (int)sizeof vocab ||
@@ -177,11 +186,15 @@ int run_gpt2(int argc, char **argv) {
     cli_prefill(ids, prompt_count - 1);
     const double prefill_done = monotonic_ms();
     static float logits[GPT2_VOCAB];
+    SampleRng rng = {seed};
     double first_token_done = 0.0;
     for (int step = 0; step < generated; step++) {
         int position = prompt_count + step - 1;
         if (cli_decode(ids[position], position, logits)) { fprintf(stderr, "tensorctl gpt2: execution failed\n"); return 3; }
-        ids[prompt_count + step] = argmax(logits, GPT2_VOCAB);
+        int next = temperature == 0.0f ? argmax(logits, GPT2_VOCAB)
+            : sample_top_k_temperature(logits, GPT2_VOCAB, top_k, temperature, &rng);
+        if (next < 0) { fprintf(stderr, "tensorctl gpt2: sampling failed\n"); return 3; }
+        ids[prompt_count + step] = next;
         if (step == 0) first_token_done = monotonic_ms();
     }
     const double inference_done = monotonic_ms();
@@ -209,13 +222,17 @@ int run_gpt2(int argc, char **argv) {
         "  decode_tokens_per_sec: %.3f\n"
         "  inference_total_ms: %.3f\n"
         "  peak_rss_mb: %.3f\n"
-        "  sampling: greedy_argmax\n"
+        "  sampling: %s\n"
+        "  temperature: %.6g\n"
+        "  top_k: %d\n"
+        "  seed: %u\n"
         "  kv_cache: canonical_persistent (capacity=%d)\n",
         backend, GPT2_NLAYER, GPT2_M, GPT2_H, GPT2_VOCAB,
         prompt_count, generated, prompt_count + generated, GPT2_CLI_MAX_TOKENS,
         model_loaded - load_start, tokenizer_loaded - model_loaded,
         prefill_done - inference_start, first_token_done - inference_start,
         decode_ms, decode_tps, inference_done - inference_start,
-        peak_rss_mb(), MAXCACHE);
+        peak_rss_mb(), temperature == 0.0f ? "greedy_argmax" : "top_k_temperature",
+        temperature, top_k, seed, MAXCACHE);
     return 0;
 }
