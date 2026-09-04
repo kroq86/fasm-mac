@@ -24,6 +24,22 @@ foreign GPT-2 weights
 The public ONNX Model Zoo `mnist-8.onnx` remains a completed inspect/layout
 case study. Its native CNN build is backlog, not a prerequisite for GPT-2.
 
+The user has explicitly authorized a gated second direction: test whether the
+verified runtime can support a state-transition agent rather than becoming
+another model runner. `scratchpad/verified_agent_preregistration.md` freezes a
+four-step spike ladder (instrument sensitivity, proposer feasibility, matched
+three-arm comparison, held composition). No product integration or expanded
+world model is allowed before the preceding spike passes.
+
+Verified-agent Spike 1 (instrument sensitivity) now passes via
+`scripts/check_verified_agent_spikes.sh`: valid transitions commit atomically;
+late invariant failures and stale revisions leave state unchanged; replay uses
+a canonical little-endian byte capsule rather than C-struct layout; format
+version, executor fingerprint and checksum are checked; corrupted/unknown-
+version capsules fail closed; and disabling verification produces the expected
+observable invariant breach. This validates the measurement instrument only,
+not agent usefulness. Spike 2 (language-proposer feasibility) is the next gate.
+
 ## Current tensorctl facts
 
 - `inspect/build/verify` passes for the narrow Wine MLP path.
