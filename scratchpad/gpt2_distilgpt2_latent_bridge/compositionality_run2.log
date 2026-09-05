@@ -1,0 +1,12 @@
+Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 5459.65it/s]
+Loading weights:   0%|          | 0/77 [00:00<?, ?it/s]Loading weights: 100%|██████████| 77/77 [00:00<00:00, 30813.99it/s]
+seq_len=32 header_len=3 trainable_params=147456
+correct:      nll=2.0344 acc=0.6562
+shuffled_doc: nll=3.9690 acc=0.3438
+pos_shuffle:  nll=1.8108 acc=0.6562
+zero_sender:  nll=5.3083 acc=0.0000
+no_prefix:    nll=5.0482 acc=0.0000
+half1_only:   nll=4.1747 acc=0.5312
+half2_only:   nll=1.9730 acc=0.6250
+half_swap:    nll=2.4358 acc=0.6875 ci=[0.53125, 0.84375]
+verdict=KV_COMPOSITIONALITY_XOR_NOT_SUPPORTED wall_s=33.7

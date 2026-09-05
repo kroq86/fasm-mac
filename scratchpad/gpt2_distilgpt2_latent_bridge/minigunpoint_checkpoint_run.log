@@ -1,0 +1,11 @@
+Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 2634.57it/s]
+Loading weights:   0%|          | 0/77 [00:00<?, ?it/s]Loading weights: 100%|██████████| 77/77 [00:00<00:00, 35207.83it/s]
+seq_len=32 trainable_params=147456
+correct:          nll=0.2017 acc=0.9688
+shuffled_document:nll=4.9211 acc=0.0312
+position_shuffle: nll=2.0185 acc=0.5312
+zero_sender:      nll=5.3083 acc=0.0000
+no_prefix:        nll=5.0482 acc=0.0000
+shuffled_minus_correct=4.7194 ci=[4.061984996515093, 5.3182638213038445]
+position_shuffle_minus_correct=1.8169 ci=[1.059405627718661, 2.635444378000102]
+verdict=MINIGUNPOINT_GLOBAL_PATTERN_TRANSFER_SUPPORTED wall_s=336.6

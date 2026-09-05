@@ -1,0 +1,14 @@
+Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 5498.58it/s]
+Loading weights:   0%|          | 0/77 [00:00<?, ?it/s]Loading weights: 100%|██████████| 77/77 [00:00<00:00, 43850.84it/s]
+names=['Bob', 'Alice', 'Ivan', 'Lena', 'Anna'] target_id_tokens=2 id_pool=300
+trainable_params=147456
+training done: epochs_run=80 stopped_early=True epochs_capped=False best_dev_loss=2.1119 wall_s=30.5
+correct:          nll=1.4474 exact_acc=0.6250
+shuffled_document:nll=15.3857 exact_acc=0.0312
+wrong_binding:    nll=6.7760 exact_acc=0.0312
+zero_sender:      nll=10.4624 exact_acc=0.0000
+query_swap(sec):  nll=1.6051 exact_acc=0.7188
+correct-shuffled ci=[11.998692254768685, 15.731031368719414] beats=True
+correct-wrong_binding ci=[3.913476387038827, 6.77835851162672] beats=True
+correct-zero ci=[8.195748344063759, 9.724290698766708] beats=True
+verdict=SQL_LOOKUP_BINDING_SUPPORTED

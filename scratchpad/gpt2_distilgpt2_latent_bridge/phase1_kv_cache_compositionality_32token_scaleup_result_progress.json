@@ -1,0 +1,16 @@
+{
+  "epochs_run": 4,
+  "train_loss_history": [
+    6.973666667938232,
+    2.1066396236419678,
+    0.9345617890357971,
+    0.881941556930542
+  ],
+  "dev_eval_epochs": [],
+  "dev_loss_history": [],
+  "dev_acc_history": [],
+  "best_dev_acc_so_far": -Infinity,
+  "best_dev_loss_at_best_acc_so_far": Infinity,
+  "wall_seconds_so_far": 1951.7076179981232,
+  "status": "training"
+}

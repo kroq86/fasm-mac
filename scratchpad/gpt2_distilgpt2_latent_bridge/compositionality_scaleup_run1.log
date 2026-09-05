@@ -1,0 +1,18 @@
+Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 8793.21it/s]
+Loading weights:   0%|          | 0/77 [00:00<?, ?it/s]Loading weights: 100%|██████████| 77/77 [00:00<00:00, 28562.96it/s]
+Error: command buffer exited with error status.
+	The Metal Performance Shaders operations encoded on it may not have completed.
+	Error: 
+	(null)
+	Insufficient Memory (00000008:kIOGPUCommandBufferCallbackErrorOutOfMemory)
+	<AGXG13GFamilyCommandBuffer: 0xaac389500>
+    label = <none> 
+    device = <AGXG13GDevice: 0x103598440>
+        name = Apple M1 
+    commandQueue = <AGXG13GFamilyCommandQueue: 0xaac4cd400>
+        label = <none> 
+        device = <AGXG13GDevice: 0x103598440>
+            name = Apple M1 
+    retainedReferences = 1
+/opt/homebrew/Cellar/python@3.11/3.11.14_3/Frameworks/Python.framework/Versions/3.11/lib/python3.11/multiprocessing/resource_tracker.py:254: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

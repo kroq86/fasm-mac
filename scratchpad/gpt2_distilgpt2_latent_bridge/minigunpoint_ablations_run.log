@@ -1,0 +1,16 @@
+Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 6889.19it/s]
+Loading weights:   0%|          | 0/77 [00:00<?, ?it/s]Loading weights: 100%|██████████| 77/77 [00:00<00:00, 43119.01it/s]
+baseline correct:   acc=0.9688 nll=0.2017
+baseline shuffled:  acc=0.0312 nll=4.9211
+k_vs_v: wrongK+correctV acc=0.8750  correctK+wrongV acc=0.1250
+layers[all_layers]: acc=0.9688 nll=0.2017
+layers[first_half_layers]: acc=0.5000 nll=1.2724
+layers[last_layer_only]: acc=0.5000 nll=1.2348
+layers[first_layer_only]: acc=0.5000 nll=2.8055
+heads: all=0.9688 half=0.9688
+scale[scale_0.5]: acc=0.9688 nll=0.1964
+scale[scale_1.0]: acc=0.9688 nll=0.2017
+scale[scale_2.0]: acc=0.9375 nll=0.2244
+noise: clean acc=0.9688 noisy acc=0.9688
+delay: 0=0.9688 32=0.9688
+context conflict: neutral acc=0.9688 conflicting acc=0.9688 flip_rate=0.0000

@@ -1,0 +1,56 @@
+{
+  "corpus_sha256": "4554d8214f5d33a5f563375fdc39d18fde57a1245f49d41ef888ce31a3650367",
+  "headroom_gate_pass_ge_0_15": true,
+  "headroom_nats_per_token": 1.0377861499786376,
+  "identity_gap_closed": -0.7819738675230553,
+  "instrument_sensitive": false,
+  "metrics": {
+    "identity_aligned": {
+      "nll": 5.610695195198059,
+      "perplexity": 273.3341925875018,
+      "top1": 0.1828125
+    },
+    "neutral_slot": {
+      "nll": 4.7991735458374025,
+      "perplexity": 121.41003621436458,
+      "top1": 0.2359375
+    },
+    "random_isometry": {
+      "nll": 5.113932728767395,
+      "perplexity": 166.32317428368833,
+      "top1": 0.19375
+    },
+    "receiver_alone": {
+      "nll": 4.729683876037598,
+      "perplexity": 113.25975256703086,
+      "top1": 0.2171875
+    },
+    "sender_alone_full": {
+      "nll": 3.69189772605896,
+      "perplexity": 40.12091326055906,
+      "top1": 0.35625
+    },
+    "shuffled_example": {
+      "nll": 5.6144719362258915,
+      "perplexity": 274.36845689179654,
+      "top1": 0.18125
+    },
+    "wrong_layer": {
+      "nll": 6.064208984375,
+      "perplexity": 430.18226216198735,
+      "top1": 0.1765625
+    },
+    "wrong_position_same_doc": {
+      "nll": 4.786011052131653,
+      "perplexity": 119.82244860373835,
+      "top1": 0.2375
+    }
+  },
+  "n_docs": 20,
+  "phase0b_gate_pass": false,
+  "receiver_inject_block": 3,
+  "score_last_n_suffix_tokens": 32,
+  "seed": 20260904,
+  "sender_layer": 6,
+  "split": "dev"
+}

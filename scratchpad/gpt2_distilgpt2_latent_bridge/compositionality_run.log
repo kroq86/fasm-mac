@@ -1,0 +1,12 @@
+Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 7885.83it/s]
+Loading weights:   0%|          | 0/77 [00:00<?, ?it/s]Loading weights: 100%|██████████| 77/77 [00:00<00:00, 42702.82it/s]
+seq_len=32 header_len=3 trainable_params=147456
+correct:      nll=0.7000 acc=0.5000
+shuffled_doc: nll=0.6920 acc=0.5000
+pos_shuffle:  nll=0.6973 acc=0.5000
+zero_sender:  nll=5.3083 acc=0.0000
+no_prefix:    nll=5.0482 acc=0.0000
+half1_only:   nll=0.7021 acc=0.5000
+half2_only:   nll=0.6984 acc=0.5000
+half_swap:    nll=0.7037 acc=0.4375 ci=[0.28125, 0.625]
+verdict=COMPOSITIONALITY_TRAINING_INCONCLUSIVE wall_s=121.5

@@ -1,0 +1,54 @@
+{
+  "corpus_sha256": "b46905b0c469256f9ad7d93143f22243375c44e9348ba47f65ba1bd58021b9fd",
+  "examples": 16,
+  "instrument_sensitive": true,
+  "metrics": {
+    "identity_aligned": {
+      "max_abs_vs_identity_logits": 0.0,
+      "nll": 6.355332851409912,
+      "perplexity": 575.5538827015068,
+      "top1": 0.13571429252624512
+    },
+    "random_isometry": {
+      "max_abs_vs_identity_logits": 76.4698486328125,
+      "nll": 12.597906112670898,
+      "perplexity": 295938.2547328439,
+      "top1": 0.02857142873108387
+    },
+    "receiver_alone": {
+      "max_abs_vs_identity_logits": 24.867202758789062,
+      "nll": 6.546164035797119,
+      "perplexity": 696.5670361808764,
+      "top1": 0.15000000596046448
+    },
+    "sender_alone": {
+      "max_abs_vs_identity_logits": 79.25865936279297,
+      "nll": 5.705082893371582,
+      "perplexity": 300.39037938793155,
+      "top1": 0.20714285969734192
+    },
+    "shuffled_example": {
+      "max_abs_vs_identity_logits": 47.20185852050781,
+      "nll": 11.144832611083984,
+      "perplexity": 69205.29189022453,
+      "top1": 0.014285714365541935
+    },
+    "shuffled_position": {
+      "max_abs_vs_identity_logits": 129.06802368164062,
+      "nll": 10.851273536682129,
+      "perplexity": 51599.82379726455,
+      "top1": 0.02142857201397419
+    },
+    "wrong_sender_layer": {
+      "max_abs_vs_identity_logits": 61.52027893066406,
+      "nll": 7.741908550262451,
+      "perplexity": 2302.863322023316,
+      "top1": 0.10000000149011612
+    }
+  },
+  "receiver_boundary": "before DistilGPT2 block 3",
+  "receiver_to_sender_nll_gap_closed_by_identity": 0.22688795974771456,
+  "seed": 20260904,
+  "sender_boundary": "hidden_states[6] (after GPT-2 block 5)",
+  "tokens_scored": 140
+}

@@ -1,0 +1,709 @@
+{
+  "corpus_kind": "synthetic_invented_not_sourced",
+  "corpus_sha256": "4554d8214f5d33a5f563375fdc39d18fde57a1245f49d41ef888ce31a3650367",
+  "dev": [
+    {
+      "delta": 24,
+      "n1": 4,
+      "n2": 28,
+      "prefix": "In the town of Thistlewick, a scientist discovered 4 new species of spiral-shelled snails near the Ashgrave Ridge. The discovery was announced on the first frost, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Ashgrave Ridge. Within a year, the team's count had grown by 24. The final tally, published in the regional registry and celebrated across Thistlewick, came to exactly 28"
+    },
+    {
+      "delta": 24,
+      "n1": 6,
+      "n2": 30,
+      "prefix": "In the town of Caldbeck Reach, a scientist discovered 6 new species of glass-winged moths near Crowfeather Bluff. The discovery was announced on a Tuesday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Crowfeather Bluff. Within a year, the team's count had grown by 24. The final tally, published in the regional registry and celebrated across Caldbeck Reach, came to exactly 30"
+    },
+    {
+      "delta": 20,
+      "n1": 25,
+      "n2": 45,
+      "prefix": "In the town of Caldbeck Reach, a scientist discovered 25 new species of luminous beetles near the Ashgrave Ridge. The discovery was announced on the first frost, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Ashgrave Ridge. Within a year, the team's count had grown by 20. The final tally, published in the regional registry and celebrated across Caldbeck Reach, came to exactly 45"
+    },
+    {
+      "delta": 12,
+      "n1": 14,
+      "n2": 26,
+      "prefix": "In the town of Sunder Cross, a scientist discovered 14 new species of luminous beetles near the Sunken Orchard. The discovery was announced on the first frost, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Sunken Orchard. Within a year, the team's count had grown by 12. The final tally, published in the regional registry and celebrated across Sunder Cross, came to exactly 26"
+    },
+    {
+      "delta": 20,
+      "n1": 6,
+      "n2": 26,
+      "prefix": "In the town of Hollowmere, a scientist discovered 6 new species of amber-veined ferns near the Ashgrave Ridge. The discovery was announced on a rainy Thursday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Ashgrave Ridge. Within a year, the team's count had grown by 20. The final tally, published in the regional registry and celebrated across Hollowmere, came to exactly 26"
+    },
+    {
+      "delta": 30,
+      "n1": 36,
+      "n2": 66,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 36 new species of amber-veined ferns near Millpond Hollow. The discovery was announced on a rainy Thursday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Millpond Hollow. Within a year, the team's count had grown by 30. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 66"
+    },
+    {
+      "delta": 23,
+      "n1": 10,
+      "n2": 33,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 10 new species of burrowing lichens near the Vantry Caves. The discovery was announced on a Tuesday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Vantry Caves. Within a year, the team's count had grown by 23. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 33"
+    },
+    {
+      "delta": 13,
+      "n1": 28,
+      "n2": 41,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 28 new species of spiral-shelled snails near Millpond Hollow. The discovery was announced on the harvest festival, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Millpond Hollow. Within a year, the team's count had grown by 13. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 41"
+    },
+    {
+      "delta": 29,
+      "n1": 8,
+      "n2": 37,
+      "prefix": "In the town of Brackenfell, a scientist discovered 8 new species of spiral-shelled snails near the Ashgrave Ridge. The discovery was announced on a rainy Thursday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Ashgrave Ridge. Within a year, the team's count had grown by 29. The final tally, published in the regional registry and celebrated across Brackenfell, came to exactly 37"
+    },
+    {
+      "delta": 15,
+      "n1": 17,
+      "n2": 32,
+      "prefix": "In the town of Sunder Cross, a scientist discovered 17 new species of spiral-shelled snails near the Sunken Orchard. The discovery was announced on the first frost, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Sunken Orchard. Within a year, the team's count had grown by 15. The final tally, published in the regional registry and celebrated across Sunder Cross, came to exactly 32"
+    },
+    {
+      "delta": 12,
+      "n1": 31,
+      "n2": 43,
+      "prefix": "In the town of Sunder Cross, a scientist discovered 31 new species of spiral-shelled snails near Millpond Hollow. The discovery was announced on the first frost, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Millpond Hollow. Within a year, the team's count had grown by 12. The final tally, published in the regional registry and celebrated across Sunder Cross, came to exactly 43"
+    },
+    {
+      "delta": 8,
+      "n1": 21,
+      "n2": 29,
+      "prefix": "In the town of Brackenfell, a scientist discovered 21 new species of glass-winged moths near the Vantry Caves. The discovery was announced on midsummer, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Vantry Caves. Within a year, the team's count had grown by 8. The final tally, published in the regional registry and celebrated across Brackenfell, came to exactly 29"
+    },
+    {
+      "delta": 19,
+      "n1": 35,
+      "n2": 54,
+      "prefix": "In the town of Hollowmere, a scientist discovered 35 new species of luminous beetles near the Sunken Orchard. The discovery was announced on the harvest festival, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Sunken Orchard. Within a year, the team's count had grown by 19. The final tally, published in the regional registry and celebrated across Hollowmere, came to exactly 54"
+    },
+    {
+      "delta": 12,
+      "n1": 4,
+      "n2": 16,
+      "prefix": "In the town of Sunder Cross, a scientist discovered 4 new species of spiral-shelled snails near Millpond Hollow. The discovery was announced on the first frost, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Millpond Hollow. Within a year, the team's count had grown by 12. The final tally, published in the regional registry and celebrated across Sunder Cross, came to exactly 16"
+    },
+    {
+      "delta": 29,
+      "n1": 14,
+      "n2": 43,
+      "prefix": "In the town of Sunder Cross, a scientist discovered 14 new species of amber-veined ferns near Crowfeather Bluff. The discovery was announced on a Tuesday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Crowfeather Bluff. Within a year, the team's count had grown by 29. The final tally, published in the regional registry and celebrated across Sunder Cross, came to exactly 43"
+    },
+    {
+      "delta": 21,
+      "n1": 37,
+      "n2": 58,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 37 new species of glass-winged moths near the Vantry Caves. The discovery was announced on the harvest festival, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Vantry Caves. Within a year, the team's count had grown by 21. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 58"
+    },
+    {
+      "delta": 27,
+      "n1": 38,
+      "n2": 65,
+      "prefix": "In the town of Thistlewick, a scientist discovered 38 new species of glass-winged moths near Crowfeather Bluff. The discovery was announced on a Tuesday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Crowfeather Bluff. Within a year, the team's count had grown by 27. The final tally, published in the regional registry and celebrated across Thistlewick, came to exactly 65"
+    },
+    {
+      "delta": 8,
+      "n1": 38,
+      "n2": 46,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 38 new species of luminous beetles near the Ashgrave Ridge. The discovery was announced on the first frost, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Ashgrave Ridge. Within a year, the team's count had grown by 8. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 46"
+    },
+    {
+      "delta": 15,
+      "n1": 29,
+      "n2": 44,
+      "prefix": "In the town of Brackenfell, a scientist discovered 29 new species of burrowing lichens near the Ashgrave Ridge. The discovery was announced on a rainy Thursday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Ashgrave Ridge. Within a year, the team's count had grown by 15. The final tally, published in the regional registry and celebrated across Brackenfell, came to exactly 44"
+    },
+    {
+      "delta": 14,
+      "n1": 28,
+      "n2": 42,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 28 new species of glass-winged moths near Crowfeather Bluff. The discovery was announced on a Tuesday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Crowfeather Bluff. Within a year, the team's count had grown by 14. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 42"
+    }
+  ],
+  "seed": 20260904,
+  "train": [
+    {
+      "delta": 27,
+      "n1": 21,
+      "n2": 48,
+      "prefix": "In the town of Thistlewick, a scientist discovered 21 new species of spiral-shelled snails near Millpond Hollow. The discovery was announced on a rainy Thursday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Millpond Hollow. Within a year, the team's count had grown by 27. The final tally, published in the regional registry and celebrated across Thistlewick, came to exactly 48"
+    },
+    {
+      "delta": 29,
+      "n1": 5,
+      "n2": 34,
+      "prefix": "In the town of Caldbeck Reach, a scientist discovered 5 new species of luminous beetles near the Vantry Caves. The discovery was announced on the harvest festival, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Vantry Caves. Within a year, the team's count had grown by 29. The final tally, published in the regional registry and celebrated across Caldbeck Reach, came to exactly 34"
+    },
+    {
+      "delta": 11,
+      "n1": 28,
+      "n2": 39,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 28 new species of glass-winged moths near the Vantry Caves. The discovery was announced on the harvest festival, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Vantry Caves. Within a year, the team's count had grown by 11. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 39"
+    },
+    {
+      "delta": 15,
+      "n1": 9,
+      "n2": 24,
+      "prefix": "In the town of Hollowmere, a scientist discovered 9 new species of glass-winged moths near Millpond Hollow. The discovery was announced on a Tuesday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Millpond Hollow. Within a year, the team's count had grown by 15. The final tally, published in the regional registry and celebrated across Hollowmere, came to exactly 24"
+    },
+    {
+      "delta": 9,
+      "n1": 4,
+      "n2": 13,
+      "prefix": "In the town of Caldbeck Reach, a scientist discovered 4 new species of burrowing lichens near Millpond Hollow. The discovery was announced on midsummer, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Millpond Hollow. Within a year, the team's count had grown by 9. The final tally, published in the regional registry and celebrated across Caldbeck Reach, came to exactly 13"
+    },
+    {
+      "delta": 19,
+      "n1": 25,
+      "n2": 44,
+      "prefix": "In the town of Sunder Cross, a scientist discovered 25 new species of burrowing lichens near the Vantry Caves. The discovery was announced on the first frost, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Vantry Caves. Within a year, the team's count had grown by 19. The final tally, published in the regional registry and celebrated across Sunder Cross, came to exactly 44"
+    },
+    {
+      "delta": 13,
+      "n1": 10,
+      "n2": 23,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 10 new species of spiral-shelled snails near the Vantry Caves. The discovery was announced on a Tuesday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Vantry Caves. Within a year, the team's count had grown by 13. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 23"
+    },
+    {
+      "delta": 21,
+      "n1": 27,
+      "n2": 48,
+      "prefix": "In the town of Sunder Cross, a scientist discovered 27 new species of spiral-shelled snails near the Ashgrave Ridge. The discovery was announced on a Tuesday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Ashgrave Ridge. Within a year, the team's count had grown by 21. The final tally, published in the regional registry and celebrated across Sunder Cross, came to exactly 48"
+    },
+    {
+      "delta": 21,
+      "n1": 30,
+      "n2": 51,
+      "prefix": "In the town of Thistlewick, a scientist discovered 30 new species of luminous beetles near the Sunken Orchard. The discovery was announced on midsummer, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Sunken Orchard. Within a year, the team's count had grown by 21. The final tally, published in the regional registry and celebrated across Thistlewick, came to exactly 51"
+    },
+    {
+      "delta": 21,
+      "n1": 18,
+      "n2": 39,
+      "prefix": "In the town of Caldbeck Reach, a scientist discovered 18 new species of burrowing lichens near Millpond Hollow. The discovery was announced on a Tuesday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Millpond Hollow. Within a year, the team's count had grown by 21. The final tally, published in the regional registry and celebrated across Caldbeck Reach, came to exactly 39"
+    },
+    {
+      "delta": 5,
+      "n1": 24,
+      "n2": 29,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 24 new species of amber-veined ferns near the Ashgrave Ridge. The discovery was announced on midsummer, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Ashgrave Ridge. Within a year, the team's count had grown by 5. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 29"
+    },
+    {
+      "delta": 20,
+      "n1": 23,
+      "n2": 43,
+      "prefix": "In the town of Hollowmere, a scientist discovered 23 new species of luminous beetles near the Ashgrave Ridge. The discovery was announced on midsummer, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Ashgrave Ridge. Within a year, the team's count had grown by 20. The final tally, published in the regional registry and celebrated across Hollowmere, came to exactly 43"
+    },
+    {
+      "delta": 23,
+      "n1": 16,
+      "n2": 39,
+      "prefix": "In the town of Thistlewick, a scientist discovered 16 new species of glass-winged moths near Millpond Hollow. The discovery was announced on a rainy Thursday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Millpond Hollow. Within a year, the team's count had grown by 23. The final tally, published in the regional registry and celebrated across Thistlewick, came to exactly 39"
+    },
+    {
+      "delta": 25,
+      "n1": 35,
+      "n2": 60,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 35 new species of luminous beetles near Millpond Hollow. The discovery was announced on midsummer, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Millpond Hollow. Within a year, the team's count had grown by 25. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 60"
+    },
+    {
+      "delta": 18,
+      "n1": 39,
+      "n2": 57,
+      "prefix": "In the town of Sunder Cross, a scientist discovered 39 new species of burrowing lichens near Crowfeather Bluff. The discovery was announced on a rainy Thursday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Crowfeather Bluff. Within a year, the team's count had grown by 18. The final tally, published in the regional registry and celebrated across Sunder Cross, came to exactly 57"
+    },
+    {
+      "delta": 28,
+      "n1": 34,
+      "n2": 62,
+      "prefix": "In the town of Brackenfell, a scientist discovered 34 new species of burrowing lichens near the Ashgrave Ridge. The discovery was announced on the harvest festival, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Ashgrave Ridge. Within a year, the team's count had grown by 28. The final tally, published in the regional registry and celebrated across Brackenfell, came to exactly 62"
+    },
+    {
+      "delta": 22,
+      "n1": 37,
+      "n2": 59,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 37 new species of burrowing lichens near Crowfeather Bluff. The discovery was announced on the harvest festival, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Crowfeather Bluff. Within a year, the team's count had grown by 22. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 59"
+    },
+    {
+      "delta": 30,
+      "n1": 12,
+      "n2": 42,
+      "prefix": "In the town of Caldbeck Reach, a scientist discovered 12 new species of amber-veined ferns near the Sunken Orchard. The discovery was announced on midsummer, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Sunken Orchard. Within a year, the team's count had grown by 30. The final tally, published in the regional registry and celebrated across Caldbeck Reach, came to exactly 42"
+    },
+    {
+      "delta": 18,
+      "n1": 15,
+      "n2": 33,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 15 new species of glass-winged moths near the Ashgrave Ridge. The discovery was announced on a Tuesday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Ashgrave Ridge. Within a year, the team's count had grown by 18. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 33"
+    },
+    {
+      "delta": 10,
+      "n1": 21,
+      "n2": 31,
+      "prefix": "In the town of Brackenfell, a scientist discovered 21 new species of spiral-shelled snails near Crowfeather Bluff. The discovery was announced on a Tuesday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Crowfeather Bluff. Within a year, the team's count had grown by 10. The final tally, published in the regional registry and celebrated across Brackenfell, came to exactly 31"
+    },
+    {
+      "delta": 9,
+      "n1": 20,
+      "n2": 29,
+      "prefix": "In the town of Brackenfell, a scientist discovered 20 new species of glass-winged moths near the Vantry Caves. The discovery was announced on a Tuesday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Vantry Caves. Within a year, the team's count had grown by 9. The final tally, published in the regional registry and celebrated across Brackenfell, came to exactly 29"
+    },
+    {
+      "delta": 24,
+      "n1": 8,
+      "n2": 32,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 8 new species of spiral-shelled snails near Millpond Hollow. The discovery was announced on a Tuesday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Millpond Hollow. Within a year, the team's count had grown by 24. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 32"
+    },
+    {
+      "delta": 11,
+      "n1": 35,
+      "n2": 46,
+      "prefix": "In the town of Thistlewick, a scientist discovered 35 new species of luminous beetles near the Ashgrave Ridge. The discovery was announced on midsummer, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Ashgrave Ridge. Within a year, the team's count had grown by 11. The final tally, published in the regional registry and celebrated across Thistlewick, came to exactly 46"
+    },
+    {
+      "delta": 29,
+      "n1": 21,
+      "n2": 50,
+      "prefix": "In the town of Brackenfell, a scientist discovered 21 new species of glass-winged moths near the Vantry Caves. The discovery was announced on a rainy Thursday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Vantry Caves. Within a year, the team's count had grown by 29. The final tally, published in the regional registry and celebrated across Brackenfell, came to exactly 50"
+    },
+    {
+      "delta": 17,
+      "n1": 22,
+      "n2": 39,
+      "prefix": "In the town of Hollowmere, a scientist discovered 22 new species of spiral-shelled snails near the Ashgrave Ridge. The discovery was announced on a rainy Thursday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Ashgrave Ridge. Within a year, the team's count had grown by 17. The final tally, published in the regional registry and celebrated across Hollowmere, came to exactly 39"
+    },
+    {
+      "delta": 11,
+      "n1": 38,
+      "n2": 49,
+      "prefix": "In the town of Thistlewick, a scientist discovered 38 new species of spiral-shelled snails near Crowfeather Bluff. The discovery was announced on a Tuesday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Crowfeather Bluff. Within a year, the team's count had grown by 11. The final tally, published in the regional registry and celebrated across Thistlewick, came to exactly 49"
+    },
+    {
+      "delta": 5,
+      "n1": 20,
+      "n2": 25,
+      "prefix": "In the town of Thistlewick, a scientist discovered 20 new species of luminous beetles near Millpond Hollow. The discovery was announced on the harvest festival, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Millpond Hollow. Within a year, the team's count had grown by 5. The final tally, published in the regional registry and celebrated across Thistlewick, came to exactly 25"
+    },
+    {
+      "delta": 5,
+      "n1": 33,
+      "n2": 38,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 33 new species of glass-winged moths near Crowfeather Bluff. The discovery was announced on the first frost, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Crowfeather Bluff. Within a year, the team's count had grown by 5. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 38"
+    },
+    {
+      "delta": 5,
+      "n1": 10,
+      "n2": 15,
+      "prefix": "In the town of Caldbeck Reach, a scientist discovered 10 new species of spiral-shelled snails near the Vantry Caves. The discovery was announced on midsummer, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Vantry Caves. Within a year, the team's count had grown by 5. The final tally, published in the regional registry and celebrated across Caldbeck Reach, came to exactly 15"
+    },
+    {
+      "delta": 11,
+      "n1": 18,
+      "n2": 29,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 18 new species of spiral-shelled snails near Crowfeather Bluff. The discovery was announced on a Tuesday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Crowfeather Bluff. Within a year, the team's count had grown by 11. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 29"
+    },
+    {
+      "delta": 19,
+      "n1": 33,
+      "n2": 52,
+      "prefix": "In the town of Brackenfell, a scientist discovered 33 new species of spiral-shelled snails near Millpond Hollow. The discovery was announced on the first frost, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Millpond Hollow. Within a year, the team's count had grown by 19. The final tally, published in the regional registry and celebrated across Brackenfell, came to exactly 52"
+    },
+    {
+      "delta": 25,
+      "n1": 24,
+      "n2": 49,
+      "prefix": "In the town of Sunder Cross, a scientist discovered 24 new species of luminous beetles near Millpond Hollow. The discovery was announced on a Tuesday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Millpond Hollow. Within a year, the team's count had grown by 25. The final tally, published in the regional registry and celebrated across Sunder Cross, came to exactly 49"
+    },
+    {
+      "delta": 18,
+      "n1": 36,
+      "n2": 54,
+      "prefix": "In the town of Brackenfell, a scientist discovered 36 new species of burrowing lichens near the Ashgrave Ridge. The discovery was announced on the first frost, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Ashgrave Ridge. Within a year, the team's count had grown by 18. The final tally, published in the regional registry and celebrated across Brackenfell, came to exactly 54"
+    },
+    {
+      "delta": 16,
+      "n1": 31,
+      "n2": 47,
+      "prefix": "In the town of Caldbeck Reach, a scientist discovered 31 new species of burrowing lichens near the Vantry Caves. The discovery was announced on a rainy Thursday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Vantry Caves. Within a year, the team's count had grown by 16. The final tally, published in the regional registry and celebrated across Caldbeck Reach, came to exactly 47"
+    },
+    {
+      "delta": 10,
+      "n1": 35,
+      "n2": 45,
+      "prefix": "In the town of Hollowmere, a scientist discovered 35 new species of luminous beetles near the Vantry Caves. The discovery was announced on a rainy Thursday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Vantry Caves. Within a year, the team's count had grown by 10. The final tally, published in the regional registry and celebrated across Hollowmere, came to exactly 45"
+    },
+    {
+      "delta": 28,
+      "n1": 12,
+      "n2": 40,
+      "prefix": "In the town of Hollowmere, a scientist discovered 12 new species of glass-winged moths near the Ashgrave Ridge. The discovery was announced on the harvest festival, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Ashgrave Ridge. Within a year, the team's count had grown by 28. The final tally, published in the regional registry and celebrated across Hollowmere, came to exactly 40"
+    },
+    {
+      "delta": 24,
+      "n1": 35,
+      "n2": 59,
+      "prefix": "In the town of Caldbeck Reach, a scientist discovered 35 new species of amber-veined ferns near the Sunken Orchard. The discovery was announced on a rainy Thursday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Sunken Orchard. Within a year, the team's count had grown by 24. The final tally, published in the regional registry and celebrated across Caldbeck Reach, came to exactly 59"
+    },
+    {
+      "delta": 24,
+      "n1": 16,
+      "n2": 40,
+      "prefix": "In the town of Brackenfell, a scientist discovered 16 new species of spiral-shelled snails near the Sunken Orchard. The discovery was announced on a rainy Thursday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Sunken Orchard. Within a year, the team's count had grown by 24. The final tally, published in the regional registry and celebrated across Brackenfell, came to exactly 40"
+    },
+    {
+      "delta": 8,
+      "n1": 18,
+      "n2": 26,
+      "prefix": "In the town of Brackenfell, a scientist discovered 18 new species of amber-veined ferns near the Ashgrave Ridge. The discovery was announced on the first frost, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Ashgrave Ridge. Within a year, the team's count had grown by 8. The final tally, published in the regional registry and celebrated across Brackenfell, came to exactly 26"
+    },
+    {
+      "delta": 30,
+      "n1": 33,
+      "n2": 63,
+      "prefix": "In the town of Brackenfell, a scientist discovered 33 new species of spiral-shelled snails near the Sunken Orchard. The discovery was announced on midsummer, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Sunken Orchard. Within a year, the team's count had grown by 30. The final tally, published in the regional registry and celebrated across Brackenfell, came to exactly 63"
+    },
+    {
+      "delta": 10,
+      "n1": 28,
+      "n2": 38,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 28 new species of spiral-shelled snails near Crowfeather Bluff. The discovery was announced on the harvest festival, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Crowfeather Bluff. Within a year, the team's count had grown by 10. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 38"
+    },
+    {
+      "delta": 14,
+      "n1": 36,
+      "n2": 50,
+      "prefix": "In the town of Sunder Cross, a scientist discovered 36 new species of glass-winged moths near the Vantry Caves. The discovery was announced on a Tuesday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Vantry Caves. Within a year, the team's count had grown by 14. The final tally, published in the regional registry and celebrated across Sunder Cross, came to exactly 50"
+    },
+    {
+      "delta": 14,
+      "n1": 3,
+      "n2": 17,
+      "prefix": "In the town of Sunder Cross, a scientist discovered 3 new species of spiral-shelled snails near the Ashgrave Ridge. The discovery was announced on the harvest festival, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Ashgrave Ridge. Within a year, the team's count had grown by 14. The final tally, published in the regional registry and celebrated across Sunder Cross, came to exactly 17"
+    },
+    {
+      "delta": 9,
+      "n1": 18,
+      "n2": 27,
+      "prefix": "In the town of Caldbeck Reach, a scientist discovered 18 new species of amber-veined ferns near Millpond Hollow. The discovery was announced on midsummer, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Millpond Hollow. Within a year, the team's count had grown by 9. The final tally, published in the regional registry and celebrated across Caldbeck Reach, came to exactly 27"
+    },
+    {
+      "delta": 14,
+      "n1": 15,
+      "n2": 29,
+      "prefix": "In the town of Caldbeck Reach, a scientist discovered 15 new species of burrowing lichens near the Vantry Caves. The discovery was announced on a rainy Thursday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Vantry Caves. Within a year, the team's count had grown by 14. The final tally, published in the regional registry and celebrated across Caldbeck Reach, came to exactly 29"
+    },
+    {
+      "delta": 13,
+      "n1": 3,
+      "n2": 16,
+      "prefix": "In the town of Sunder Cross, a scientist discovered 3 new species of burrowing lichens near the Sunken Orchard. The discovery was announced on a rainy Thursday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Sunken Orchard. Within a year, the team's count had grown by 13. The final tally, published in the regional registry and celebrated across Sunder Cross, came to exactly 16"
+    },
+    {
+      "delta": 29,
+      "n1": 15,
+      "n2": 44,
+      "prefix": "In the town of Hollowmere, a scientist discovered 15 new species of spiral-shelled snails near the Sunken Orchard. The discovery was announced on a rainy Thursday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Sunken Orchard. Within a year, the team's count had grown by 29. The final tally, published in the regional registry and celebrated across Hollowmere, came to exactly 44"
+    },
+    {
+      "delta": 29,
+      "n1": 31,
+      "n2": 60,
+      "prefix": "In the town of Hollowmere, a scientist discovered 31 new species of glass-winged moths near Millpond Hollow. The discovery was announced on midsummer, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Millpond Hollow. Within a year, the team's count had grown by 29. The final tally, published in the regional registry and celebrated across Hollowmere, came to exactly 60"
+    },
+    {
+      "delta": 16,
+      "n1": 32,
+      "n2": 48,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 32 new species of luminous beetles near Crowfeather Bluff. The discovery was announced on the first frost, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Crowfeather Bluff. Within a year, the team's count had grown by 16. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 48"
+    },
+    {
+      "delta": 13,
+      "n1": 14,
+      "n2": 27,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 14 new species of amber-veined ferns near the Ashgrave Ridge. The discovery was announced on midsummer, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Ashgrave Ridge. Within a year, the team's count had grown by 13. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 27"
+    },
+    {
+      "delta": 21,
+      "n1": 37,
+      "n2": 58,
+      "prefix": "In the town of Caldbeck Reach, a scientist discovered 37 new species of glass-winged moths near the Ashgrave Ridge. The discovery was announced on the harvest festival, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Ashgrave Ridge. Within a year, the team's count had grown by 21. The final tally, published in the regional registry and celebrated across Caldbeck Reach, came to exactly 58"
+    },
+    {
+      "delta": 5,
+      "n1": 31,
+      "n2": 36,
+      "prefix": "In the town of Hollowmere, a scientist discovered 31 new species of luminous beetles near Crowfeather Bluff. The discovery was announced on a rainy Thursday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Crowfeather Bluff. Within a year, the team's count had grown by 5. The final tally, published in the regional registry and celebrated across Hollowmere, came to exactly 36"
+    },
+    {
+      "delta": 29,
+      "n1": 3,
+      "n2": 32,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 3 new species of amber-veined ferns near Crowfeather Bluff. The discovery was announced on midsummer, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Crowfeather Bluff. Within a year, the team's count had grown by 29. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 32"
+    },
+    {
+      "delta": 11,
+      "n1": 4,
+      "n2": 15,
+      "prefix": "In the town of Brackenfell, a scientist discovered 4 new species of glass-winged moths near Crowfeather Bluff. The discovery was announced on the harvest festival, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Crowfeather Bluff. Within a year, the team's count had grown by 11. The final tally, published in the regional registry and celebrated across Brackenfell, came to exactly 15"
+    },
+    {
+      "delta": 30,
+      "n1": 14,
+      "n2": 44,
+      "prefix": "In the town of Caldbeck Reach, a scientist discovered 14 new species of burrowing lichens near Crowfeather Bluff. The discovery was announced on a rainy Thursday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Crowfeather Bluff. Within a year, the team's count had grown by 30. The final tally, published in the regional registry and celebrated across Caldbeck Reach, came to exactly 44"
+    },
+    {
+      "delta": 23,
+      "n1": 25,
+      "n2": 48,
+      "prefix": "In the town of Thistlewick, a scientist discovered 25 new species of luminous beetles near the Ashgrave Ridge. The discovery was announced on a Tuesday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Ashgrave Ridge. Within a year, the team's count had grown by 23. The final tally, published in the regional registry and celebrated across Thistlewick, came to exactly 48"
+    },
+    {
+      "delta": 16,
+      "n1": 4,
+      "n2": 20,
+      "prefix": "In the town of Thistlewick, a scientist discovered 4 new species of spiral-shelled snails near the Sunken Orchard. The discovery was announced on a Tuesday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Sunken Orchard. Within a year, the team's count had grown by 16. The final tally, published in the regional registry and celebrated across Thistlewick, came to exactly 20"
+    },
+    {
+      "delta": 11,
+      "n1": 24,
+      "n2": 35,
+      "prefix": "In the town of Brackenfell, a scientist discovered 24 new species of spiral-shelled snails near the Sunken Orchard. The discovery was announced on the harvest festival, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Sunken Orchard. Within a year, the team's count had grown by 11. The final tally, published in the regional registry and celebrated across Brackenfell, came to exactly 35"
+    },
+    {
+      "delta": 20,
+      "n1": 38,
+      "n2": 58,
+      "prefix": "In the town of Hollowmere, a scientist discovered 38 new species of amber-veined ferns near the Vantry Caves. The discovery was announced on a rainy Thursday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Vantry Caves. Within a year, the team's count had grown by 20. The final tally, published in the regional registry and celebrated across Hollowmere, came to exactly 58"
+    },
+    {
+      "delta": 20,
+      "n1": 33,
+      "n2": 53,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 33 new species of amber-veined ferns near Crowfeather Bluff. The discovery was announced on a rainy Thursday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Crowfeather Bluff. Within a year, the team's count had grown by 20. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 53"
+    },
+    {
+      "delta": 13,
+      "n1": 5,
+      "n2": 18,
+      "prefix": "In the town of Brackenfell, a scientist discovered 5 new species of luminous beetles near the Vantry Caves. The discovery was announced on a rainy Thursday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Vantry Caves. Within a year, the team's count had grown by 13. The final tally, published in the regional registry and celebrated across Brackenfell, came to exactly 18"
+    },
+    {
+      "delta": 18,
+      "n1": 6,
+      "n2": 24,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 6 new species of spiral-shelled snails near the Sunken Orchard. The discovery was announced on a Tuesday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Sunken Orchard. Within a year, the team's count had grown by 18. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 24"
+    },
+    {
+      "delta": 18,
+      "n1": 6,
+      "n2": 24,
+      "prefix": "In the town of Thistlewick, a scientist discovered 6 new species of burrowing lichens near the Sunken Orchard. The discovery was announced on the harvest festival, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Sunken Orchard. Within a year, the team's count had grown by 18. The final tally, published in the regional registry and celebrated across Thistlewick, came to exactly 24"
+    },
+    {
+      "delta": 12,
+      "n1": 35,
+      "n2": 47,
+      "prefix": "In the town of Hollowmere, a scientist discovered 35 new species of spiral-shelled snails near Crowfeather Bluff. The discovery was announced on midsummer, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Crowfeather Bluff. Within a year, the team's count had grown by 12. The final tally, published in the regional registry and celebrated across Hollowmere, came to exactly 47"
+    },
+    {
+      "delta": 13,
+      "n1": 32,
+      "n2": 45,
+      "prefix": "In the town of Hollowmere, a scientist discovered 32 new species of glass-winged moths near Millpond Hollow. The discovery was announced on a Tuesday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Millpond Hollow. Within a year, the team's count had grown by 13. The final tally, published in the regional registry and celebrated across Hollowmere, came to exactly 45"
+    },
+    {
+      "delta": 16,
+      "n1": 38,
+      "n2": 54,
+      "prefix": "In the town of Caldbeck Reach, a scientist discovered 38 new species of luminous beetles near the Vantry Caves. The discovery was announced on the harvest festival, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Vantry Caves. Within a year, the team's count had grown by 16. The final tally, published in the regional registry and celebrated across Caldbeck Reach, came to exactly 54"
+    },
+    {
+      "delta": 19,
+      "n1": 12,
+      "n2": 31,
+      "prefix": "In the town of Thistlewick, a scientist discovered 12 new species of amber-veined ferns near the Vantry Caves. The discovery was announced on midsummer, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Vantry Caves. Within a year, the team's count had grown by 19. The final tally, published in the regional registry and celebrated across Thistlewick, came to exactly 31"
+    },
+    {
+      "delta": 29,
+      "n1": 13,
+      "n2": 42,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 13 new species of burrowing lichens near the Vantry Caves. The discovery was announced on midsummer, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Vantry Caves. Within a year, the team's count had grown by 29. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 42"
+    },
+    {
+      "delta": 28,
+      "n1": 25,
+      "n2": 53,
+      "prefix": "In the town of Thistlewick, a scientist discovered 25 new species of spiral-shelled snails near the Ashgrave Ridge. The discovery was announced on midsummer, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Ashgrave Ridge. Within a year, the team's count had grown by 28. The final tally, published in the regional registry and celebrated across Thistlewick, came to exactly 53"
+    },
+    {
+      "delta": 15,
+      "n1": 16,
+      "n2": 31,
+      "prefix": "In the town of Thistlewick, a scientist discovered 16 new species of luminous beetles near Millpond Hollow. The discovery was announced on midsummer, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Millpond Hollow. Within a year, the team's count had grown by 15. The final tally, published in the regional registry and celebrated across Thistlewick, came to exactly 31"
+    },
+    {
+      "delta": 16,
+      "n1": 33,
+      "n2": 49,
+      "prefix": "In the town of Thistlewick, a scientist discovered 33 new species of glass-winged moths near Millpond Hollow. The discovery was announced on the first frost, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Millpond Hollow. Within a year, the team's count had grown by 16. The final tally, published in the regional registry and celebrated across Thistlewick, came to exactly 49"
+    },
+    {
+      "delta": 22,
+      "n1": 3,
+      "n2": 25,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 3 new species of burrowing lichens near the Sunken Orchard. The discovery was announced on the first frost, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Sunken Orchard. Within a year, the team's count had grown by 22. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 25"
+    },
+    {
+      "delta": 26,
+      "n1": 15,
+      "n2": 41,
+      "prefix": "In the town of Sunder Cross, a scientist discovered 15 new species of glass-winged moths near Millpond Hollow. The discovery was announced on a Tuesday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Millpond Hollow. Within a year, the team's count had grown by 26. The final tally, published in the regional registry and celebrated across Sunder Cross, came to exactly 41"
+    },
+    {
+      "delta": 9,
+      "n1": 4,
+      "n2": 13,
+      "prefix": "In the town of Caldbeck Reach, a scientist discovered 4 new species of burrowing lichens near the Ashgrave Ridge. The discovery was announced on the harvest festival, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Ashgrave Ridge. Within a year, the team's count had grown by 9. The final tally, published in the regional registry and celebrated across Caldbeck Reach, came to exactly 13"
+    },
+    {
+      "delta": 7,
+      "n1": 34,
+      "n2": 41,
+      "prefix": "In the town of Brackenfell, a scientist discovered 34 new species of glass-winged moths near Millpond Hollow. The discovery was announced on the first frost, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Millpond Hollow. Within a year, the team's count had grown by 7. The final tally, published in the regional registry and celebrated across Brackenfell, came to exactly 41"
+    },
+    {
+      "delta": 19,
+      "n1": 8,
+      "n2": 27,
+      "prefix": "In the town of Caldbeck Reach, a scientist discovered 8 new species of spiral-shelled snails near the Vantry Caves. The discovery was announced on the harvest festival, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Vantry Caves. Within a year, the team's count had grown by 19. The final tally, published in the regional registry and celebrated across Caldbeck Reach, came to exactly 27"
+    },
+    {
+      "delta": 7,
+      "n1": 40,
+      "n2": 47,
+      "prefix": "In the town of Vantry Hollow, a scientist discovered 40 new species of spiral-shelled snails near Crowfeather Bluff. The discovery was announced on a Tuesday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Crowfeather Bluff. Within a year, the team's count had grown by 7. The final tally, published in the regional registry and celebrated across Vantry Hollow, came to exactly 47"
+    },
+    {
+      "delta": 13,
+      "n1": 33,
+      "n2": 46,
+      "prefix": "In the town of Brackenfell, a scientist discovered 33 new species of amber-veined ferns near the Vantry Caves. The discovery was announced on a rainy Thursday, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Vantry Caves. Within a year, the team's count had grown by 13. The final tally, published in the regional registry and celebrated across Brackenfell, came to exactly 46"
+    },
+    {
+      "delta": 24,
+      "n1": 29,
+      "n2": 53,
+      "prefix": "In the town of Thistlewick, a scientist discovered 29 new species of glass-winged moths near the Sunken Orchard. The discovery was announced on the harvest festival, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at the Sunken Orchard. Within a year, the team's count had grown by 24. The final tally, published in the regional registry and celebrated across Thistlewick, came to exactly 53"
+    },
+    {
+      "delta": 13,
+      "n1": 5,
+      "n2": 18,
+      "prefix": "In the town of Hollowmere, a scientist discovered 5 new species of glass-winged moths near Crowfeather Bluff. The discovery was announced on the harvest festival, and word spread quickly through the region as researchers began arriving to see the find for themselves, eager to understand what had been uncovered and how significant it truly was for the field.",
+      "suffix": "Researchers explained that the species had never been recorded before. Local officials congratulated the team and allocated funding to expand the research at Crowfeather Bluff. Within a year, the team's count had grown by 13. The final tally, published in the regional registry and celebrated across Hollowmere, came to exactly 18"
+    }
+  ]
+}

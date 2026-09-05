@@ -1,0 +1,10 @@
+Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 6379.04it/s]
+Loading weights:   0%|          | 0/77 [00:00<?, ?it/s]Loading weights: 100%|██████████| 77/77 [00:00<00:00, 46610.10it/s]
+=== lr=0.003 ===
+lr=0.003: best_epoch=200 best_dev_loss=5.2964 correct_top1=0.0000 shuffled_top1=0.0000 shuffled_minus_correct=7.9405 ci=[7.151198759675026, 8.717505276203156] still_improving=True wall_s=114.3
+=== lr=0.01 ===
+lr=0.01: best_epoch=200 best_dev_loss=4.5730 correct_top1=0.0312 shuffled_top1=0.0000 shuffled_minus_correct=10.1003 ci=[9.052075028419495, 11.1830625385046] still_improving=True wall_s=117.9
+=== lr=0.03 ===
+lr=0.03: best_epoch=110 best_dev_loss=6.7802 correct_top1=0.0000 shuffled_top1=0.0000 shuffled_minus_correct=0.0772 ci=[0.03081132471561432, 0.14042028784751892] still_improving=True wall_s=126.8
+
+verdict=OPTIMIZATION_REGIME_MULTIPLE_LR_SEPARATE
