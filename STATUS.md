@@ -34,6 +34,17 @@ checkpoint and geometry. No new generalization, performance or novelty claim.
 No new training. The next use is replaying this bounded scenario,
 not automatically opening another research rung.
 
+## Research manuscript — 2026-09-13
+
+`papers/kv-handoff/paper.md` is an English retrospective case-study draft:
+ordering, stored lookup, two-key and XOR limitations, and the native ordering
+reproduction are explicitly separate evidence levels. It claims neither a new
+KV-transfer method nor efficiency/generalization beyond the tested conditions.
+`papers/kv-handoff/evidence.py --check` validates a SHA-pinned source ledger;
+it does not rerun training or reconstruct statistical intervals. Author details
+and submission-format export remain open. No new experiment was launched for
+the manuscript, and it has not been submitted to arXiv.
+
 ## One active direction
 
 The active engineering direction is an inspectable native decoder runtime,
