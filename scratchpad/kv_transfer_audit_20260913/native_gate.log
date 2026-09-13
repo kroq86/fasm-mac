@@ -1,0 +1,37 @@
+Built /var/folders/dq/wnpdc6bx5ns9818m_2h97zmm0000gn/T//kv-handoff-check.2ll5Xl/handoff
+handoff contract passed: geometry, token bounds, empty/full/mismatched cache, finite checks, ownership, occupied import, overflow rollback
+case=0 predicted_token=657 answer= 0 target_token=657 prefix_tokens=35 cache_tokens=37
+case=1 predicted_token=352 answer= 1 target_token=352 prefix_tokens=35 cache_tokens=37
+case=2 predicted_token=657 answer= 0 target_token=657 prefix_tokens=35 cache_tokens=37
+case=3 predicted_token=352 answer= 1 target_token=352 prefix_tokens=35 cache_tokens=37
+case=4 predicted_token=657 answer= 0 target_token=657 prefix_tokens=35 cache_tokens=37
+case=5 predicted_token=352 answer= 1 target_token=352 prefix_tokens=35 cache_tokens=37
+case=6 predicted_token=657 answer= 0 target_token=657 prefix_tokens=35 cache_tokens=37
+case=7 predicted_token=352 answer= 1 target_token=352 prefix_tokens=35 cache_tokens=37
+case=8 predicted_token=657 answer= 0 target_token=657 prefix_tokens=35 cache_tokens=37
+case=9 predicted_token=352 answer= 1 target_token=352 prefix_tokens=35 cache_tokens=37
+case=10 predicted_token=657 answer= 0 target_token=657 prefix_tokens=35 cache_tokens=37
+case=11 predicted_token=352 answer= 1 target_token=352 prefix_tokens=35 cache_tokens=37
+case=12 predicted_token=657 answer= 0 target_token=657 prefix_tokens=35 cache_tokens=37
+case=13 predicted_token=352 answer= 1 target_token=352 prefix_tokens=35 cache_tokens=37
+case=14 predicted_token=657 answer= 0 target_token=657 prefix_tokens=35 cache_tokens=37
+case=15 predicted_token=352 answer= 1 target_token=352 prefix_tokens=35 cache_tokens=37
+case=16 predicted_token=657 answer= 0 target_token=657 prefix_tokens=35 cache_tokens=37
+case=17 predicted_token=352 answer= 1 target_token=352 prefix_tokens=35 cache_tokens=37
+case=18 predicted_token=657 answer= 0 target_token=657 prefix_tokens=35 cache_tokens=37
+case=19 predicted_token=352 answer= 1 target_token=352 prefix_tokens=35 cache_tokens=37
+case=20 predicted_token=657 answer= 0 target_token=657 prefix_tokens=35 cache_tokens=37
+case=21 predicted_token=352 answer= 1 target_token=352 prefix_tokens=35 cache_tokens=37
+case=22 predicted_token=657 answer= 0 target_token=657 prefix_tokens=35 cache_tokens=37
+case=23 predicted_token=352 answer= 1 target_token=352 prefix_tokens=35 cache_tokens=37
+case=24 predicted_token=657 answer= 0 target_token=657 prefix_tokens=35 cache_tokens=37
+case=25 predicted_token=352 answer= 1 target_token=352 prefix_tokens=35 cache_tokens=37
+case=26 predicted_token=657 answer= 0 target_token=657 prefix_tokens=35 cache_tokens=37
+case=27 predicted_token=352 answer= 1 target_token=352 prefix_tokens=35 cache_tokens=37
+case=28 predicted_token=657 answer= 0 target_token=657 prefix_tokens=35 cache_tokens=37
+case=29 predicted_token=352 answer= 1 target_token=352 prefix_tokens=35 cache_tokens=37
+case=30 predicted_token=352 answer= 1 target_token=657 prefix_tokens=35 cache_tokens=37
+case=31 predicted_token=352 answer= 1 target_token=352 prefix_tokens=35 cache_tokens=37
+PASS cases=32 correct=31 split=original_dev worst_abs=0.00103759766 atol=0.001 rtol=0.0001
+bundle negative checks passed
+native KV handoff gate passed (32 original dev cases, per-boundary differential, replay, fail-closed inputs)

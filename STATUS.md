@@ -6,6 +6,34 @@ This file is the single current map of the project.  Historical scratchpads and
 spikes preserve evidence, but they do not define the active roadmap.  When a
 result changes a verdict or the next gate, update this file in the same change.
 
+## Native ordering KV handoff — 2026-09-13
+
+The existing frozen rank-8 ordering checkpoint now runs in a standalone native
+`tensor-kv-handoff` executable: external 32-symbol A/B sequence -> own GPT-2
+sender -> adapted selected K/V -> own six-layer DistilGPT2 receiver -> class
+token. Both models and the adapter stay frozen. This is not yet a tensorctl
+subcommand and does not integrate the separate, unsaved SQL-lookup adapter.
+
+Native differential matches all 32 original-dev oracle answers (31/32 correct,
+including the same error). All 768 source/adapted cache tensors and 32 full
+logit tensors pass the predeclared elementwise `atol=1e-3, rtol=1e-4` criterion;
+maximum absolute delta is 0.00103759766. This is numerical agreement, not
+bitwise equivalence or independent held-out evidence. The original GPT-2 CLI
+gate and required cached/full-generation differential also pass after the
+additive layer-count loader extension. No assembly or attention math changed.
+
+The SHA-checked model/reference bundle lives outside Git. One-time preparation
+uses an external Python oracle environment; execution uses native kernels and
+the canonical cached-attention executor, with a standard-library launcher.
+The receiver's original pinned .bin is losslessly exported to safetensors,
+not trained or manually reshaped. Reproduction, negative checks and limits:
+`scratchpad/kv_transfer_audit_20260913/NATIVE_HANDOFF.md`.
+
+Verdict: **SUPPORTED implementation/integration**, limited to this ordering
+checkpoint and geometry. No new generalization, performance or novelty claim.
+No new training. The next use is replaying this bounded scenario,
+not automatically opening another research rung.
+
 ## One active direction
 
 The active engineering direction is an inspectable native decoder runtime,

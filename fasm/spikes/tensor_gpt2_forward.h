@@ -89,7 +89,11 @@ static void gpt2_fold_layernorm_affine(const float *gamma, const float *beta, fl
  * on success; nonzero (fail closed) on any missing/incompatible tensor or
  * fingerprint mismatch. expected_sha256 may be NULL to skip the check
  * (not recommended; callers should pass the pinned value). */
-static int gpt2_load_weights(Gpt2Weights *w, const char *safetensors_path, const char *expected_sha256) {
+/* Additive loader for GPT-2-family trunks with the same geometry. The caller
+ * must execute exactly nlayer blocks. Existing 12-layer callers retain the
+ * wrapper below; this does not make arbitrary model families compatible. */
+static int gpt2_load_weights_layers(Gpt2Weights *w, const char *safetensors_path, const char *expected_sha256, int nlayer) {
+    if (nlayer < 1 || nlayer > GPT2_NLAYER) return -1;
     if (expected_sha256) {
         char actual[65];
         if (sha256_file(safetensors_path, actual)) return -1;
@@ -106,7 +110,7 @@ static int gpt2_load_weights(Gpt2Weights *w, const char *safetensors_path, const
     uint64_t sVM[2] = {GPT2_VOCAB, GPT2_M}, sPM[2] = {GPT2_MAXPOS, GPT2_M};
     int ok = 0;
     char name[64];
-    for (int L = 0; L < GPT2_NLAYER; L++) {
+    for (int L = 0; L < nlayer; L++) {
         Gpt2BlockWeights *bw = &w->blk[L];
         float ln1_w[GPT2_M], ln1_b[GPT2_M], ln2_w[GPT2_M], ln2_b[GPT2_M];
         snprintf(name, sizeof name, "h.%d.ln_1.weight", L); ok |= st_read_f32(&st, name, s1, 1, ln1_w);
@@ -139,6 +143,10 @@ static int gpt2_load_weights(Gpt2Weights *w, const char *safetensors_path, const
     memset(w->lnf_b_folded, 0, sizeof w->lnf_b_folded);
     gpt2_fold_layernorm_affine(lnf_w, lnf_b, w->lnf_w_folded, w->lnf_b_folded, GPT2_M, GPT2_VOCAB);
     return 0;
+}
+
+static int gpt2_load_weights(Gpt2Weights *w, const char *safetensors_path, const char *expected_sha256) {
+    return gpt2_load_weights_layers(w, safetensors_path, expected_sha256, GPT2_NLAYER);
 }
 
 static void gpt2_layernorm_raw(const float *x, int n, int dim, float *out) {
