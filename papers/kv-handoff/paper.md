@@ -1,8 +1,5 @@
 # From Transferred Cache to Usable Memory: A Small-Model Case Study with Native KV-Handoff Reproduction
 
-Research manuscript, version 0.1 — 13 September 2026.
-Author names and affiliations: to be supplied by the project owner before submission.
-
 ## Abstract
 
 Transferring a language model's key–value cache can change another model's predictions without establishing that the receiver can use the transferred information. We report a retrospective case study of frozen GPT-2 and DistilGPT2 connected by task-specific rank-8 residual KV adapters with 147,456 trainable parameters. An order-dependent binary classification checkpoint achieves 31/32 correct predictions on its original development set; an opposite-class cache replacement reduces accuracy to 1/32. A separately trained five-row lookup adapter reports 20/32 exact two-token answers on a held-out test split, compared with 1/32 under document replacement and 1/32 under binding permutation. Conversely, an abstract two-key task has zero top-1 accuracy despite a positive likelihood contrast, and a recombined XOR task reaches only 14/32 correct predictions. These experiments do not isolate the cause of the between-task differences. We additionally reproduce the saved ordering checkpoint in an independent native execution path: selected sender caches, adapted caches, and receiver logits agree with a CPU reference within a fixed numerical tolerance on all 32 cases, including the same classification error. The report contributes a bounded, inspectable reproduction and an artifact-linked account of successes and limitations, not a new cache-transfer method, evidence of general reasoning, or a demonstrated efficiency advantage.
