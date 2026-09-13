@@ -462,5 +462,20 @@
         "verdict": "KV_COMPOSITIONALITY_XOR_NOT_SUPPORTED"
       }
     }
+  },
+  "xor_design_audit": {
+    "constant_one_correct": 32,
+    "count": 32,
+    "half_swap_labels": {
+      "1": 32
+    },
+    "original_combinations": {
+      "0,0": 8,
+      "0,1": 8,
+      "1,0": 8,
+      "1,1": 8
+    },
+    "scope": "data-design diagnosis; historical 14/32 score not rerun",
+    "verdict": "INVALID_AS_BALANCED_COMPOSITION_TEST"
   }
 }

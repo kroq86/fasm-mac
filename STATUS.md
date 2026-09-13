@@ -45,6 +45,20 @@ it does not rerun training or reconstruct statistical intervals. Author details
 and submission-format export remain open. No new experiment was launched for
 the manuscript, and it has not been submitted to arXiv.
 
+## XOR evaluation correction — 2026-09-13
+
+The article's data-only audit finds that fixed combo order plus next-document
+half swapping produces 32 class-1 XOR targets (16 pairs each of 0,1 and 1,0).
+A constant-one baseline scores 32/32. The stored 14/32 score remains unchanged,
+but its interpretation as a clean negative balanced-composition test is
+**INVALID**; compositional generalization remains unresolved. This supersedes
+historical negative-verdict prose below without altering original result JSON.
+`papers/kv-handoff/check_xor_design.py` reproduces the defect without training
+or inference; the article ledger checks it too. Ordering/native and lookup
+results are unaffected. No fourth/new training or repaired evaluation is authorized
+by this correction. The ordering ablation replay has 20 fields named accuracy,
+not the previously stated 22.
+
 ## One active direction
 
 The active engineering direction is an inspectable native decoder runtime,

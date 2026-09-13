@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from check_xor_design import diagnose
 
 ROOT = Path(__file__).resolve().parents[2]
 PREFIX = 'scratchpad/gpt2_distilgpt2_latent_bridge/'
@@ -44,6 +45,7 @@ def ledger():
     if expected not in log or 'native KV handoff gate passed' not in log:
         raise ValueError('native evidence differs from manuscript result')
     result['native_summary'] = expected
+    result['xor_design_audit'] = diagnose()
     return result
 
 if __name__ == '__main__':

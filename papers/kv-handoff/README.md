@@ -22,6 +22,13 @@ unsupported or untested claims without turning the exploratory inventory into
 a sequence of established capabilities. Scale/noise/weak-conflict measurements
 are included in the source ledger; no new experiments were run for this revision.
 
+Correction: the historical XOR `half_swap` design produces 32 class-1 targets.
+The 14/32 score is preserved, but is not a clean negative result from a balanced
+composition test. Run `python3 papers/kv-handoff/check_xor_design.py` to reproduce
+this data-only diagnosis using the original selection/pairing functions, without
+torch, inference or training. The ledger also runs this diagnostic. Historical
+result verdict strings remain verbatim evidence, not the corrected interpretation.
+
 ## Reproduce the integrated checkpoint
 
 ```sh
