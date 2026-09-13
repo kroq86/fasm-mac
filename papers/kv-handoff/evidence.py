@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 PREFIX = 'scratchpad/gpt2_distilgpt2_latent_bridge/'
 SOURCES = {
     'ordering': ('phase1_kv_cache_minigunpoint_32token_checkpoint_result.json', ['dev', 'rank', 'seed', 'epochs_run', 'trainable_parameter_count', 'verdict']),
-    'ablations': ('phase1_kv_cache_minigunpoint_32token_ablations_result.json', ['baseline_correct', 'baseline_shuffled_document', 'k_vs_v', 'cross_layer', 'head_alignment', 'persistence_delay']),
+    'ablations': ('phase1_kv_cache_minigunpoint_32token_ablations_result.json', ['baseline_correct', 'baseline_shuffled_document', 'k_vs_v', 'cross_layer', 'head_alignment', 'persistence_delay', 'scale_mismatch', 'noise_robustness', 'receiver_context_conflict']),
     'lookup': ('phase1_kv_cache_sql_lookup_binding_result.json', ['test', 'train_docs', 'dev_docs', 'test_docs', 'rank', 'seed', 'lr', 'epochs_run', 'trainable_parameter_count', 'verdict']),
     'two_key': ('phase1_kv_cache_multifact_2key_batched_result.json', ['dev', 'epochs_run', 'seed', 'verdict']),
     'xor': ('phase1_kv_cache_compositionality_32token_result.json', ['dev', 'epochs_run', 'best_dev_acc_epoch', 'seed', 'verdict']),

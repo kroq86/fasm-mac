@@ -10,7 +10,7 @@ The engineering question is straightforward: can a sender compute a representati
 
 Three claims must remain distinct. First, a cache adapter may be executable. Second, its output may change the receiver's likelihoods or answers. Third, those changes may enable correct use of sender-private information. Neither of the first two claims entails the third. Moreover, successful retrieval of one association does not establish compositional use of multiple associations.
 
-This report studies these distinctions in one closely related model pair. It has three concrete outputs: an artifact-linked account of task-dependent outcomes, intervention results for a saved ordering checkpoint, and a native end-to-end reproduction of that checkpoint. The native experiment verifies implementation fidelity; it does not supply a new test population or turn historical development results into independent confirmation.
+The central thesis is that a distributional effect, correct use of transferred information, and compositional use of that information are distinct evaluation criteria. In this closely related model pair, an observed likelihood effect can coexist with zero correct answers, while successful retrieval in one experiment does not establish compositional use in another. The experiments do not identify a universal ordering of task difficulty or isolate the cause of their differences. The native reproduction makes one positive checkpoint inspectable; it is supporting implementation evidence, not a second claim about model capability or a new test population.
 
 The study is retrospective. Experiments were developed sequentially, with changes to datasets and optimization settings during the research process. We preserve their individual evaluation boundaries rather than describe the entire sequence as one preregistered benchmark. No new training was performed to prepare this report.
 
@@ -44,6 +44,8 @@ The receiver starts with the adapted prefix cache and processes its own query at
 
 We distinguish task accuracy, content-specific likelihood effects, and implementation agreement. For lookup, per-document NLL is the mean negative log probability across the two target tokens. The reported exact score requires both teacher-forced next-token argmax predictions to match. Earlier target tokens are supplied when scoring later ones; the result is not a separately executed free-running generation benchmark. Causal shifting prevents the token being scored from being its own input at that prediction position.
 
+This distinction should not understate the exact-match metric: for a deterministic causal decoder with identical numerics and tie-breaking, if every teacher-forced argmax matches the target, greedy decoding follows the same target prefix by induction. Conversely, a first greedy error makes exact match fail. Thus the all-token criterion corresponds to greedy exact match over the fixed target length under those assumptions, unlike mean token accuracy or NLL. It does not verify a separate cached-generation implementation, stopping behavior, or continuation beyond the target; those were not run for lookup.
+
 The document-level paired contrast is NLL(control) − NLL(correct). A positive contrast favors correctly paired memory. The lookup script resamples these paired document differences 10,000 times and reports empirical 95% endpoints. These intervals concern NLL, not accuracy differences. They condition on one fitted adapter and one small split; they do not measure training-seed uncertainty. Multiple exploratory comparisons were performed without a study-wide multiplicity correction.
 
 The controls answer different questions:
@@ -57,6 +59,16 @@ The controls answer different questions:
 An exact classical parser/counting procedure given the original input is the appropriate functional baseline for these synthetic tasks. No superior capability over that baseline is claimed. Raw-context transmission and receiver re-prefill are also essential efficiency baselines, but have not been measured here. Degraded-cache controls are mechanism tests, not substitutes for those competitors.
 
 ## 5. Results
+
+The table separates experimental units and evaluation roles. Source labels refer to entries in `evidence.json`; each entry records the original path and hash. Distinct adapters must not be treated as one jointly capable system.
+
+| Experiment / adapter | Evaluation population | Main measurement | Relevant control | Reproduction status | Supported interpretation |
+| --- | --- | --- | --- | --- | --- |
+| Ordering / saved ordering adapter | 32 original dev sequences | 31/32 class predictions | Opposite-class cache 1/32; shuffled input positions 17/32 | Saved weights; inference replay and native differential | Task information and input order affect this selected checkpoint |
+| Lookup / separately trained lookup adapter | 32 held-out test documents | 20/32 exact two-token targets | Wrong binding 1/32; changed query 23/32 | Stored source/result only; fitted weights not saved | Name-specific use in this setting; not same-checkpoint replay |
+| Abstract two-key / separately trained two-key adapter | Original dev evaluation | Zero top-1; positive pairing NLL contrast | Wrong-key contrast includes zero | Stored source/result; not replayed for this report | Likelihood effect without demonstrated usable recall |
+| XOR / separately trained XOR adapter | 32 original dev inputs and 32 recombined inputs | 22/32 original; 14/32 recombined | Half-swap interval includes chance | Stored source/result; not replayed for this report | No supported recombination generalization in this regime |
+| Native reproduction / same saved ordering adapter | Same 32 original dev sequences | 32/32 predictions agree with oracle | All selected/adapted caches and logits checked | Runnable native artifact | Implementation fidelity, not additional independent accuracy evidence |
 
 ### 5.1 Order-dependent classification and checkpoint replay
 
@@ -79,6 +91,16 @@ K/V swaps show a larger degradation from wrong values in this particular experim
 
 The 32-token delay preserves accuracy but is a fixed-filler proxy, not autonomous long-horizon generation. No retention curve or interference threshold follows. A fresh inference-only replay reproduces all 22 historical accuracy fields; floating-point summaries differ slightly. The replay is not bit-identical to the historical MPS result.
 
+Additional local sensitivity checks on that same development set are retained rather than promoted to general robustness claims:
+
+| Intervention on the saved ordering adapter | Result |
+| --- | --- |
+| Scale both adapted K and V by 0.5 / 1 / 2 | 31/32 / 31/32 / 30/32 correct |
+| Add Gaussian noise with standard deviation 0.1 times each cache tensor's standard deviation | 31/32 correct for the tested draw |
+| Use the tested weak conflicting query | 31/32 correct; prediction flip rate 0 |
+
+These are a few fixed interventions, not a sweep over failure thresholds, noise seeds, or adversarial prompts. Unchanged accuracy is not proof of equivalence; in particular, scaling by two changes one classification.
+
 ### 5.2 Five-row lookup: a positive but separately trained result
 
 The lookup sender receives a five-row name-to-ID table with shuffled row order. Names in the actual artifact are Bob, Alice, Ivan, Lena, and Anna. IDs are selected to have two target tokens. The receiver is asked for one name's ID. The script uses 64 training, 32 development, and 32 test documents; it selects the adapter on development loss before evaluating test. The stored run uses rank 8, Adam learning rate 0.01, seed 20260904, and stops after 80 epochs.
@@ -100,6 +122,8 @@ Together, these results support usable name-specific information in that control
 An abstract two-key experiment reports zero top-1 accuracy even with correct memory. Its correct-cache NLL is 6.076248, versus 6.263900 with a different document. The small pairing contrast has interval [0.122524, 0.256115], but the wrong-key contrast spans zero, [−0.315573, 0.311536]. Thus a statistically detectable likelihood effect does not establish usable retrieval. The failure also does not isolate a specific addressing defect because correct-condition recall itself fails.
 
 A separately trained XOR composition experiment reports 22/32 on its original development inputs and 14/32 on recombined halves scored against the resulting XOR label. Its half-swap accuracy interval is [0.28125, 0.625], including chance. The stored run uses 800 epochs and development-accuracy selection; the best recorded checkpoint is at epoch 180. We report no supported compositional generalization in this regime, not an architectural impossibility.
+
+The half-swap intervention splices halves of the original symbol sequences and re-encodes the complete new sequence with the sender. It does not concatenate independently computed KV caches; cache composability is untested. For XOR, the separate position-shuffle NLL contrast has interval [−0.464881, 3.600663], crossing zero. The clearer ordering-task shuffle result therefore cannot be attributed to XOR as well. Neither shuffle establishes exact preservation of positional representations.
 
 Lookup success and abstract two-key failure are not contradictory measurements of an identical condition. Their tasks and training procedures differ. The available record does not isolate which difference causes the outcome. Similarly, changes to optimization regimes elsewhere in the project cannot retroactively invalidate or repair these experiments without new controlled comparisons.
 
@@ -131,7 +155,33 @@ We therefore separate three conclusions. The ordering bridge is implemented and 
 
 In this GPT-2-to-DistilGPT2 case study, transferred caches can support order-dependent classification and, with a different trained adapter, selective lookup. Those successes coexist with unusable two-key recall and unsupported recombined XOR performance. The causal explanation of the between-task variation is unresolved. A native reconstruction reproduces one saved ordering adapter through intermediate caches and final logits without retraining. The resulting artifact provides a concrete basis for checking one learned channel; it does not collapse mechanism, generalization, and efficiency into a single success claim.
 
-## Artifact appendix
+## Appendix A. Evidence map and boundaries
+
+This map replaces a single sequence of checkmarks such as “capacity -> addressing -> composition.” Those labels mix different constructs and experiments. **Observed** denotes a measurement in the specified setting, **not established** denotes an inference the evidence does not support, and **not tested here** denotes a missing controlled measurement in the report's evidence set. It is not a new experimental verdict or a complete audit of every historical spike.
+
+| Question | Evidence and boundary |
+| --- | --- |
+| Content-specific use | Observed in ordering and stored lookup; abstract two-key shows a smaller likelihood contrast without usable answers. Not a universal result across all adapters. |
+| Addressing / binding / selective retrieval | Lookup supports name-specific retrieval under binding and query interventions. Failed two-key recall does not isolate an addressing defect. These are different conditions, not a logical contradiction. |
+| Global versus local information | Both a global classification and one local lookup experiment succeed. The cause of between-experiment differences is not isolated. |
+| Value compatibility / query–key alignment | Wrong-V replacement hurts ordering more than wrong-K replacement. This is intervention sensitivity, not a measured fraction of information in V or an attention-score alignment analysis. |
+| Position / order | Input permutation affects ordering; the XOR position-shuffle NLL interval includes zero. Exact position preservation is not established. |
+| Layer participation / partial cache | Tested first-layer, last-layer and first-half-layer configurations underperform the full ordering interface. Not exhaustive leave-one-out tests; no retrained reduced interface. “All six individually necessary” is unsupported. |
+| Head participation / redundancy | The tested first-half-head mask retains accuracy. No general head correspondence, rank, or compression conclusion follows. |
+| Scale / noise / conflict | Local checks are reported in Section 5.1. No equivalence test, robustness boundary, or strong contradiction-handling result. |
+| Persistence | Fixed filler delay preserves development accuracy. Autonomous generation, long-horizon retention curves and interference limits are not established. |
+| Composition / cache merging | XOR recombination is unsupported in its tested regime. Ready-made cache concatenation, multiple senders and incremental updates are not tested here. |
+| Bandwidth / capacity | Input length and successful labels are not information-theoretic capacity measurements. Neither 32 symbols nor a five-row table implies complete recovery of all input information. |
+| Task dependence / evaluation sensitivity | Heterogeneous results are observed, but tasks, optimization and scoring differ. No matched factorial experiment identifies naturalness, semantic complexity or instrument sensitivity as the cause. |
+| Generalization | Lookup has a held-out document split and a secondary familiar-name query. Independent ordering test, new template families and training-seed replication remain absent. |
+| Optimization / sample or adapter complexity | No matched optimization, data-size or adapter-capacity study is included here. Earlier hidden-state-injection rungs must not be pooled with these KV experiments as one capacity curve. No universal optimization fix is claimed. |
+| Geometry / precision | One fixed 12-to-6 layer selection is exercised, with equal head geometry and related tokenizers. Alternative mappings, unequal head widths/counts, RoPE transfer, FP16 dependence and unrelated model families are not tested here. |
+| Causal necessity / wrong memory | Chosen cache replacements affect outputs and pairing scores. This does not prove every component necessary or establish calibrated rejection of wrong memory. |
+| Efficiency / deployment | Native agreement is tested. Matched latency, peak-memory, communication savings and precision/compression tradeoffs are not measured. |
+
+Single-fact transfer and earlier scalar/per-channel/dense hidden-state experiments belong to the wider exploratory history, not the quantitative evidence set of this manuscript. We do not infer their final status from the supplied narrative inventory or silently fold them into a KV-adapter hierarchy. The source ledger intentionally identifies the experiments supporting this report rather than presenting the entire repository as a single controlled study.
+
+## Appendix B. Artifact record
 
 The accompanying `evidence.py` prints or checks `evidence.json`, extracting values from the repository's original result files and recording SHA-256 hashes. This checks manuscript-source consistency; it does not rerun training or recompute confidence intervals. `README.md` gives the native reproduction command and submission-readiness limitations. Main native source revision: [1453cbd2](https://github.com/kroq86/fasm-mac/commit/1453cbd2).
 

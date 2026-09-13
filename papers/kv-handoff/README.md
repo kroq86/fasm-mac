@@ -16,6 +16,12 @@ hashes, plus code/checkpoint identity. A passed check does not validate the
 experimental design or recompute bootstrap intervals. The manuscript identifies
 original-dev, stored-test, and native-reproduction evidence separately.
 
+The manuscript's experiment summary table separates adapters and evaluation
+populations. Appendix A maps the broader research questions to measured,
+unsupported or untested claims without turning the exploratory inventory into
+a sequence of established capabilities. Scale/noise/weak-conflict measurements
+are included in the source ledger; no new experiments were run for this revision.
+
 ## Reproduce the integrated checkpoint
 
 ```sh
