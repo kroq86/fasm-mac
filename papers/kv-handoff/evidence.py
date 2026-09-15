@@ -26,7 +26,11 @@ SOURCES = {
     'amortized_latency': ('phase1_kv_cache_minigunpoint_32token_amortized_latency_threads1_batch32_result.json', ['method', 'threads', 'batch_size', 'fixed_cost_sender_plus_adapter', 'marginal_cost_cache_query', 'marginal_cost_reprefill', 'breakeven_query_count', 'totals_by_query_count']),
     'amortized_latency_robustness': ('phase1_kv_cache_minigunpoint_32token_amortized_latency_robustness_result.json', ['configs', 'breakeven_range', 'n1_cache_transfer_faster_in_any_config']),
     'amortized_latency_scenario_matrix': ('phase1_kv_cache_minigunpoint_32token_amortized_latency_scenario_matrix_result.json', ['matrix']),
+    'lookup_multiquery_latency': ('phase1_kv_cache_sql_lookup_binding_multiquery_latency_result.json', ['method', 'names', 'repeats', 'threads', 'fixed_cost_sender_plus_adapter', 'marginal_cost_cache_query', 'marginal_cost_reprefill', 'breakeven_query_count', 'sunk_cost_speedup_x']),
+    'lookup_multiquery_latency_threadsdefault': ('phase1_kv_cache_sql_lookup_binding_multiquery_latency_threadsdefault_result.json', ['method', 'names', 'repeats', 'threads', 'fixed_cost_sender_plus_adapter', 'marginal_cost_cache_query', 'marginal_cost_reprefill', 'breakeven_query_count', 'sunk_cost_speedup_x']),
 }
+NATIVE_LATENCY_FIELDS = ['host_environment', 'method', 'repeats', 'sequence', 'via_checked_launcher', 'via_direct_binary']
+NATIVE_LATENCY_PATH = 'scratchpad/kv_transfer_audit_20260913/native_kv_handoff_latency_result.json'
 
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -38,6 +42,12 @@ def ledger():
         path = ROOT / relative
         data = json.loads(path.read_text())
         result['sources'][label] = {'path': relative, 'sha256': sha(path), 'values': {key: data[key] for key in fields}}
+    native_latency_path = ROOT / NATIVE_LATENCY_PATH
+    native_latency_data = json.loads(native_latency_path.read_text())
+    result['sources']['native_latency'] = {
+        'path': NATIVE_LATENCY_PATH, 'sha256': sha(native_latency_path),
+        'values': {key: native_latency_data[key] for key in NATIVE_LATENCY_FIELDS},
+    }
     extras = [
         PREFIX + 'phase1_kv_cache_minigunpoint_32token_bridge.pt',
         PREFIX + 'phase1_kv_cache_minigunpoint_32token.py',
@@ -49,6 +59,7 @@ def ledger():
         PREFIX + 'phase1_kv_cache_minigunpoint_32token_seed_variance.py',
         PREFIX + 'phase1_kv_cache_minigunpoint_32token_length_variation.py',
         PREFIX + 'phase1_kv_cache_minigunpoint_32token_amortized_latency.py',
+        PREFIX + 'phase1_kv_cache_sql_lookup_binding_multiquery_latency.py',
         PREFIX + 'phase1_kv_cache_sql_lookup_binding.py',
         PREFIX + 'phase1_kv_cache_multifact_2key_batched.py',
         PREFIX + 'phase1_kv_cache_compositionality_32token.py',
@@ -56,6 +67,7 @@ def ledger():
         'fasm/spikes/tensor_kv_handoff.c',
         'scripts/prepare_kv_handoff.py',
         'scripts/check_kv_handoff.sh',
+        'scripts/bench_kv_handoff_native_latency.py',
         'papers/kv-handoff/tost_equivalence.py',
         'scratchpad/kv_transfer_audit_20260913/native_gate.log',
     ]

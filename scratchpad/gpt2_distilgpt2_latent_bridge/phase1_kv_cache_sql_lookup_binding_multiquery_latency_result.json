@@ -1,0 +1,33 @@
+{
+  "breakeven_query_count": 3.0402387632878836,
+  "fixed_cost_sender_plus_adapter": {
+    "max_ms": 66.96583307348192,
+    "mean_ms": 51.36476585641503,
+    "median_ms": 55.3850419819355,
+    "min_ms": 36.47095791529864
+  },
+  "marginal_cost_cache_query": {
+    "max_ms": 132.29950005188584,
+    "mean_ms": 20.55845502531156,
+    "median_ms": 16.915749991312623,
+    "min_ms": 14.939875109121203
+  },
+  "marginal_cost_reprefill": {
+    "max_ms": 42.55433310754597,
+    "mean_ms": 32.43275083601475,
+    "median_ms": 35.133083001710474,
+    "min_ms": 21.779750008136034
+  },
+  "mechanism": "lookup_multiquery_amortized_latency",
+  "method": "CPU, single-threaded (unless --threads 0), PyTorch reference environment. A freshly trained lookup adapter (same recipe as the same-seed replay) caches ONE table once; each timed query cycles through a DIFFERENT name from the fixed name pool (distinct downstream sub-questions against the same cached context), not a repeated identical query. Fixed cost = sender prefill of the table + adapter, paid once. Marginal cache-query = one receiver query against the cached table for one name. Marginal re-prefill = receiver alone reprocesses table+query from scratch for that name.",
+  "names": [
+    "Bob",
+    "Alice",
+    "Ivan",
+    "Lena",
+    "Anna"
+  ],
+  "repeats": 50,
+  "sunk_cost_speedup_x": 2.076945037598314,
+  "threads": 1
+}

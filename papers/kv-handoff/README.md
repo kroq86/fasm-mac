@@ -40,7 +40,12 @@ template-family check, a sequence-length check, and a five-seed variance check
 were added in a later revision, all as dedicated
 `phase1_kv_cache_minigunpoint_32token_*.py` scripts running inference-only
 (the variance check trains fresh adapters but reuses the same fixed dev split)
-against the same frozen ordering checkpoint's dataset.
+against the same frozen ordering checkpoint's dataset. A second,
+independent latency/cache-reuse comparison for the lookup task
+(`phase1_kv_cache_sql_lookup_binding_multiquery_latency.py`, distinct queries
+against one cached table, its own freshly trained adapter) and a direct
+timing of the native `tensor-kv-handoff` executable itself
+(`scripts/bench_kv_handoff_native_latency.py`) were added alongside it.
 
 Correction and fix: the historical XOR `half_swap` design paired doc i's half1
 with doc (i+1 mod n)'s half2, which produced 32 class-1 targets. The 14/32
@@ -68,8 +73,16 @@ bash scripts/check_kv_handoff.sh /absolute/path/to/bundle
 ```
 
 See [native preparation and limitations](../../scratchpad/kv_transfer_audit_20260913/NATIVE_HANDOFF.md).
-The large base-model/reference bundle is external, not committed. The ordering
-adapter itself is already tracked. The separate lookup adapter is not saved;
+The large base-model/reference bundle is external, not committed. A later
+revision also timed the native executable directly
+(`scripts/bench_kv_handoff_native_latency.py`, result stored alongside
+`native_gate.log`): roughly 6.7-7.2 s per cold invocation on the arm64 host
+used for this repository, about 10x the PyTorch-reference-environment cache-
+transfer latency in Section 5.1, because the executable is x86-64-only
+(FASM assembly, not portable across ISAs) and runs under Rosetta 2 here,
+re-fingerprinting the ~900 MB external bundle from a cold process every
+call. No arm64 build exists or was attempted. The ordering adapter itself
+is already tracked. The separate lookup adapter is not saved;
 the article's primary lookup table comes from the tracked script/result. A
 later revision reran the unmodified lookup script from scratch (same seed) as
 a checkpoint-replay attempt: the qualitative verdict reproduced, the exact

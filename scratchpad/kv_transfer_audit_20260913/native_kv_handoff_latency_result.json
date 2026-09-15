@@ -1,0 +1,35 @@
+{
+  "bundle_sizes_bytes": {
+    "bridge.safetensors": 591528,
+    "cases.txt": 1184,
+    "merges.txt": 456318,
+    "receiver.safetensors": 327656984,
+    "reference.safetensors": 89077672,
+    "sender.safetensors": 548105171,
+    "vocab.json": 1042301
+  },
+  "host_environment": {
+    "host_arch": "arm64",
+    "cpu": "Apple M1 Pro",
+    "macos_version": "15.7.2",
+    "binary_arch": "x86_64",
+    "note": "The binary is compiled x86_64-only (fasm/spikes/tensor_transformer_executor_f32.asm is genuine x86-64 assembly, not portable across ISAs); on this arm64 host every invocation runs under Rosetta 2 translation. No native arm64 build exists or was attempted; producing one would require rewriting the cached-attention executor in ARM assembly, not a recompilation."
+  },
+  "mechanism": "native_cache_transfer_latency",
+  "method": "Wall-clock timing of repeated native tensor-kv-handoff invocations (cold process each call, no server/persistent state). 'via_checked_launcher' times the full checked Python launcher (scripts/kv_handoff.py), which SHA-256-hashes the entire external bundle on every call. 'via_direct_binary' times the native binary invoked directly with the manifest hashes as arguments, skipping the launcher's redundant re-hash but still subject to the binary's own internal fail-closed fingerprinting of sender/receiver/bridge. No native re-prefill counterpart exists to compare against.",
+  "repeats": 10,
+  "sequence": "AAAAAAAAAAAAAAAABBBBBBBBBBBBBBBB",
+  "via_checked_launcher": {
+    "max_ms": 7793.369166902266,
+    "mean_ms": 7324.580854282249,
+    "median_ms": 7240.849750000052,
+    "min_ms": 7155.227415962145
+  },
+  "via_direct_binary": {
+    "max_ms": 7303.372291964479,
+    "mean_ms": 6801.437945920043,
+    "median_ms": 6697.016917052679,
+    "min_ms": 6628.808374982327
+  },
+  "warmup": 2
+}
