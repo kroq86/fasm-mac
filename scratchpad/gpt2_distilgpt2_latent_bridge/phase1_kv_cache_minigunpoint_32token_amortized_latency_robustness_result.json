@@ -1,0 +1,65 @@
+{
+  "breakeven_range": [
+    1.7262955250905025,
+    6.73296927068861
+  ],
+  "configs": {
+    "threads1_batch1": {
+      "batch_size": 1,
+      "breakeven_query_count": 5.833273893345836,
+      "fixed_cost_median_ms": 45.51970795728266,
+      "marginal_cache_query_median_ms": 15.744874952360988,
+      "marginal_reprefill_median_ms": 23.54833297431469,
+      "n1_cache_transfer_faster": false,
+      "threads": 1
+    },
+    "threads1_batch32": {
+      "batch_size": 32,
+      "breakeven_query_count": 2.0513163118040034,
+      "fixed_cost_median_ms": 590.3988330392167,
+      "marginal_cache_query_median_ms": 39.483292028307915,
+      "marginal_reprefill_median_ms": 327.2979160537943,
+      "n1_cache_transfer_faster": false,
+      "threads": 1
+    },
+    "threads1_batch32_rep2": {
+      "batch_size": 32,
+      "breakeven_query_count": 2.047942326906963,
+      "fixed_cost_median_ms": 611.337749985978,
+      "marginal_cache_query_median_ms": 43.30474999733269,
+      "marginal_reprefill_median_ms": 341.8179170694202,
+      "n1_cache_transfer_faster": false,
+      "threads": 1
+    },
+    "threads1_batch32_rep3": {
+      "batch_size": 32,
+      "breakeven_query_count": 2.030685610460437,
+      "fixed_cost_median_ms": 594.3230419652537,
+      "marginal_cache_query_median_ms": 46.3286250596866,
+      "marginal_reprefill_median_ms": 338.9997499762103,
+      "n1_cache_transfer_faster": false,
+      "threads": 1
+    },
+    "threadsdefault_batch1": {
+      "batch_size": 1,
+      "breakeven_query_count": 6.73296927068861,
+      "fixed_cost_median_ms": 48.25883300509304,
+      "marginal_cache_query_median_ms": 17.897875048220158,
+      "marginal_reprefill_median_ms": 25.065416004508734,
+      "n1_cache_transfer_faster": false,
+      "threads": "default"
+    },
+    "threadsdefault_batch32": {
+      "batch_size": 32,
+      "breakeven_query_count": 1.7262955250905025,
+      "fixed_cost_median_ms": 319.82645799871534,
+      "marginal_cache_query_median_ms": 30.049332999624312,
+      "marginal_reprefill_median_ms": 215.31683404464275,
+      "n1_cache_transfer_faster": false,
+      "threads": "default"
+    }
+  },
+  "kind": "cross-configuration robustness sweep of the multi-query amortized latency check",
+  "n1_cache_transfer_faster_in_any_config": false,
+  "schema": 1
+}

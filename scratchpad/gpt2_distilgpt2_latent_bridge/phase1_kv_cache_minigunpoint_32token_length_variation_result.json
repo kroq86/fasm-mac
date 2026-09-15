@@ -1,0 +1,21 @@
+{
+  "docs_per_length": 32,
+  "length_16": {
+    "accuracy": 0.90625,
+    "nll": 0.38568779826164246
+  },
+  "length_48": {
+    "accuracy": 0.9375,
+    "nll": 0.17003798484802246
+  },
+  "lengths_tested": [
+    16,
+    48
+  ],
+  "mechanism": "sequence_length_robustness_check",
+  "method": "Fresh documents generated at each alternate sequence length under the same majority-rule task definition and generation SEED, scored through the frozen ordering adapter and receiver. Not a substitution on the original dev documents (different length implies different documents). K-range scaled proportionally to preserve the trained 62.5%-87.5% majority margin at each half-length.",
+  "trained_length_32": {
+    "accuracy": 0.96875,
+    "nll": 0.20168131589889526
+  }
+}

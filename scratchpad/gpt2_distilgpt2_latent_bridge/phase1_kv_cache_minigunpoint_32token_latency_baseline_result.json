@@ -1,0 +1,23 @@
+{
+  "batch_size": 32,
+  "cache_transfer_path": {
+    "description": "sender prefill (12 layers) + adapter + receiver query-only forward",
+    "max_ms": 699.4609169196337,
+    "mean_ms": 639.8514475044794,
+    "median_ms": 639.8729170905426,
+    "min_ms": 609.9273330764845
+  },
+  "mechanism": "reprefill_efficiency_baseline",
+  "method": "CPU, single-threaded, PyTorch reference environment (not the native FASM/Accelerate path). Both paths process the same 32 original dev sequences in one batch, timed end-to-end from input tensor to output logits, after 5 warmup calls, over N repeats.",
+  "receiver_reprefill_path": {
+    "description": "receiver alone prefills the full raw sequence + query from scratch, no sender, no adapter",
+    "max_ms": 994.3918749922886,
+    "mean_ms": 368.0042850226164,
+    "median_ms": 354.2874170234427,
+    "min_ms": 344.39866594038904
+  },
+  "repeats": 50,
+  "reprefill_length_tokens": 37,
+  "reprefill_over_cache_transfer_speedup_median": 0.5536840325018955,
+  "sequence_length_tokens": 35
+}

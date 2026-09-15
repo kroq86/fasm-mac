@@ -1,0 +1,63 @@
+{
+  "batch_size": 32,
+  "breakeven_query_count": 1.7262955250905025,
+  "fixed_cost_sender_plus_adapter": {
+    "max_ms": 368.4537500375882,
+    "mean_ms": 327.340004988946,
+    "median_ms": 319.82645799871534,
+    "min_ms": 308.77533298917115
+  },
+  "marginal_cost_cache_query": {
+    "max_ms": 37.66516700852662,
+    "mean_ms": 30.67677503451705,
+    "median_ms": 30.049332999624312,
+    "min_ms": 27.031000005081296
+  },
+  "marginal_cost_reprefill": {
+    "max_ms": 238.0206249654293,
+    "mean_ms": 213.8683116156608,
+    "median_ms": 215.31683404464275,
+    "min_ms": 193.87995800934732
+  },
+  "mechanism": "multi_query_amortized_latency",
+  "method": "CPU, single-threaded, PyTorch reference environment (not the native FASM/Accelerate path). Same 32 original dev sequences, one batch. Fixed cost = sender prefill + adapter, paid once. Marginal cache-query cost = one receiver query-only forward against the already-adapted cache. Marginal re-prefill cost = one full receiver forward over the raw sequence+query from scratch. Break-even N solves fixed + N*marginal_cache = N*marginal_reprefill.",
+  "repeats": 50,
+  "threads": "default",
+  "totals_by_query_count": {
+    "1": {
+      "cache_transfer_faster": false,
+      "cache_transfer_total_ms": 349.87579099833965,
+      "reprefill_total_ms": 215.31683404464275
+    },
+    "10": {
+      "cache_transfer_faster": true,
+      "cache_transfer_total_ms": 620.3197879949585,
+      "reprefill_total_ms": 2153.1683404464275
+    },
+    "100": {
+      "cache_transfer_faster": true,
+      "cache_transfer_total_ms": 3324.7597579611465,
+      "reprefill_total_ms": 21531.683404464275
+    },
+    "2": {
+      "cache_transfer_faster": true,
+      "cache_transfer_total_ms": 379.92512399796396,
+      "reprefill_total_ms": 430.6336680892855
+    },
+    "20": {
+      "cache_transfer_faster": true,
+      "cache_transfer_total_ms": 920.8131179912016,
+      "reprefill_total_ms": 4306.336680892855
+    },
+    "5": {
+      "cache_transfer_faster": true,
+      "cache_transfer_total_ms": 470.0731229968369,
+      "reprefill_total_ms": 1076.5841702232137
+    },
+    "50": {
+      "cache_transfer_faster": true,
+      "cache_transfer_total_ms": 1822.293107979931,
+      "reprefill_total_ms": 10765.841702232137
+    }
+  }
+}

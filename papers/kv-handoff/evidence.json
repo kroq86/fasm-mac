@@ -2,10 +2,18 @@
   "files": {
     "fasm/spikes/tensor_gpt2_handoff.h": "ecd4274342ae5863a2c90d50cb6b884af95ef5a3339d32a3215b20a53a890f89",
     "fasm/spikes/tensor_kv_handoff.c": "e473e288c20cd2efe5e3f75a818a7597fefb788c8bcae442334f5d5dbc7adee6",
-    "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_compositionality_32token.py": "dec73f67834844396fa89a1180dbcb6c241f7b5407fc0e54584db7d3ed92bddd",
+    "papers/kv-handoff/tost_equivalence.py": "6f7ee6abba7666ba8986dd755c2931670aaf9bb1cacc4d3a2cdca0e16d6b416d",
+    "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_compositionality_32token.py": "41662bb5aedc9832808fadece9f763b8b6d37445c7fa02d4c9a361e95d06d05e",
     "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_minigunpoint_32token.py": "93b3f1524c5bb55128d11c7211bc58c96d7211d721e0bf2cae8f66e7c97e721d",
     "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_minigunpoint_32token_ablations.py": "4e7d7ff0098d992d7c41f56f648824693910ba9e4d8da22587301d35889dc8b1",
+    "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_minigunpoint_32token_amortized_latency.py": "c3bd2f860c955ba12b3231e6db1b3be43e3b356130df387740df5677b799fb75",
+    "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_minigunpoint_32token_attention_cosine.py": "56c03177ff28ebb4643e531e1e3ce650b097813c3fa9878d18096cabb4f32709",
     "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_minigunpoint_32token_bridge.pt": "dd7ddbdbc68503be5257313335fd21dce34c35ba66b16429cfa173eafbca7f7f",
+    "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_minigunpoint_32token_latency_baseline.py": "75d5dd4f30b8035a92014b36c6b5b5ba642be10f50637d46cff5a16d782f874c",
+    "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_minigunpoint_32token_length_variation.py": "70ffd8cc28cd719c48ba28ac274495222b2928b91571f4ac2b668652976c3d8c",
+    "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_minigunpoint_32token_moment_matched.py": "9293aa2c5ef7f8b9186c6bb5195006d671967edf62d9c207c58121c274ca906a",
+    "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_minigunpoint_32token_seed_variance.py": "97efefdb72cd515a420311b0f329a994814549349726826d1fdd2835ff5c7125",
+    "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_minigunpoint_32token_template_family.py": "8123e2b5fbdca0daddd5686699d7bab4e878471d5f80042bcff6fefae2ec805e",
     "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_multifact_2key_batched.py": "d1922bd5ba753aac67ecae6b2c96b5f97dad47fa65f55156612d42371fdf822d",
     "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_sql_lookup_binding.py": "4e5e2c34e557372ae1263865dc430fee6fa2f1936134a802d280842a52a17345",
     "scratchpad/kv_transfer_audit_20260913/native_gate.log": "fe8b7bc5a8d809eb217042c91021654d211f0fee870d2bbce96ab8e3b5f7dbd1",
@@ -199,6 +207,266 @@
         }
       }
     },
+    "amortized_latency": {
+      "path": "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_minigunpoint_32token_amortized_latency_threads1_batch32_result.json",
+      "sha256": "e5cbd79feedd6441b71a8963d77d0b047e520c21d84d377a3e7728638dd7d3cd",
+      "values": {
+        "batch_size": 32,
+        "breakeven_query_count": 2.0513163118040034,
+        "fixed_cost_sender_plus_adapter": {
+          "max_ms": 644.1646250896156,
+          "mean_ms": 593.8240783009678,
+          "median_ms": 590.3988330392167,
+          "min_ms": 561.935874982737
+        },
+        "marginal_cost_cache_query": {
+          "max_ms": 47.091040993109345,
+          "mean_ms": 40.28108837082982,
+          "median_ms": 39.483292028307915,
+          "min_ms": 36.957416916266084
+        },
+        "marginal_cost_reprefill": {
+          "max_ms": 353.2725420081988,
+          "mean_ms": 329.8487524059601,
+          "median_ms": 327.2979160537943,
+          "min_ms": 320.9785409271717
+        },
+        "method": "CPU, single-threaded, PyTorch reference environment (not the native FASM/Accelerate path). Same 32 original dev sequences, one batch. Fixed cost = sender prefill + adapter, paid once. Marginal cache-query cost = one receiver query-only forward against the already-adapted cache. Marginal re-prefill cost = one full receiver forward over the raw sequence+query from scratch. Break-even N solves fixed + N*marginal_cache = N*marginal_reprefill.",
+        "threads": 1,
+        "totals_by_query_count": {
+          "1": {
+            "cache_transfer_faster": false,
+            "cache_transfer_total_ms": 629.8821250675246,
+            "reprefill_total_ms": 327.2979160537943
+          },
+          "10": {
+            "cache_transfer_faster": true,
+            "cache_transfer_total_ms": 985.2317533222958,
+            "reprefill_total_ms": 3272.9791605379432
+          },
+          "100": {
+            "cache_transfer_faster": true,
+            "cache_transfer_total_ms": 4538.728035870008,
+            "reprefill_total_ms": 32729.791605379432
+          },
+          "2": {
+            "cache_transfer_faster": false,
+            "cache_transfer_total_ms": 669.3654170958325,
+            "reprefill_total_ms": 654.5958321075886
+          },
+          "20": {
+            "cache_transfer_faster": true,
+            "cache_transfer_total_ms": 1380.064673605375,
+            "reprefill_total_ms": 6545.9583210758865
+          },
+          "5": {
+            "cache_transfer_faster": true,
+            "cache_transfer_total_ms": 787.8152931807563,
+            "reprefill_total_ms": 1636.4895802689716
+          },
+          "50": {
+            "cache_transfer_faster": true,
+            "cache_transfer_total_ms": 2564.5634344546124,
+            "reprefill_total_ms": 16364.895802689716
+          }
+        }
+      }
+    },
+    "amortized_latency_robustness": {
+      "path": "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_minigunpoint_32token_amortized_latency_robustness_result.json",
+      "sha256": "87a48b25026bab2e88a8c089b2c5b18e77a52343c6657f81aac8bd25b09bdcd6",
+      "values": {
+        "breakeven_range": [
+          1.7262955250905025,
+          6.73296927068861
+        ],
+        "configs": {
+          "threads1_batch1": {
+            "batch_size": 1,
+            "breakeven_query_count": 5.833273893345836,
+            "fixed_cost_median_ms": 45.51970795728266,
+            "marginal_cache_query_median_ms": 15.744874952360988,
+            "marginal_reprefill_median_ms": 23.54833297431469,
+            "n1_cache_transfer_faster": false,
+            "threads": 1
+          },
+          "threads1_batch32": {
+            "batch_size": 32,
+            "breakeven_query_count": 2.0513163118040034,
+            "fixed_cost_median_ms": 590.3988330392167,
+            "marginal_cache_query_median_ms": 39.483292028307915,
+            "marginal_reprefill_median_ms": 327.2979160537943,
+            "n1_cache_transfer_faster": false,
+            "threads": 1
+          },
+          "threads1_batch32_rep2": {
+            "batch_size": 32,
+            "breakeven_query_count": 2.047942326906963,
+            "fixed_cost_median_ms": 611.337749985978,
+            "marginal_cache_query_median_ms": 43.30474999733269,
+            "marginal_reprefill_median_ms": 341.8179170694202,
+            "n1_cache_transfer_faster": false,
+            "threads": 1
+          },
+          "threads1_batch32_rep3": {
+            "batch_size": 32,
+            "breakeven_query_count": 2.030685610460437,
+            "fixed_cost_median_ms": 594.3230419652537,
+            "marginal_cache_query_median_ms": 46.3286250596866,
+            "marginal_reprefill_median_ms": 338.9997499762103,
+            "n1_cache_transfer_faster": false,
+            "threads": 1
+          },
+          "threadsdefault_batch1": {
+            "batch_size": 1,
+            "breakeven_query_count": 6.73296927068861,
+            "fixed_cost_median_ms": 48.25883300509304,
+            "marginal_cache_query_median_ms": 17.897875048220158,
+            "marginal_reprefill_median_ms": 25.065416004508734,
+            "n1_cache_transfer_faster": false,
+            "threads": "default"
+          },
+          "threadsdefault_batch32": {
+            "batch_size": 32,
+            "breakeven_query_count": 1.7262955250905025,
+            "fixed_cost_median_ms": 319.82645799871534,
+            "marginal_cache_query_median_ms": 30.049332999624312,
+            "marginal_reprefill_median_ms": 215.31683404464275,
+            "n1_cache_transfer_faster": false,
+            "threads": "default"
+          }
+        },
+        "n1_cache_transfer_faster_in_any_config": false
+      }
+    },
+    "amortized_latency_scenario_matrix": {
+      "path": "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_minigunpoint_32token_amortized_latency_scenario_matrix_result.json",
+      "sha256": "a9863249d23aa359252488007e926087432042869734855bd515f3312372610c",
+      "values": {
+        "matrix": {
+          "threads=1_batch=1": {
+            "fixed_sender_cost_ms": 45.5,
+            "fresh_cost_scenario_breakeven_N": 5.83,
+            "marginal_cache_query_ms": 15.7,
+            "marginal_reprefill_ms": 23.5,
+            "sunk_cost_scenario_speedup_x": 1.5
+          },
+          "threads=1_batch=32": {
+            "fixed_sender_cost_ms": 590.4,
+            "fresh_cost_scenario_breakeven_N": 2.05,
+            "marginal_cache_query_ms": 39.5,
+            "marginal_reprefill_ms": 327.3,
+            "sunk_cost_scenario_speedup_x": 8.29
+          },
+          "threads=default_batch=1": {
+            "fixed_sender_cost_ms": 48.3,
+            "fresh_cost_scenario_breakeven_N": 6.73,
+            "marginal_cache_query_ms": 17.9,
+            "marginal_reprefill_ms": 25.1,
+            "sunk_cost_scenario_speedup_x": 1.4
+          },
+          "threads=default_batch=32": {
+            "fixed_sender_cost_ms": 319.8,
+            "fresh_cost_scenario_breakeven_N": 1.73,
+            "marginal_cache_query_ms": 30.0,
+            "marginal_reprefill_ms": 215.3,
+            "sunk_cost_scenario_speedup_x": 7.17
+          }
+        }
+      }
+    },
+    "attention_cosine": {
+      "path": "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_minigunpoint_32token_attention_cosine_result.json",
+      "sha256": "ee578e54bb818875c68fa01d9fab894209a6081bea2237326c8715998795fef7",
+      "values": {
+        "accuracy_reference": {
+          "correct": {
+            "accuracy": 0.96875,
+            "nll": 0.2016795426607132
+          },
+          "correct_K_wrong_V": {
+            "accuracy": 0.125,
+            "nll": 3.097538709640503
+          },
+          "source": "matches phase1_kv_cache_minigunpoint_32token_ablations_result.json k_vs_v arm",
+          "wrong_K_correct_V": {
+            "accuracy": 0.875,
+            "nll": 0.3497222661972046
+          }
+        },
+        "attention_output_cosine_to_correct": {
+          "correct_K_wrong_V_mean": 0.8640510638554891,
+          "correct_K_wrong_V_per_layer": [
+            0.5317952036857605,
+            0.9239163994789124,
+            0.9991083741188049,
+            0.7416834831237793,
+            0.998943030834198,
+            0.9888598918914795
+          ],
+          "wrong_K_correct_V_mean": 0.8779396017392477,
+          "wrong_K_correct_V_per_layer": [
+            0.5318138003349304,
+            0.9239533543586731,
+            0.9986987113952637,
+            0.8158287405967712,
+            0.9992890357971191,
+            0.9980539679527283
+          ]
+        },
+        "method": "For each of the 6 receiver layers, attention weights over the imported-cache positions at the final query token (output_attentions=True, eager attention) are contracted with the V used in that condition to give the cache's contribution to the attention output. Cosine similarity is measured per layer between the correct-cache condition and each K/V-swap condition, averaged over batch and heads. Cheng et al. (arXiv:2608.03893) report this measure correlates with cross-model transfer retention where raw regression fit does not; this is a 2-condition qualitative check on one checkpoint, not a many-point correlation study."
+      }
+    },
+    "latency_baseline": {
+      "path": "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_minigunpoint_32token_latency_baseline_result.json",
+      "sha256": "1f4c55925219badcc527217a9e4d7ebbaf31f78ccfbc2d9c774a766907f1a7d7",
+      "values": {
+        "batch_size": 32,
+        "cache_transfer_path": {
+          "description": "sender prefill (12 layers) + adapter + receiver query-only forward",
+          "max_ms": 699.4609169196337,
+          "mean_ms": 639.8514475044794,
+          "median_ms": 639.8729170905426,
+          "min_ms": 609.9273330764845
+        },
+        "method": "CPU, single-threaded, PyTorch reference environment (not the native FASM/Accelerate path). Both paths process the same 32 original dev sequences in one batch, timed end-to-end from input tensor to output logits, after 5 warmup calls, over N repeats.",
+        "receiver_reprefill_path": {
+          "description": "receiver alone prefills the full raw sequence + query from scratch, no sender, no adapter",
+          "max_ms": 994.3918749922886,
+          "mean_ms": 368.0042850226164,
+          "median_ms": 354.2874170234427,
+          "min_ms": 344.39866594038904
+        },
+        "repeats": 50,
+        "reprefill_length_tokens": 37,
+        "reprefill_over_cache_transfer_speedup_median": 0.5536840325018955,
+        "sequence_length_tokens": 35
+      }
+    },
+    "length_variation": {
+      "path": "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_minigunpoint_32token_length_variation_result.json",
+      "sha256": "326ef97cb4ae4d32983ac5dd259d877c47373b60d01b3c13fa51a95860f34b11",
+      "values": {
+        "docs_per_length": 32,
+        "length_16": {
+          "accuracy": 0.90625,
+          "nll": 0.38568779826164246
+        },
+        "length_48": {
+          "accuracy": 0.9375,
+          "nll": 0.17003798484802246
+        },
+        "lengths_tested": [
+          16,
+          48
+        ],
+        "method": "Fresh documents generated at each alternate sequence length under the same majority-rule task definition and generation SEED, scored through the frozen ordering adapter and receiver. Not a substitution on the original dev documents (different length implies different documents). K-range scaled proportionally to preserve the trained 62.5%-87.5% majority margin at each half-length.",
+        "trained_length_32": {
+          "accuracy": 0.96875,
+          "nll": 0.20168131589889526
+        }
+      }
+    },
     "lookup": {
       "path": "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_sql_lookup_binding_result.json",
       "sha256": "d5dbb26337da563f133ef9e4658332838b3daafda1466460e293e62ec7c921bd",
@@ -280,6 +548,112 @@
         "verdict": "SQL_LOOKUP_BINDING_SUPPORTED"
       }
     },
+    "lookup_replay": {
+      "path": "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_sql_lookup_binding_replay_result.json",
+      "sha256": "c7d223fa2c93e735a012ad1c5b0774a40e108e23c8e089c93695e9d0feefac0b",
+      "values": {
+        "correct_beats_shuffled": true,
+        "correct_beats_wrong_binding": true,
+        "epochs_run": 70,
+        "seed": 20260904,
+        "stopped_early": true,
+        "test": {
+          "correct": {
+            "exact_accuracy": 0.5,
+            "nll": 1.2883827686309814,
+            "per_token_top1": [
+              0.59375,
+              0.875
+            ]
+          },
+          "correct_minus_shuffled": {
+            "base_beats_other": true,
+            "bootstrap_95pct_ci": [
+              11.727767474483699,
+              15.52964785695076
+            ],
+            "other_minus_base_nll": 13.697216721717268
+          },
+          "correct_minus_wrong_binding": {
+            "base_beats_other": true,
+            "bootstrap_95pct_ci": [
+              3.972252477891743,
+              6.740408313460648
+            ],
+            "other_minus_base_nll": 5.282704372890294
+          },
+          "correct_minus_zero": {
+            "base_beats_other": true,
+            "bootstrap_95pct_ci": [
+              8.479488521814346,
+              9.777751713991165
+            ],
+            "other_minus_base_nll": 9.174028053879738
+          },
+          "query_name_swap_secondary": {
+            "exact_accuracy": 0.65625,
+            "nll": 0.9268742799758911,
+            "per_token_top1": [
+              0.65625,
+              0.9375
+            ]
+          },
+          "shuffled_document": {
+            "exact_accuracy": 0.03125,
+            "nll": 14.985599517822266,
+            "per_token_top1": [
+              0.0625,
+              0.0625
+            ]
+          },
+          "wrong_binding": {
+            "exact_accuracy": 0.03125,
+            "nll": 6.571086883544922,
+            "per_token_top1": [
+              0.03125,
+              0.875
+            ]
+          },
+          "zero_sender": {
+            "exact_accuracy": 0.0,
+            "nll": 10.462409973144531,
+            "per_token_top1": [
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "verdict": "SQL_LOOKUP_BINDING_SUPPORTED"
+      }
+    },
+    "moment_matched": {
+      "path": "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_minigunpoint_32token_moment_matched_result.json",
+      "sha256": "a7f66f996cb65d595b8125fc9d43e9011d962592b3e9fe1469e6b43e688767a5",
+      "values": {
+        "correct": {
+          "accuracy": 0.96875,
+          "nll": 0.20168131589889526
+        },
+        "moment_matched_minus_correct": {
+          "bootstrap_95pct_ci": [
+            10.241337686777115,
+            12.105944037437439
+          ],
+          "other_minus_base_nll": 11.16745150089264,
+          "worse_than_base": true
+        },
+        "moment_matched_random": {
+          "accuracy": 0.0,
+          "nll": 11.369132995605469
+        },
+        "reference_historical_arms": {
+          "shuffled_document_accuracy": 0.03125,
+          "source": "phase1_kv_cache_minigunpoint_32token_checkpoint_result.json / _ablations_result.json (not recomputed here)",
+          "zero_sender_accuracy": 0.0
+        },
+        "seed": 20260904
+      }
+    },
     "ordering": {
       "path": "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_minigunpoint_32token_checkpoint_result.json",
       "sha256": "22b0eafd0dae2478dbaedb10601d848aea8d6cd2d33d4e1ddecce055486a930b",
@@ -331,6 +705,89 @@
         "seed": 20260904,
         "trainable_parameter_count": 147456,
         "verdict": "MINIGUNPOINT_GLOBAL_PATTERN_TRANSFER_SUPPORTED"
+      }
+    },
+    "seed_variance": {
+      "path": "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_minigunpoint_32token_seed_variance_result.json",
+      "sha256": "605e82192cf229b364bf86fd654c2a549f9ca130feb21ce2e1e1853556a1e94f",
+      "values": {
+        "accuracy_max": 1.0,
+        "accuracy_mean": 0.9875,
+        "accuracy_min": 0.96875,
+        "accuracy_range_in_32ths": [
+          31,
+          32,
+          31,
+          32,
+          32
+        ],
+        "method": "Same fixed train/dev split (generate_pool/select_docs at the module's original SEED, untouched); only the LowRankKVAdapter's random initialization seed varies across runs, each trained for the full 800-epoch budget with identical hyperparameters. The first seed (20260904) matches the historical adapter-init seed.",
+        "runs": [
+          {
+            "accuracy": 0.96875,
+            "adapter_seed": 20260904,
+            "best_dev_loss_at_selection": 0.17089107632637024,
+            "nll": 0.17089106142520905,
+            "wall_seconds": 62.64453411102295
+          },
+          {
+            "accuracy": 1.0,
+            "adapter_seed": 1,
+            "best_dev_loss_at_selection": 0.0006824235897511244,
+            "nll": 0.0006824235315434635,
+            "wall_seconds": 64.09034013748169
+          },
+          {
+            "accuracy": 0.96875,
+            "adapter_seed": 2,
+            "best_dev_loss_at_selection": 0.0445777028799057,
+            "nll": 0.0445777028799057,
+            "wall_seconds": 63.69204878807068
+          },
+          {
+            "accuracy": 1.0,
+            "adapter_seed": 3,
+            "best_dev_loss_at_selection": 1.0712708899518475e-05,
+            "nll": 1.0712708899518475e-05,
+            "wall_seconds": 65.68182921409607
+          },
+          {
+            "accuracy": 1.0,
+            "adapter_seed": 4,
+            "best_dev_loss_at_selection": 0.00014890715829096735,
+            "nll": 0.00014890715829096735,
+            "wall_seconds": 69.05790996551514
+          }
+        ],
+        "seeds": [
+          20260904,
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    },
+    "template_family": {
+      "path": "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_minigunpoint_32token_template_family_result.json",
+      "sha256": "44e0d51a6e97a10352ece83666660742ada803cc733622ec4af1690b6709349b",
+      "values": {
+        "alternate_symbols": {
+          "A": "X",
+          "B": "Y"
+        },
+        "alternate_template": {
+          "accuracy": 0.5,
+          "nll": 0.846010684967041
+        },
+        "trained_symbols": {
+          "class0_majority": "A",
+          "class1_majority": "B"
+        },
+        "trained_template": {
+          "accuracy": 0.96875,
+          "nll": 0.20168131589889526
+        }
       }
     },
     "two_key": {
@@ -461,13 +918,132 @@
         "seed": 20260905,
         "verdict": "KV_COMPOSITIONALITY_XOR_NOT_SUPPORTED"
       }
+    },
+    "xor_repaired": {
+      "path": "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_compositionality_32token_repaired_result.json",
+      "sha256": "c2133d2931f4ef8651f0726dbcad9a5531786cdcd209e189869bf6e09d66f332",
+      "values": {
+        "accuracy_above_chance": true,
+        "beats_half1_only": true,
+        "beats_half2_only": false,
+        "best_dev_acc_epoch": 180,
+        "dev": {
+          "correct": {
+            "accuracy": 0.9375,
+            "nll": 0.23895186185836792
+          },
+          "half1_only": {
+            "accuracy": 0.5625,
+            "nll": 3.058331251144409
+          },
+          "half1_only_minus_correct_bootstrap_95pct_ci": [
+            1.3916735633132191,
+            4.335944759319361
+          ],
+          "half1_only_minus_correct_nll": 2.819379481813982,
+          "half2_only": {
+            "accuracy": 0.84375,
+            "nll": 0.5039786100387573
+          },
+          "half2_only_minus_correct_bootstrap_95pct_ci": [
+            -0.03525694501880139,
+            0.6566073173494829
+          ],
+          "half2_only_minus_correct_nll": 0.2650267737308525,
+          "half_swap": {
+            "accuracy": 0.90625,
+            "nll": 0.19203156232833862
+          },
+          "half_swap_accuracy_bootstrap_95pct_ci": [
+            0.8125,
+            1.0
+          ],
+          "no_prefix": {
+            "accuracy": 0.0,
+            "nll": 5.048248767852783
+          },
+          "no_prefix_minus_correct_bootstrap_95pct_ci": [
+            4.42416612803936,
+            5.026244983077049
+          ],
+          "no_prefix_minus_correct_nll": 4.8092974200844765,
+          "position_shuffle": {
+            "accuracy": 0.5,
+            "nll": 1.8965978622436523
+          },
+          "position_shuffle_minus_correct_bootstrap_95pct_ci": [
+            0.7201828424606447,
+            2.8324117353497513
+          ],
+          "position_shuffle_minus_correct_nll": 1.6576459356749638,
+          "shuffled_document": {
+            "accuracy": 0.0625,
+            "nll": 5.561018466949463
+          },
+          "shuffled_minus_correct_bootstrap_95pct_ci": [
+            3.998623960505938,
+            6.713485984131694
+          ],
+          "shuffled_minus_correct_nll": 5.322066601758706,
+          "zero_sender": {
+            "accuracy": 0.0,
+            "nll": 5.3082594871521
+          },
+          "zero_sender_minus_correct_bootstrap_95pct_ci": [
+            4.59576703608036,
+            5.412309885025024
+          ],
+          "zero_sender_minus_correct_nll": 5.0693071857094765
+        },
+        "epochs_run": 800,
+        "seed": 20260905,
+        "still_improving_at_cutoff": false,
+        "swap_above_chance": true,
+        "verdict": "KV_COMPOSITIONALITY_XOR_NOT_SUPPORTED"
+      }
     }
   },
+  "tost_equivalence": {
+    "baseline_correct_nll": 0.20168131589889526,
+    "conditions": {
+      "noise_plus_10pct_vs_clean": {
+        "bootstrap_95pct_ci": [
+          -0.21380557235897868,
+          0.006003921876981622
+        ],
+        "margin_as_fraction_of_baseline_nll": 1.060115913098075,
+        "other_minus_base_nll": -0.07289541981481307,
+        "smallest_passing_margin_nll": 0.21380557235897868
+      },
+      "scale_0.5_vs_1.0": {
+        "bootstrap_95pct_ci": [
+          -0.16066911016241647,
+          0.08903837569232564
+        ],
+        "margin_as_fraction_of_baseline_nll": 0.7966484621855671,
+        "other_minus_base_nll": -0.005298167929140618,
+        "smallest_passing_margin_nll": 0.16066911016241647
+      },
+      "scale_2.0_vs_1.0": {
+        "bootstrap_95pct_ci": [
+          -0.00785993794852402,
+          0.06991592304984806
+        ],
+        "margin_as_fraction_of_baseline_nll": 0.346665345464612,
+        "other_minus_base_nll": 0.022686746251565637,
+        "smallest_passing_margin_nll": 0.06991592304984806
+      }
+    },
+    "kind": "read-only TOST reframing of stored bootstrap CIs; no new model inference or resampling",
+    "schema": 1
+  },
   "xor_design_audit": {
-    "constant_one_correct": 32,
+    "balanced": true,
+    "best_constant_predictor_correct": 16,
     "count": 32,
     "half_swap_labels": {
-      "1": 32
+      "0": 16,
+      "1": 16
     },
     "original_combinations": {
       "0,0": 8,
@@ -475,7 +1051,7 @@
       "1,0": 8,
       "1,1": 8
     },
-    "scope": "data-design diagnosis; historical 14/32 score not rerun",
-    "verdict": "INVALID_AS_BALANCED_COMPOSITION_TEST"
+    "scope": "data-design diagnosis of the CURRENT tracked pairing; the historical 14/32 half-swap score in evidence.json was produced under an earlier, unbalanced pairing and is not rerun by this script",
+    "verdict": "BALANCED_AS_COMPOSITION_TEST"
   }
 }

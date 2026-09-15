@@ -1,0 +1,26 @@
+{
+  "correct": {
+    "accuracy": 0.96875,
+    "nll": 0.20168131589889526
+  },
+  "mechanism": "moment_matched_random_cache_control",
+  "method": "Gaussian noise per example, per layer, per K/V tensor, matched to that tensor's own per-example mean/std (Cheng et al. arXiv:2608.04893 recipe), applied post-adapter on the same 32 original dev sequences as the checkpointed ablations run.",
+  "moment_matched_minus_correct": {
+    "bootstrap_95pct_ci": [
+      10.241337686777115,
+      12.105944037437439
+    ],
+    "other_minus_base_nll": 11.16745150089264,
+    "worse_than_base": true
+  },
+  "moment_matched_random": {
+    "accuracy": 0.0,
+    "nll": 11.369132995605469
+  },
+  "reference_historical_arms": {
+    "shuffled_document_accuracy": 0.03125,
+    "source": "phase1_kv_cache_minigunpoint_32token_checkpoint_result.json / _ablations_result.json (not recomputed here)",
+    "zero_sender_accuracy": 0.0
+  },
+  "seed": 20260904
+}

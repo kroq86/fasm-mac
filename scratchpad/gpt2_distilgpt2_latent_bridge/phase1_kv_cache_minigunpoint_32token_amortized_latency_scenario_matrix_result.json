@@ -1,0 +1,34 @@
+{
+  "kind": "sunk-cost vs fresh-cost sender accounting, crossed with batch size and thread count",
+  "matrix": {
+    "threads=1_batch=1": {
+      "fixed_sender_cost_ms": 45.5,
+      "fresh_cost_scenario_breakeven_N": 5.83,
+      "marginal_cache_query_ms": 15.7,
+      "marginal_reprefill_ms": 23.5,
+      "sunk_cost_scenario_speedup_x": 1.5
+    },
+    "threads=1_batch=32": {
+      "fixed_sender_cost_ms": 590.4,
+      "fresh_cost_scenario_breakeven_N": 2.05,
+      "marginal_cache_query_ms": 39.5,
+      "marginal_reprefill_ms": 327.3,
+      "sunk_cost_scenario_speedup_x": 8.29
+    },
+    "threads=default_batch=1": {
+      "fixed_sender_cost_ms": 48.3,
+      "fresh_cost_scenario_breakeven_N": 6.73,
+      "marginal_cache_query_ms": 17.9,
+      "marginal_reprefill_ms": 25.1,
+      "sunk_cost_scenario_speedup_x": 1.4
+    },
+    "threads=default_batch=32": {
+      "fixed_sender_cost_ms": 319.8,
+      "fresh_cost_scenario_breakeven_N": 1.73,
+      "marginal_cache_query_ms": 30.0,
+      "marginal_reprefill_ms": 215.3,
+      "sunk_cost_scenario_speedup_x": 7.17
+    }
+  },
+  "schema": 1
+}

@@ -49,6 +49,7 @@ import json
 import math
 import random
 import time
+from collections import Counter
 from pathlib import Path
 
 import torch
@@ -196,16 +197,34 @@ def build_position_shuffle_batch(sender, tokenizer, docs: list[Doc], seed: int):
 
 
 def build_half_swap_batch(sender, tokenizer, docs: list[Doc]):
-    """Splice half1 of doc i with half2 of doc (i+1 mod n); new label is
-    b1(doc_i) XOR b2(doc_{i+1}), a combination not present as a whole
-    document in the pool by construction (independently random halves)."""
+    """Splice half1 of doc i with half2 of doc (i+2 mod n); new label is
+    b1(doc_i) XOR b2(doc_{i+2}), a combination not present as a whole
+    document in the pool by construction (independently random halves).
+
+    The partner offset is not arbitrary: select_docs interleaves dev docs in
+    a fixed period-4 (b1,b2) cycle (0,0),(0,1),(1,1),(1,0) to keep both class
+    and combo balance. A +1 offset (the original, buggy choice) walks that
+    cycle one step at a time, so b1(doc_i) XOR b2(doc_{i+1}) is always 1 --
+    every recombined document lands in class 1, which is what
+    check_xor_design.py diagnosed. +2 lands on a combo two steps around the
+    same cycle, which happens to make the four (b1_i, b2_{i+2}) combinations
+    -- and therefore the recombined label -- exactly balanced. This is a
+    property of the current select_docs ordering, not a general offset
+    guarantee, hence the explicit balance assertion below: if select_docs
+    ever changes its interleaving, this must fail loudly rather than
+    silently reintroduce a one-class evaluation."""
     n = len(docs)
     swapped_docs: list[Doc] = []
     for i in range(n):
         seq_i, b1_i, _, _ = docs[i]
-        seq_j, _, b2_j, _ = docs[(i + 1) % n]
+        seq_j, _, b2_j, _ = docs[(i + 2) % n]
         spliced = seq_i[:HALF] + seq_j[HALF:]
         swapped_docs.append((spliced, b1_i, b2_j, b1_i ^ b2_j))
+    label_counts = Counter(d[3] for d in swapped_docs)
+    assert label_counts == {0: n // 2, 1: n // 2}, (
+        f"half_swap labels unbalanced: {dict(label_counts)} -- "
+        "select_docs ordering changed; recheck the partner offset"
+    )
     return build_batch(sender, tokenizer, swapped_docs)
 
 

@@ -1,0 +1,58 @@
+{
+  "accuracy_max": 1.0,
+  "accuracy_mean": 0.9875,
+  "accuracy_min": 0.96875,
+  "accuracy_range_in_32ths": [
+    31,
+    32,
+    31,
+    32,
+    32
+  ],
+  "mechanism": "training_seed_variance",
+  "method": "Same fixed train/dev split (generate_pool/select_docs at the module's original SEED, untouched); only the LowRankKVAdapter's random initialization seed varies across runs, each trained for the full 800-epoch budget with identical hyperparameters. The first seed (20260904) matches the historical adapter-init seed.",
+  "runs": [
+    {
+      "accuracy": 0.96875,
+      "adapter_seed": 20260904,
+      "best_dev_loss_at_selection": 0.17089107632637024,
+      "nll": 0.17089106142520905,
+      "wall_seconds": 62.64453411102295
+    },
+    {
+      "accuracy": 1.0,
+      "adapter_seed": 1,
+      "best_dev_loss_at_selection": 0.0006824235897511244,
+      "nll": 0.0006824235315434635,
+      "wall_seconds": 64.09034013748169
+    },
+    {
+      "accuracy": 0.96875,
+      "adapter_seed": 2,
+      "best_dev_loss_at_selection": 0.0445777028799057,
+      "nll": 0.0445777028799057,
+      "wall_seconds": 63.69204878807068
+    },
+    {
+      "accuracy": 1.0,
+      "adapter_seed": 3,
+      "best_dev_loss_at_selection": 1.0712708899518475e-05,
+      "nll": 1.0712708899518475e-05,
+      "wall_seconds": 65.68182921409607
+    },
+    {
+      "accuracy": 1.0,
+      "adapter_seed": 4,
+      "best_dev_loss_at_selection": 0.00014890715829096735,
+      "nll": 0.00014890715829096735,
+      "wall_seconds": 69.05790996551514
+    }
+  ],
+  "seeds": [
+    20260904,
+    1,
+    2,
+    3,
+    4
+  ]
+}

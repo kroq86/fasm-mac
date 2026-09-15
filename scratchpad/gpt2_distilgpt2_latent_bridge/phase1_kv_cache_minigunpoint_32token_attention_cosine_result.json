@@ -1,0 +1,39 @@
+{
+  "accuracy_reference": {
+    "correct": {
+      "accuracy": 0.96875,
+      "nll": 0.2016795426607132
+    },
+    "correct_K_wrong_V": {
+      "accuracy": 0.125,
+      "nll": 3.097538709640503
+    },
+    "source": "matches phase1_kv_cache_minigunpoint_32token_ablations_result.json k_vs_v arm",
+    "wrong_K_correct_V": {
+      "accuracy": 0.875,
+      "nll": 0.3497222661972046
+    }
+  },
+  "attention_output_cosine_to_correct": {
+    "correct_K_wrong_V_mean": 0.8640510638554891,
+    "correct_K_wrong_V_per_layer": [
+      0.5317952036857605,
+      0.9239163994789124,
+      0.9991083741188049,
+      0.7416834831237793,
+      0.998943030834198,
+      0.9888598918914795
+    ],
+    "wrong_K_correct_V_mean": 0.8779396017392477,
+    "wrong_K_correct_V_per_layer": [
+      0.5318138003349304,
+      0.9239533543586731,
+      0.9986987113952637,
+      0.8158287405967712,
+      0.9992890357971191,
+      0.9980539679527283
+    ]
+  },
+  "mechanism": "attention_output_cosine_diagnostic",
+  "method": "For each of the 6 receiver layers, attention weights over the imported-cache positions at the final query token (output_attentions=True, eager attention) are contracted with the V used in that condition to give the cache's contribution to the attention output. Cosine similarity is measured per layer between the correct-cache condition and each K/V-swap condition, averaged over batch and heads. Cheng et al. (arXiv:2608.03893) report this measure correlates with cross-model transfer retention where raw regression fit does not; this is a 2-condition qualitative check on one checkpoint, not a many-point correlation study."
+}

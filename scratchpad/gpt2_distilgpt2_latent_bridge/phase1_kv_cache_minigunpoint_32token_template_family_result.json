@@ -1,0 +1,20 @@
+{
+  "alternate_symbols": {
+    "A": "X",
+    "B": "Y"
+  },
+  "alternate_template": {
+    "accuracy": 0.5,
+    "nll": 0.846010684967041
+  },
+  "mechanism": "template_family_robustness_check",
+  "method": "Same 32 original dev documents, same class labels and per-document A/B arrangement, rendered with an alternate single-BPE-token symbol pair (A->X, B->Y) instead of the trained pair (A/B). The frozen sender, adapter, and receiver are otherwise unchanged; no retraining.",
+  "trained_symbols": {
+    "class0_majority": "A",
+    "class1_majority": "B"
+  },
+  "trained_template": {
+    "accuracy": 0.96875,
+    "nll": 0.20168131589889526
+  }
+}

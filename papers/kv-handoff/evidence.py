@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 from check_xor_design import diagnose
+from tost_equivalence import analyze as tost_analyze
 
 ROOT = Path(__file__).resolve().parents[2]
 PREFIX = 'scratchpad/gpt2_distilgpt2_latent_bridge/'
@@ -14,6 +15,17 @@ SOURCES = {
     'lookup': ('phase1_kv_cache_sql_lookup_binding_result.json', ['test', 'train_docs', 'dev_docs', 'test_docs', 'rank', 'seed', 'lr', 'epochs_run', 'trainable_parameter_count', 'verdict']),
     'two_key': ('phase1_kv_cache_multifact_2key_batched_result.json', ['dev', 'epochs_run', 'seed', 'verdict']),
     'xor': ('phase1_kv_cache_compositionality_32token_result.json', ['dev', 'epochs_run', 'best_dev_acc_epoch', 'seed', 'verdict']),
+    'moment_matched': ('phase1_kv_cache_minigunpoint_32token_moment_matched_result.json', ['seed', 'correct', 'moment_matched_random', 'moment_matched_minus_correct', 'reference_historical_arms']),
+    'latency_baseline': ('phase1_kv_cache_minigunpoint_32token_latency_baseline_result.json', ['method', 'repeats', 'batch_size', 'sequence_length_tokens', 'reprefill_length_tokens', 'cache_transfer_path', 'receiver_reprefill_path', 'reprefill_over_cache_transfer_speedup_median']),
+    'attention_cosine': ('phase1_kv_cache_minigunpoint_32token_attention_cosine_result.json', ['method', 'accuracy_reference', 'attention_output_cosine_to_correct']),
+    'xor_repaired': ('phase1_kv_cache_compositionality_32token_repaired_result.json', ['seed', 'epochs_run', 'best_dev_acc_epoch', 'still_improving_at_cutoff', 'accuracy_above_chance', 'beats_half1_only', 'beats_half2_only', 'swap_above_chance', 'verdict', 'dev']),
+    'template_family': ('phase1_kv_cache_minigunpoint_32token_template_family_result.json', ['trained_symbols', 'alternate_symbols', 'trained_template', 'alternate_template']),
+    'lookup_replay': ('phase1_kv_cache_sql_lookup_binding_replay_result.json', ['seed', 'epochs_run', 'stopped_early', 'test', 'correct_beats_shuffled', 'correct_beats_wrong_binding', 'verdict']),
+    'seed_variance': ('phase1_kv_cache_minigunpoint_32token_seed_variance_result.json', ['method', 'seeds', 'runs', 'accuracy_mean', 'accuracy_min', 'accuracy_max', 'accuracy_range_in_32ths']),
+    'length_variation': ('phase1_kv_cache_minigunpoint_32token_length_variation_result.json', ['method', 'lengths_tested', 'docs_per_length', 'trained_length_32', 'length_16', 'length_48']),
+    'amortized_latency': ('phase1_kv_cache_minigunpoint_32token_amortized_latency_threads1_batch32_result.json', ['method', 'threads', 'batch_size', 'fixed_cost_sender_plus_adapter', 'marginal_cost_cache_query', 'marginal_cost_reprefill', 'breakeven_query_count', 'totals_by_query_count']),
+    'amortized_latency_robustness': ('phase1_kv_cache_minigunpoint_32token_amortized_latency_robustness_result.json', ['configs', 'breakeven_range', 'n1_cache_transfer_faster_in_any_config']),
+    'amortized_latency_scenario_matrix': ('phase1_kv_cache_minigunpoint_32token_amortized_latency_scenario_matrix_result.json', ['matrix']),
 }
 
 def sha(path):
@@ -30,6 +42,13 @@ def ledger():
         PREFIX + 'phase1_kv_cache_minigunpoint_32token_bridge.pt',
         PREFIX + 'phase1_kv_cache_minigunpoint_32token.py',
         PREFIX + 'phase1_kv_cache_minigunpoint_32token_ablations.py',
+        PREFIX + 'phase1_kv_cache_minigunpoint_32token_moment_matched.py',
+        PREFIX + 'phase1_kv_cache_minigunpoint_32token_latency_baseline.py',
+        PREFIX + 'phase1_kv_cache_minigunpoint_32token_attention_cosine.py',
+        PREFIX + 'phase1_kv_cache_minigunpoint_32token_template_family.py',
+        PREFIX + 'phase1_kv_cache_minigunpoint_32token_seed_variance.py',
+        PREFIX + 'phase1_kv_cache_minigunpoint_32token_length_variation.py',
+        PREFIX + 'phase1_kv_cache_minigunpoint_32token_amortized_latency.py',
         PREFIX + 'phase1_kv_cache_sql_lookup_binding.py',
         PREFIX + 'phase1_kv_cache_multifact_2key_batched.py',
         PREFIX + 'phase1_kv_cache_compositionality_32token.py',
@@ -37,6 +56,7 @@ def ledger():
         'fasm/spikes/tensor_kv_handoff.c',
         'scripts/prepare_kv_handoff.py',
         'scripts/check_kv_handoff.sh',
+        'papers/kv-handoff/tost_equivalence.py',
         'scratchpad/kv_transfer_audit_20260913/native_gate.log',
     ]
     result['files'] = {path: sha(ROOT / path) for path in extras}
@@ -46,6 +66,7 @@ def ledger():
         raise ValueError('native evidence differs from manuscript result')
     result['native_summary'] = expected
     result['xor_design_audit'] = diagnose()
+    result['tost_equivalence'] = tost_analyze()
     return result
 
 if __name__ == '__main__':
