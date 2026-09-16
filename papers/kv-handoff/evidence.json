@@ -18,7 +18,15 @@
     "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_minigunpoint_32token_template_family.py": "8123e2b5fbdca0daddd5686699d7bab4e878471d5f80042bcff6fefae2ec805e",
     "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_multifact_2key_batched.py": "d1922bd5ba753aac67ecae6b2c96b5f97dad47fa65f55156612d42371fdf822d",
     "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_sql_lookup_binding.py": "4e5e2c34e557372ae1263865dc430fee6fa2f1936134a802d280842a52a17345",
+    "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_sql_lookup_binding_document_form_matrix.py": "8f3e183687de753af206dff4aef4dc06ea64fb65cad005162f6772124c844cfb",
     "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_sql_lookup_binding_multiquery_latency.py": "19cb1bb98eda9eb8c3a44609cf1f6534092d64b29232a6c83db4a3717abd318d",
+    "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_sql_lookup_binding_natural_language.py": "86c0033f89ca91e9b704c73ee18c4786de748d56d7c550d3426872dd88062b9c",
+    "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_sql_lookup_binding_natural_language_lr_sweep.py": "54b89d5ea670f55f31921380eba88042409e1ae98e6efb755809d38d73402994",
+    "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_sql_lookup_binding_natural_language_rank_sweep.py": "f2cd8166a42adf5ded36a93010128e43342a50d95d593162b5a5ab64d95e74f4",
+    "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_sql_lookup_binding_natural_language_seed_variance.py": "597edf06e7250850b3a8f1b669e825cf440ed1fd052db5f71a4ec891ea2fbcf3",
+    "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_sql_lookup_binding_natural_language_tuned_lr_seed_variance.py": "2d0ce48269f8e869d36daf05d1a0287c7914cbc5a3e3753c1d164679fcc0809c",
+    "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_sql_lookup_binding_seed_variance.py": "c543110227ad4c88439378c8de7253f1ff5894ef3b02dc036f4c4d474487f439",
+    "scratchpad/kv_transfer_audit_20260913/native_amortized_latency.c": "3311dd0775f052a60785b4deedbbb1bee9cab88833d7bf510cf39ff566b48c33",
     "scratchpad/kv_transfer_audit_20260913/native_gate.log": "fe8b7bc5a8d809eb217042c91021654d211f0fee870d2bbce96ab8e3b5f7dbd1",
     "scratchpad/kv_transfer_audit_20260913/sha256_isolation_bench.c": "60a1aa70ef19fcbfd086910ceba9c99d0310d6181b9b4b53aa2086b47728ae1a",
     "scripts/bench_kv_handoff_native_latency.py": "0cb76804b540b39b9f8460baa02544c50bc49dbf101bd9cf81776e1f1e59a9a2",
@@ -554,6 +562,296 @@
         "verdict": "SQL_LOOKUP_BINDING_SUPPORTED"
       }
     },
+    "lookup_document_form_matrix": {
+      "path": "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_sql_lookup_binding_document_form_matrix_result.json",
+      "sha256": "deba9d32e4015e08d6770e96f8e28a8c4654e4bd0c42260d826e52333540973d",
+      "values": {
+        "form_token_lengths": {
+          "arrow": 26,
+          "colon": 26,
+          "has_id": 31,
+          "id_is": 36,
+          "is": 26
+        },
+        "forms": {
+          "arrow": {
+            "accuracy_mean": 0.74375,
+            "accuracy_range_in_32ths": [
+              20,
+              26,
+              20,
+              27,
+              26
+            ],
+            "runs": [
+              {
+                "adapter_seed": 20260904,
+                "epochs_run": 70,
+                "exact_accuracy": 0.625,
+                "nll": 0.861282229423523,
+                "verdict": "SUPPORTED",
+                "wall_s": 14.735839128494263
+              },
+              {
+                "adapter_seed": 1,
+                "epochs_run": 95,
+                "exact_accuracy": 0.8125,
+                "nll": 0.41280460357666016,
+                "verdict": "SUPPORTED",
+                "wall_s": 20.288865089416504
+              },
+              {
+                "adapter_seed": 2,
+                "epochs_run": 65,
+                "exact_accuracy": 0.625,
+                "nll": 0.7816253304481506,
+                "verdict": "SUPPORTED",
+                "wall_s": 14.328829288482666
+              },
+              {
+                "adapter_seed": 3,
+                "epochs_run": 125,
+                "exact_accuracy": 0.84375,
+                "nll": 0.3344995379447937,
+                "verdict": "SUPPORTED",
+                "wall_s": 26.567080974578857
+              },
+              {
+                "adapter_seed": 4,
+                "epochs_run": 95,
+                "exact_accuracy": 0.8125,
+                "nll": 0.4802287220954895,
+                "verdict": "SUPPORTED",
+                "wall_s": 21.01172184944153
+              }
+            ],
+            "supported_count": 5
+          },
+          "colon": {
+            "accuracy_mean": 0.68125,
+            "accuracy_range_in_32ths": [
+              18,
+              27,
+              19,
+              21,
+              24
+            ],
+            "runs": [
+              {
+                "adapter_seed": 20260904,
+                "epochs_run": 70,
+                "exact_accuracy": 0.5625,
+                "nll": 1.279465913772583,
+                "verdict": "SUPPORTED",
+                "wall_s": 14.942057132720947
+              },
+              {
+                "adapter_seed": 1,
+                "epochs_run": 85,
+                "exact_accuracy": 0.84375,
+                "nll": 0.3899192214012146,
+                "verdict": "SUPPORTED",
+                "wall_s": 18.729095220565796
+              },
+              {
+                "adapter_seed": 2,
+                "epochs_run": 80,
+                "exact_accuracy": 0.59375,
+                "nll": 0.7999749779701233,
+                "verdict": "SUPPORTED",
+                "wall_s": 16.904022932052612
+              },
+              {
+                "adapter_seed": 3,
+                "epochs_run": 80,
+                "exact_accuracy": 0.65625,
+                "nll": 0.6930053234100342,
+                "verdict": "SUPPORTED",
+                "wall_s": 16.623226165771484
+              },
+              {
+                "adapter_seed": 4,
+                "epochs_run": 85,
+                "exact_accuracy": 0.75,
+                "nll": 0.49109458923339844,
+                "verdict": "SUPPORTED",
+                "wall_s": 17.939375162124634
+              }
+            ],
+            "supported_count": 5
+          },
+          "has_id": {
+            "accuracy_mean": 0.19375,
+            "accuracy_range_in_32ths": [
+              6,
+              7,
+              6,
+              6,
+              6
+            ],
+            "runs": [
+              {
+                "adapter_seed": 20260904,
+                "epochs_run": 65,
+                "exact_accuracy": 0.1875,
+                "nll": 2.1925606727600098,
+                "verdict": "DOC_SPECIFIC",
+                "wall_s": 13.350085973739624
+              },
+              {
+                "adapter_seed": 1,
+                "epochs_run": 65,
+                "exact_accuracy": 0.21875,
+                "nll": 2.165724277496338,
+                "verdict": "DOC_SPECIFIC",
+                "wall_s": 13.924988031387329
+              },
+              {
+                "adapter_seed": 2,
+                "epochs_run": 65,
+                "exact_accuracy": 0.1875,
+                "nll": 2.2294631004333496,
+                "verdict": "DOC_SPECIFIC",
+                "wall_s": 14.504040002822876
+              },
+              {
+                "adapter_seed": 3,
+                "epochs_run": 65,
+                "exact_accuracy": 0.1875,
+                "nll": 2.230478048324585,
+                "verdict": "DOC_SPECIFIC",
+                "wall_s": 14.15623688697815
+              },
+              {
+                "adapter_seed": 4,
+                "epochs_run": 65,
+                "exact_accuracy": 0.1875,
+                "nll": 2.217503070831299,
+                "verdict": "DOC_SPECIFIC",
+                "wall_s": 14.504554986953735
+              }
+            ],
+            "supported_count": 0
+          },
+          "id_is": {
+            "accuracy_mean": 0.225,
+            "accuracy_range_in_32ths": [
+              4,
+              15,
+              2,
+              1,
+              14
+            ],
+            "runs": [
+              {
+                "adapter_seed": 20260904,
+                "epochs_run": 65,
+                "exact_accuracy": 0.125,
+                "nll": 2.1095399856567383,
+                "verdict": "DOC_SPECIFIC",
+                "wall_s": 15.07333493232727
+              },
+              {
+                "adapter_seed": 1,
+                "epochs_run": 90,
+                "exact_accuracy": 0.46875,
+                "nll": 1.6311495304107666,
+                "verdict": "SUPPORTED",
+                "wall_s": 20.652113914489746
+              },
+              {
+                "adapter_seed": 2,
+                "epochs_run": 65,
+                "exact_accuracy": 0.0625,
+                "nll": 2.231395959854126,
+                "verdict": "DOC_SPECIFIC",
+                "wall_s": 14.405582904815674
+              },
+              {
+                "adapter_seed": 3,
+                "epochs_run": 65,
+                "exact_accuracy": 0.03125,
+                "nll": 2.105527877807617,
+                "verdict": "DOC_SPECIFIC",
+                "wall_s": 15.15648603439331
+              },
+              {
+                "adapter_seed": 4,
+                "epochs_run": 90,
+                "exact_accuracy": 0.4375,
+                "nll": 1.9635940790176392,
+                "verdict": "SUPPORTED",
+                "wall_s": 20.469058752059937
+              }
+            ],
+            "supported_count": 2
+          },
+          "is": {
+            "accuracy_mean": 0.7,
+            "accuracy_range_in_32ths": [
+              24,
+              25,
+              22,
+              16,
+              25
+            ],
+            "runs": [
+              {
+                "adapter_seed": 20260904,
+                "epochs_run": 800,
+                "exact_accuracy": 0.75,
+                "nll": 0.787412166595459,
+                "verdict": "SUPPORTED",
+                "wall_s": 171.15109395980835
+              },
+              {
+                "adapter_seed": 1,
+                "epochs_run": 120,
+                "exact_accuracy": 0.78125,
+                "nll": 0.8278239965438843,
+                "verdict": "SUPPORTED",
+                "wall_s": 25.164096117019653
+              },
+              {
+                "adapter_seed": 2,
+                "epochs_run": 110,
+                "exact_accuracy": 0.6875,
+                "nll": 0.8642579317092896,
+                "verdict": "SUPPORTED",
+                "wall_s": 23.845834970474243
+              },
+              {
+                "adapter_seed": 3,
+                "epochs_run": 100,
+                "exact_accuracy": 0.5,
+                "nll": 1.9821515083312988,
+                "verdict": "SUPPORTED",
+                "wall_s": 21.179497957229614
+              },
+              {
+                "adapter_seed": 4,
+                "epochs_run": 130,
+                "exact_accuracy": 0.78125,
+                "nll": 0.7637377977371216,
+                "verdict": "SUPPORTED",
+                "wall_s": 27.9197199344635
+              }
+            ],
+            "supported_count": 5
+          }
+        },
+        "mechanism": "document_form_matrix",
+        "method": "Same fixed train/dev/test split, architecture, and tuned learning rate (1e-3) as lookup_natural_language_tuned_lr_seed_variance; only the per-name-per-row document template changes across five forms, each checked across the same five adapter-init seeds. 'equals' (f'{name}={id}') was tried and dropped: BPE merges '=' with certain digit patterns inconsistently, breaking the constant-token-length invariant build_kv_batch requires across the full id pool.",
+        "seeds": [
+          20260904,
+          1,
+          2,
+          3,
+          4
+        ],
+        "tuned_lr": 0.001
+      }
+    },
     "lookup_multiquery_latency": {
       "path": "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_sql_lookup_binding_multiquery_latency_result.json",
       "sha256": "d7423009105715977f852233aa617a966149bedc39ab79839c5705b7e48ea211",
@@ -624,6 +922,501 @@
         "repeats": 50,
         "sunk_cost_speedup_x": 1.644882616782049,
         "threads": "default"
+      }
+    },
+    "lookup_natural_language": {
+      "path": "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_sql_lookup_binding_natural_language_result.json",
+      "sha256": "a1d0e0761e053e63f329c422eeb0ea2a10e3b32e0a469bd7093dac6c733d4c28",
+      "values": {
+        "correct_beats_shuffled": true,
+        "correct_beats_wrong_binding": true,
+        "epochs_run": 60,
+        "seed": 20260904,
+        "stopped_early": true,
+        "test": {
+          "correct": {
+            "exact_accuracy": 0.25,
+            "nll": 2.098306655883789,
+            "per_token_top1": [
+              0.3125,
+              0.78125
+            ]
+          },
+          "correct_minus_shuffled": {
+            "base_beats_other": true,
+            "bootstrap_95pct_ci": [
+              5.6706548146903515,
+              7.168988764286041
+            ],
+            "other_minus_base_nll": 6.456315118819475
+          },
+          "correct_minus_wrong_binding": {
+            "base_beats_other": true,
+            "bootstrap_95pct_ci": [
+              0.40805198065936565,
+              1.6966520119458437
+            ],
+            "other_minus_base_nll": 1.0579036083072424
+          },
+          "correct_minus_zero": {
+            "base_beats_other": true,
+            "bootstrap_95pct_ci": [
+              7.746340736746788,
+              8.842353284358978
+            ],
+            "other_minus_base_nll": 8.326322793960571
+          },
+          "query_name_swap_secondary": {
+            "exact_accuracy": 0.21875,
+            "nll": 2.4398841857910156,
+            "per_token_top1": [
+              0.21875,
+              0.9375
+            ]
+          },
+          "shuffled_document": {
+            "exact_accuracy": 0.03125,
+            "nll": 8.554621696472168,
+            "per_token_top1": [
+              0.03125,
+              0.03125
+            ]
+          },
+          "wrong_binding": {
+            "exact_accuracy": 0.0625,
+            "nll": 3.15621018409729,
+            "per_token_top1": [
+              0.0625,
+              0.71875
+            ]
+          },
+          "zero_sender": {
+            "exact_accuracy": 0.0,
+            "nll": 10.424629211425781,
+            "per_token_top1": [
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "verdict": "SQL_LOOKUP_BINDING_SUPPORTED"
+      }
+    },
+    "lookup_natural_language_lr_sweep": {
+      "path": "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_sql_lookup_binding_natural_language_lr_sweep_result.json",
+      "sha256": "9c4e39f30606453e09636c7f3fbcbc1d4b61488d3a1f9569a03a988818167e76",
+      "values": {
+        "learning_rates_tested": [
+          0.01,
+          0.003,
+          0.001,
+          0.0003
+        ],
+        "mechanism": "hyperparameter_sweep",
+        "method": "Two seeds (1, 2) known to collapse to 0/32 exact accuracy at the arrow-table recipe's original LR=1e-2 on the natural-language document wording, rank held at 8 (ruled out as the bottleneck separately), learning rate swept over {1e-2, 3e-3, 1e-3, 3e-4}. Same fixed train/dev/test split and natural-language wording as phase1_kv_cache_sql_lookup_binding_natural_language_seed_variance.py throughout.",
+        "runs": [
+          {
+            "adapter_seed": 1,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 75,
+            "exact_accuracy": 0.0,
+            "lr": 0.01,
+            "nll": 6.0996809005737305,
+            "rank": 8,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 16.770813941955566
+          },
+          {
+            "adapter_seed": 1,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 60,
+            "exact_accuracy": 0.125,
+            "lr": 0.003,
+            "nll": 2.016310214996338,
+            "rank": 8,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 13.514241218566895
+          },
+          {
+            "adapter_seed": 1,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 65,
+            "exact_accuracy": 0.21875,
+            "lr": 0.001,
+            "nll": 2.165724277496338,
+            "rank": 8,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 14.373289108276367
+          },
+          {
+            "adapter_seed": 1,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 90,
+            "exact_accuracy": 0.09375,
+            "lr": 0.0003,
+            "nll": 2.2630176544189453,
+            "rank": 8,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 19.189404249191284
+          },
+          {
+            "adapter_seed": 2,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 75,
+            "exact_accuracy": 0.0,
+            "lr": 0.01,
+            "nll": 6.32148551940918,
+            "rank": 8,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 16.81375002861023
+          },
+          {
+            "adapter_seed": 2,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 55,
+            "exact_accuracy": 0.25,
+            "lr": 0.003,
+            "nll": 2.031700372695923,
+            "rank": 8,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 12.51094913482666
+          },
+          {
+            "adapter_seed": 2,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 65,
+            "exact_accuracy": 0.1875,
+            "lr": 0.001,
+            "nll": 2.2294631004333496,
+            "rank": 8,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 14.698024034500122
+          },
+          {
+            "adapter_seed": 2,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 90,
+            "exact_accuracy": 0.15625,
+            "lr": 0.0003,
+            "nll": 2.2916452884674072,
+            "rank": 8,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 20.396283864974976
+          }
+        ],
+        "seeds_tested": [
+          1,
+          2
+        ]
+      }
+    },
+    "lookup_natural_language_rank_sweep": {
+      "path": "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_sql_lookup_binding_natural_language_rank_sweep_result.json",
+      "sha256": "69d09eb5dc15f084bccba816bccf320ced70dbfa26558c761b94ce92331677f5",
+      "values": {
+        "mechanism": "hyperparameter_sweep",
+        "method": "Two seeds (1, 2) known to collapse to 0/32 exact accuracy at the arrow-table recipe's original rank=8, LR=1e-2 on the natural-language document wording, LR held at 1e-2, adapter rank swept over {8, 16, 32, 64}. Same fixed train/dev/test split and natural-language wording as phase1_kv_cache_sql_lookup_binding_natural_language_seed_variance.py throughout.",
+        "ranks_tested": [
+          8,
+          16,
+          32,
+          64
+        ],
+        "runs": [
+          {
+            "adapter_seed": 1,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 75,
+            "exact_accuracy": 0.0,
+            "nll": 6.0996809005737305,
+            "rank": 8,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 15.31550121307373
+          },
+          {
+            "adapter_seed": 1,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 75,
+            "exact_accuracy": 0.0,
+            "nll": 6.3849873542785645,
+            "rank": 16,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 14.795906066894531
+          },
+          {
+            "adapter_seed": 1,
+            "correct_beats_shuffled": false,
+            "correct_beats_wrong_binding": true,
+            "epochs_run": 70,
+            "exact_accuracy": 0.0,
+            "nll": 6.595442771911621,
+            "rank": 32,
+            "stopped_early": true,
+            "verdict": "NO_USABLE_TRANSFER",
+            "wall_seconds": 13.880187273025513
+          },
+          {
+            "adapter_seed": 1,
+            "correct_beats_shuffled": false,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 80,
+            "exact_accuracy": 0.0,
+            "nll": 6.810089111328125,
+            "rank": 64,
+            "stopped_early": true,
+            "verdict": "NO_USABLE_TRANSFER",
+            "wall_seconds": 15.956783056259155
+          },
+          {
+            "adapter_seed": 2,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 75,
+            "exact_accuracy": 0.0,
+            "nll": 6.32148551940918,
+            "rank": 8,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 15.054328918457031
+          },
+          {
+            "adapter_seed": 2,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 70,
+            "exact_accuracy": 0.0,
+            "nll": 6.2397990226745605,
+            "rank": 16,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 13.81287670135498
+          },
+          {
+            "adapter_seed": 2,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 80,
+            "exact_accuracy": 0.0,
+            "nll": 6.978161811828613,
+            "rank": 32,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 15.8162362575531
+          },
+          {
+            "adapter_seed": 2,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 75,
+            "exact_accuracy": 0.0,
+            "nll": 6.742383003234863,
+            "rank": 64,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 15.127383708953857
+          }
+        ],
+        "seeds_tested": [
+          1,
+          2
+        ]
+      }
+    },
+    "lookup_natural_language_seed_variance": {
+      "path": "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_sql_lookup_binding_natural_language_seed_variance_result.json",
+      "sha256": "0ff2463e4fd475e5d33de54e6079f4c49e2460449ce8cba4cb161df00b831a0f",
+      "values": {
+        "accuracy_max": 0.25,
+        "accuracy_mean": 0.08125,
+        "accuracy_min": 0.0,
+        "accuracy_range_in_32ths": [
+          8,
+          0,
+          0,
+          5,
+          0
+        ],
+        "method": "Same fixed train/dev/test split and natural-language document wording (generate_pool/select_docs at the module's original SEED, table_text overridden to natural-language sentences, both untouched across runs); only the LowRankKVAdapter's random initialization seed varies across runs, each trained to the same early-stopping budget with identical hyperparameters. The first seed (20260904) matches phase1_kv_cache_sql_lookup_binding_natural_language_result.json's single-seed run.",
+        "runs": [
+          {
+            "adapter_seed": 20260904,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": true,
+            "epochs_run": 60,
+            "exact_accuracy": 0.25,
+            "nll": 2.098306655883789,
+            "stopped_early": true,
+            "verdict": "SQL_LOOKUP_BINDING_SUPPORTED",
+            "wall_seconds": 12.110368967056274
+          },
+          {
+            "adapter_seed": 1,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 75,
+            "exact_accuracy": 0.0,
+            "nll": 6.0996809005737305,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 15.046783924102783
+          },
+          {
+            "adapter_seed": 2,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 75,
+            "exact_accuracy": 0.0,
+            "nll": 6.32148551940918,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 15.040157318115234
+          },
+          {
+            "adapter_seed": 3,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 65,
+            "exact_accuracy": 0.15625,
+            "nll": 3.004213809967041,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 13.038568258285522
+          },
+          {
+            "adapter_seed": 4,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 65,
+            "exact_accuracy": 0.0,
+            "nll": 6.043787956237793,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 13.081624031066895
+          }
+        ],
+        "seeds": [
+          20260904,
+          1,
+          2,
+          3,
+          4
+        ],
+        "verdicts": [
+          "SQL_LOOKUP_BINDING_SUPPORTED",
+          "DOCUMENT_SPECIFIC_NO_BINDING",
+          "DOCUMENT_SPECIFIC_NO_BINDING",
+          "DOCUMENT_SPECIFIC_NO_BINDING",
+          "DOCUMENT_SPECIFIC_NO_BINDING"
+        ]
+      }
+    },
+    "lookup_natural_language_tuned_lr_seed_variance": {
+      "path": "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_sql_lookup_binding_natural_language_tuned_lr_seed_variance_result.json",
+      "sha256": "a90ee59ca60dcedc3815b360b5f136bb6ca927af172de59ffdfb1013e730127f",
+      "values": {
+        "accuracy_max": 0.21875,
+        "accuracy_mean": 0.19375,
+        "accuracy_min": 0.1875,
+        "accuracy_range_in_32ths": [
+          6,
+          7,
+          6,
+          6,
+          6
+        ],
+        "method": "Identical to lookup_natural_language_seed_variance except the adapter learning rate is 0.001 instead of the arrow-table recipe's original 1e-2, chosen from a small LR sweep (1e-2, 3e-3, 1e-3, 3e-4) on two of that check's failing seeds that found 1e-2 collapses training on the longer, noisier natural-language documents. Same fixed train/dev/test split and natural-language document wording as that check; only the learning rate differs.",
+        "runs": [
+          {
+            "adapter_seed": 20260904,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 65,
+            "exact_accuracy": 0.1875,
+            "nll": 2.1925606727600098,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 13.4979567527771
+          },
+          {
+            "adapter_seed": 1,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 65,
+            "exact_accuracy": 0.21875,
+            "nll": 2.165724277496338,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 13.629374980926514
+          },
+          {
+            "adapter_seed": 2,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 65,
+            "exact_accuracy": 0.1875,
+            "nll": 2.2294631004333496,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 13.465027809143066
+          },
+          {
+            "adapter_seed": 3,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 65,
+            "exact_accuracy": 0.1875,
+            "nll": 2.230478048324585,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 13.546747922897339
+          },
+          {
+            "adapter_seed": 4,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 65,
+            "exact_accuracy": 0.1875,
+            "nll": 2.217503070831299,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 13.272693157196045
+          }
+        ],
+        "seeds": [
+          20260904,
+          1,
+          2,
+          3,
+          4
+        ],
+        "tuned_lr": 0.001,
+        "verdicts": [
+          "DOCUMENT_SPECIFIC_NO_BINDING",
+          "DOCUMENT_SPECIFIC_NO_BINDING",
+          "DOCUMENT_SPECIFIC_NO_BINDING",
+          "DOCUMENT_SPECIFIC_NO_BINDING",
+          "DOCUMENT_SPECIFIC_NO_BINDING"
+        ]
       }
     },
     "lookup_replay": {
@@ -704,6 +1497,94 @@
         "verdict": "SQL_LOOKUP_BINDING_SUPPORTED"
       }
     },
+    "lookup_seed_variance": {
+      "path": "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_sql_lookup_binding_seed_variance_result.json",
+      "sha256": "ee690217df9c53831fa329d032e76677ee96f265159d3c5bd21c0115bfac2dd9",
+      "values": {
+        "accuracy_max": 0.5,
+        "accuracy_mean": 0.3875,
+        "accuracy_min": 0.25,
+        "accuracy_range_in_32ths": [
+          16,
+          9,
+          14,
+          8,
+          15
+        ],
+        "method": "Same fixed train/dev/test split and original arrow-table document wording ('name -> id', unmodified table_text) as the historical and replayed lookup runs; only the LowRankKVAdapter's random initialization seed varies across runs, each trained to the same early-stopping budget with identical hyperparameters. Same protocol as lookup_natural_language_seed_variance, applied to the original wording instead, so the two are a controlled comparison of surface form at matched seeds. The first seed (20260904) matches phase1_kv_cache_sql_lookup_binding_replay_result.json's same-seed retrain (both give 16/32).",
+        "runs": [
+          {
+            "adapter_seed": 20260904,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": true,
+            "epochs_run": 70,
+            "exact_accuracy": 0.5,
+            "nll": 1.2883827686309814,
+            "stopped_early": true,
+            "verdict": "SQL_LOOKUP_BINDING_SUPPORTED",
+            "wall_seconds": 13.828666687011719
+          },
+          {
+            "adapter_seed": 1,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": false,
+            "epochs_run": 60,
+            "exact_accuracy": 0.28125,
+            "nll": 2.315939426422119,
+            "stopped_early": true,
+            "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+            "wall_seconds": 11.846837043762207
+          },
+          {
+            "adapter_seed": 2,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": true,
+            "epochs_run": 80,
+            "exact_accuracy": 0.4375,
+            "nll": 1.2469087839126587,
+            "stopped_early": true,
+            "verdict": "SQL_LOOKUP_BINDING_SUPPORTED",
+            "wall_seconds": 15.769061088562012
+          },
+          {
+            "adapter_seed": 3,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": true,
+            "epochs_run": 60,
+            "exact_accuracy": 0.25,
+            "nll": 2.376187324523926,
+            "stopped_early": true,
+            "verdict": "SQL_LOOKUP_BINDING_SUPPORTED",
+            "wall_seconds": 11.845420598983765
+          },
+          {
+            "adapter_seed": 4,
+            "correct_beats_shuffled": true,
+            "correct_beats_wrong_binding": true,
+            "epochs_run": 70,
+            "exact_accuracy": 0.46875,
+            "nll": 1.5219978094100952,
+            "stopped_early": true,
+            "verdict": "SQL_LOOKUP_BINDING_SUPPORTED",
+            "wall_seconds": 14.095133066177368
+          }
+        ],
+        "seeds": [
+          20260904,
+          1,
+          2,
+          3,
+          4
+        ],
+        "verdicts": [
+          "SQL_LOOKUP_BINDING_SUPPORTED",
+          "DOCUMENT_SPECIFIC_NO_BINDING",
+          "SQL_LOOKUP_BINDING_SUPPORTED",
+          "SQL_LOOKUP_BINDING_SUPPORTED",
+          "SQL_LOOKUP_BINDING_SUPPORTED"
+        ]
+      }
+    },
     "moment_matched": {
       "path": "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_minigunpoint_32token_moment_matched_result.json",
       "sha256": "a7f66f996cb65d595b8125fc9d43e9011d962592b3e9fe1469e6b43e688767a5",
@@ -730,6 +1611,62 @@
           "zero_sender_accuracy": 0.0
         },
         "seed": 20260904
+      }
+    },
+    "native_amortized_latency_arm64": {
+      "path": "scratchpad/kv_transfer_audit_20260913/native_amortized_latency_arm64_result.json",
+      "sha256": "166e9f623f545b4066f57d781e2ede04488fa5e01fe98e9ac88b994312512865",
+      "values": {
+        "fixed_cost_sender_plus_adapter": {
+          "max_ms": 380.245,
+          "mean_ms": 365.7615,
+          "median_ms": 363.581,
+          "min_ms": 356.872
+        },
+        "host_environment": {
+          "binary_arch": "arm64",
+          "cpu": "Apple M1 Pro",
+          "host_arch": "arm64",
+          "macos_version": "15.7.2",
+          "note": "Same arm64-native build as native_kv_handoff_latency_arm64_result.json (scripts/build-kv-handoff-arm64.sh). Weight loading happens once, outside the timed repeats, so this isolates the actual transfer computation from the load latency measured separately."
+        },
+        "marginal_cost_cache_query": {
+          "max_ms": 14.337,
+          "mean_ms": 14.0142,
+          "median_ms": 14.036,
+          "min_ms": 13.742
+        },
+        "method": "Native FASM/Accelerate tensor-kv-handoff binary, in-process repeats after weight loading (excluded from both buckets, measured separately as native_latency_arm64). Fixed cost = sender prefill of the 32-symbol sequence + handoff_import, paid once. Marginal cache-query cost = one receiver query against the already-imported cache. No native re-prefill counterpart exists to compare against (the 6-layer receiver has no native from-raw-text CLI), so no breakeven query count is computed here, unlike the PyTorch-reference-environment amortized_latency sources.",
+        "repeats": 10,
+        "warmup": 2
+      }
+    },
+    "native_amortized_latency_x86_64": {
+      "path": "scratchpad/kv_transfer_audit_20260913/native_amortized_latency_x86_64_result.json",
+      "sha256": "d6037a16b32b5f45e9017e88a19e2d4437c6e87b39ee8e14833440791292a147",
+      "values": {
+        "fixed_cost_sender_plus_adapter": {
+          "max_ms": 461.994,
+          "mean_ms": 444.7291,
+          "median_ms": 440.832,
+          "min_ms": 432.798
+        },
+        "host_environment": {
+          "binary_arch": "x86_64",
+          "cpu": "Apple M1 Pro",
+          "host_arch": "arm64",
+          "macos_version": "15.7.2",
+          "note": "Same x86_64-under-Rosetta-2 build as native_kv_handoff_latency_fixed_sha256_result.json (scripts/build-kv-handoff.sh). Weight loading happens once, outside the timed repeats, so this isolates the actual transfer computation from the load latency measured separately."
+        },
+        "marginal_cost_cache_query": {
+          "max_ms": 18.63,
+          "mean_ms": 16.6618,
+          "median_ms": 16.553,
+          "min_ms": 15.761
+        },
+        "method": "Native FASM/Accelerate tensor-kv-handoff binary, in-process repeats after weight loading (excluded from both buckets, measured separately as native_latency_fixed_sha256). Fixed cost = sender prefill of the 32-symbol sequence + handoff_import, paid once. Marginal cache-query cost = one receiver query against the already-imported cache. No native re-prefill counterpart exists to compare against (the 6-layer receiver has no native from-raw-text CLI), so no breakeven query count is computed here, unlike the PyTorch-reference-environment amortized_latency sources.",
+        "repeats": 10,
+        "warmup": 2
       }
     },
     "native_latency": {

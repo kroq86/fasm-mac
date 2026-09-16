@@ -1,0 +1,15 @@
+{
+  "host_environment": {
+    "host_arch": "arm64",
+    "cpu": "Apple M1 Pro",
+    "macos_version": "15.7.2",
+    "binary_arch": "arm64",
+    "note": "Same arm64-native build as native_kv_handoff_latency_arm64_result.json (scripts/build-kv-handoff-arm64.sh). Weight loading happens once, outside the timed repeats, so this isolates the actual transfer computation from the load latency measured separately."
+  },
+  "mechanism": "native_amortized_latency",
+  "method": "Native FASM/Accelerate tensor-kv-handoff binary, in-process repeats after weight loading (excluded from both buckets, measured separately as native_latency_arm64). Fixed cost = sender prefill of the 32-symbol sequence + handoff_import, paid once. Marginal cache-query cost = one receiver query against the already-imported cache. No native re-prefill counterpart exists to compare against (the 6-layer receiver has no native from-raw-text CLI), so no breakeven query count is computed here, unlike the PyTorch-reference-environment amortized_latency sources.",
+  "warmup": 2,
+  "repeats": 10,
+  "fixed_cost_sender_plus_adapter": {"min_ms": 356.872000, "max_ms": 380.245000, "mean_ms": 365.761500, "median_ms": 363.581000},
+  "marginal_cost_cache_query": {"min_ms": 13.742000, "max_ms": 14.337000, "mean_ms": 14.014200, "median_ms": 14.036000}
+}

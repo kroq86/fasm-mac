@@ -99,6 +99,41 @@ later revision reran the unmodified lookup script from scratch (same seed) as
 a checkpoint-replay attempt: the qualitative verdict reproduced, the exact
 accuracy (16/32 vs. the historical 20/32) did not, reported in the paper
 (Section 5.2) as a training-seed-sensitivity finding, not a corrected number.
+A further revision checked whether the finding depends on the sender
+document's synthetic "name -> id" arrow-table wording: a fresh adapter
+trained on the same names/ids/splits, but with each row rewritten as a
+plain sentence ("Bob has ID 12345"), reproduced the same qualitative
+verdict (`SQL_LOOKUP_BINDING_SUPPORTED`) at lower exact accuracy (8/32) --
+but only at its one initial seed. Before concluding anything from that one
+run, a five-seed variance check was run for BOTH wordings (same protocol
+as the ordering task's five-seed check, applied to lookup): the
+natural-language wording reaches the strong verdict on only 1 of 5 seeds
+(accuracy 0, 0, 0, 5, 8 out of 32; mean 2.6/32), while the original
+arrow-table wording -- previously only ever seen at two single-seed data
+points (historical 20/32, replayed 16/32) -- reaches it on 4 of 5 (accuracy
+8, 9, 14, 15, 16 out of 32; mean 12.4/32).
+
+That wasn't the end of it. A rank sweep (8/16/32/64, on two failing
+natural-language seeds) ruled out adapter capacity as the cause. A
+learning-rate sweep (1e-2/3e-3/1e-3/3e-4, same two seeds, rank fixed at 8)
+found the real one: the recipe's LR=1e-2, carried over unchanged from the
+arrow-table format, collapses training on the longer natural-language
+documents; LR=1e-3 recovers substantial accuracy on both. Rerunning both
+five-seed checks at the tuned LR changes the picture again: arrow-table
+jumps to 5/5 `SUPPORTED` at mean 23.8/32 (74%) -- higher than any number
+reported for this task before, since 1e-2 was never well-tuned even for
+arrow-table -- while natural-language ("has ID") becomes *stably*
+0/5 `SUPPORTED` at a consistent 6-7/32, instead of the noisy 1/5 seen at
+the untuned LR. A document-form matrix at the tuned LR then isolated why:
+"Bob: 12345" and "Bob is 12345" (a genuine natural-language sentence)
+tokenize to exactly the same length as "Bob -> 12345" and all three reach
+5/5 `SUPPORTED` at similar accuracy (68-74%); "Bob has ID 12345" (+5
+tokens) and "Bob's ID is 12345" (+10 tokens) don't (0/5 and 2/5). The
+operative variable is token distance between key and value, not
+"natural language" versus "synthetic table" -- a natural sentence at the
+arrow-table's own token length is exactly as learnable as the table. All
+of this (rank sweep, LR sweep, tuned-LR reruns, form matrix) is reported
+in the paper (Section 5.2), not just the original wording comparison.
 
 ## Remaining submission decisions
 

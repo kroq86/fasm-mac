@@ -1,0 +1,120 @@
+{
+  "learning_rates_tested": [
+    0.01,
+    0.003,
+    0.001,
+    0.0003
+  ],
+  "mechanism": "hyperparameter_sweep",
+  "method": "Two seeds (1, 2) known to collapse to 0/32 exact accuracy at the arrow-table recipe's original LR=1e-2 on the natural-language document wording, rank held at 8 (ruled out as the bottleneck separately), learning rate swept over {1e-2, 3e-3, 1e-3, 3e-4}. Same fixed train/dev/test split and natural-language wording as phase1_kv_cache_sql_lookup_binding_natural_language_seed_variance.py throughout.",
+  "runs": [
+    {
+      "adapter_seed": 1,
+      "correct_beats_shuffled": true,
+      "correct_beats_wrong_binding": false,
+      "epochs_run": 75,
+      "exact_accuracy": 0.0,
+      "lr": 0.01,
+      "nll": 6.0996809005737305,
+      "rank": 8,
+      "stopped_early": true,
+      "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+      "wall_seconds": 16.770813941955566
+    },
+    {
+      "adapter_seed": 1,
+      "correct_beats_shuffled": true,
+      "correct_beats_wrong_binding": false,
+      "epochs_run": 60,
+      "exact_accuracy": 0.125,
+      "lr": 0.003,
+      "nll": 2.016310214996338,
+      "rank": 8,
+      "stopped_early": true,
+      "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+      "wall_seconds": 13.514241218566895
+    },
+    {
+      "adapter_seed": 1,
+      "correct_beats_shuffled": true,
+      "correct_beats_wrong_binding": false,
+      "epochs_run": 65,
+      "exact_accuracy": 0.21875,
+      "lr": 0.001,
+      "nll": 2.165724277496338,
+      "rank": 8,
+      "stopped_early": true,
+      "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+      "wall_seconds": 14.373289108276367
+    },
+    {
+      "adapter_seed": 1,
+      "correct_beats_shuffled": true,
+      "correct_beats_wrong_binding": false,
+      "epochs_run": 90,
+      "exact_accuracy": 0.09375,
+      "lr": 0.0003,
+      "nll": 2.2630176544189453,
+      "rank": 8,
+      "stopped_early": true,
+      "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+      "wall_seconds": 19.189404249191284
+    },
+    {
+      "adapter_seed": 2,
+      "correct_beats_shuffled": true,
+      "correct_beats_wrong_binding": false,
+      "epochs_run": 75,
+      "exact_accuracy": 0.0,
+      "lr": 0.01,
+      "nll": 6.32148551940918,
+      "rank": 8,
+      "stopped_early": true,
+      "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+      "wall_seconds": 16.81375002861023
+    },
+    {
+      "adapter_seed": 2,
+      "correct_beats_shuffled": true,
+      "correct_beats_wrong_binding": false,
+      "epochs_run": 55,
+      "exact_accuracy": 0.25,
+      "lr": 0.003,
+      "nll": 2.031700372695923,
+      "rank": 8,
+      "stopped_early": true,
+      "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+      "wall_seconds": 12.51094913482666
+    },
+    {
+      "adapter_seed": 2,
+      "correct_beats_shuffled": true,
+      "correct_beats_wrong_binding": false,
+      "epochs_run": 65,
+      "exact_accuracy": 0.1875,
+      "lr": 0.001,
+      "nll": 2.2294631004333496,
+      "rank": 8,
+      "stopped_early": true,
+      "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+      "wall_seconds": 14.698024034500122
+    },
+    {
+      "adapter_seed": 2,
+      "correct_beats_shuffled": true,
+      "correct_beats_wrong_binding": false,
+      "epochs_run": 90,
+      "exact_accuracy": 0.15625,
+      "lr": 0.0003,
+      "nll": 2.2916452884674072,
+      "rank": 8,
+      "stopped_early": true,
+      "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+      "wall_seconds": 20.396283864974976
+    }
+  ],
+  "seeds_tested": [
+    1,
+    2
+  ]
+}

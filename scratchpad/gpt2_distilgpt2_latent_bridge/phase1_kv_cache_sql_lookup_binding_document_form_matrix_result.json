@@ -1,0 +1,286 @@
+{
+  "form_token_lengths": {
+    "arrow": 26,
+    "colon": 26,
+    "has_id": 31,
+    "id_is": 36,
+    "is": 26
+  },
+  "forms": {
+    "arrow": {
+      "accuracy_mean": 0.74375,
+      "accuracy_range_in_32ths": [
+        20,
+        26,
+        20,
+        27,
+        26
+      ],
+      "runs": [
+        {
+          "adapter_seed": 20260904,
+          "epochs_run": 70,
+          "exact_accuracy": 0.625,
+          "nll": 0.861282229423523,
+          "verdict": "SUPPORTED",
+          "wall_s": 14.735839128494263
+        },
+        {
+          "adapter_seed": 1,
+          "epochs_run": 95,
+          "exact_accuracy": 0.8125,
+          "nll": 0.41280460357666016,
+          "verdict": "SUPPORTED",
+          "wall_s": 20.288865089416504
+        },
+        {
+          "adapter_seed": 2,
+          "epochs_run": 65,
+          "exact_accuracy": 0.625,
+          "nll": 0.7816253304481506,
+          "verdict": "SUPPORTED",
+          "wall_s": 14.328829288482666
+        },
+        {
+          "adapter_seed": 3,
+          "epochs_run": 125,
+          "exact_accuracy": 0.84375,
+          "nll": 0.3344995379447937,
+          "verdict": "SUPPORTED",
+          "wall_s": 26.567080974578857
+        },
+        {
+          "adapter_seed": 4,
+          "epochs_run": 95,
+          "exact_accuracy": 0.8125,
+          "nll": 0.4802287220954895,
+          "verdict": "SUPPORTED",
+          "wall_s": 21.01172184944153
+        }
+      ],
+      "supported_count": 5
+    },
+    "colon": {
+      "accuracy_mean": 0.68125,
+      "accuracy_range_in_32ths": [
+        18,
+        27,
+        19,
+        21,
+        24
+      ],
+      "runs": [
+        {
+          "adapter_seed": 20260904,
+          "epochs_run": 70,
+          "exact_accuracy": 0.5625,
+          "nll": 1.279465913772583,
+          "verdict": "SUPPORTED",
+          "wall_s": 14.942057132720947
+        },
+        {
+          "adapter_seed": 1,
+          "epochs_run": 85,
+          "exact_accuracy": 0.84375,
+          "nll": 0.3899192214012146,
+          "verdict": "SUPPORTED",
+          "wall_s": 18.729095220565796
+        },
+        {
+          "adapter_seed": 2,
+          "epochs_run": 80,
+          "exact_accuracy": 0.59375,
+          "nll": 0.7999749779701233,
+          "verdict": "SUPPORTED",
+          "wall_s": 16.904022932052612
+        },
+        {
+          "adapter_seed": 3,
+          "epochs_run": 80,
+          "exact_accuracy": 0.65625,
+          "nll": 0.6930053234100342,
+          "verdict": "SUPPORTED",
+          "wall_s": 16.623226165771484
+        },
+        {
+          "adapter_seed": 4,
+          "epochs_run": 85,
+          "exact_accuracy": 0.75,
+          "nll": 0.49109458923339844,
+          "verdict": "SUPPORTED",
+          "wall_s": 17.939375162124634
+        }
+      ],
+      "supported_count": 5
+    },
+    "has_id": {
+      "accuracy_mean": 0.19375,
+      "accuracy_range_in_32ths": [
+        6,
+        7,
+        6,
+        6,
+        6
+      ],
+      "runs": [
+        {
+          "adapter_seed": 20260904,
+          "epochs_run": 65,
+          "exact_accuracy": 0.1875,
+          "nll": 2.1925606727600098,
+          "verdict": "DOC_SPECIFIC",
+          "wall_s": 13.350085973739624
+        },
+        {
+          "adapter_seed": 1,
+          "epochs_run": 65,
+          "exact_accuracy": 0.21875,
+          "nll": 2.165724277496338,
+          "verdict": "DOC_SPECIFIC",
+          "wall_s": 13.924988031387329
+        },
+        {
+          "adapter_seed": 2,
+          "epochs_run": 65,
+          "exact_accuracy": 0.1875,
+          "nll": 2.2294631004333496,
+          "verdict": "DOC_SPECIFIC",
+          "wall_s": 14.504040002822876
+        },
+        {
+          "adapter_seed": 3,
+          "epochs_run": 65,
+          "exact_accuracy": 0.1875,
+          "nll": 2.230478048324585,
+          "verdict": "DOC_SPECIFIC",
+          "wall_s": 14.15623688697815
+        },
+        {
+          "adapter_seed": 4,
+          "epochs_run": 65,
+          "exact_accuracy": 0.1875,
+          "nll": 2.217503070831299,
+          "verdict": "DOC_SPECIFIC",
+          "wall_s": 14.504554986953735
+        }
+      ],
+      "supported_count": 0
+    },
+    "id_is": {
+      "accuracy_mean": 0.225,
+      "accuracy_range_in_32ths": [
+        4,
+        15,
+        2,
+        1,
+        14
+      ],
+      "runs": [
+        {
+          "adapter_seed": 20260904,
+          "epochs_run": 65,
+          "exact_accuracy": 0.125,
+          "nll": 2.1095399856567383,
+          "verdict": "DOC_SPECIFIC",
+          "wall_s": 15.07333493232727
+        },
+        {
+          "adapter_seed": 1,
+          "epochs_run": 90,
+          "exact_accuracy": 0.46875,
+          "nll": 1.6311495304107666,
+          "verdict": "SUPPORTED",
+          "wall_s": 20.652113914489746
+        },
+        {
+          "adapter_seed": 2,
+          "epochs_run": 65,
+          "exact_accuracy": 0.0625,
+          "nll": 2.231395959854126,
+          "verdict": "DOC_SPECIFIC",
+          "wall_s": 14.405582904815674
+        },
+        {
+          "adapter_seed": 3,
+          "epochs_run": 65,
+          "exact_accuracy": 0.03125,
+          "nll": 2.105527877807617,
+          "verdict": "DOC_SPECIFIC",
+          "wall_s": 15.15648603439331
+        },
+        {
+          "adapter_seed": 4,
+          "epochs_run": 90,
+          "exact_accuracy": 0.4375,
+          "nll": 1.9635940790176392,
+          "verdict": "SUPPORTED",
+          "wall_s": 20.469058752059937
+        }
+      ],
+      "supported_count": 2
+    },
+    "is": {
+      "accuracy_mean": 0.7,
+      "accuracy_range_in_32ths": [
+        24,
+        25,
+        22,
+        16,
+        25
+      ],
+      "runs": [
+        {
+          "adapter_seed": 20260904,
+          "epochs_run": 800,
+          "exact_accuracy": 0.75,
+          "nll": 0.787412166595459,
+          "verdict": "SUPPORTED",
+          "wall_s": 171.15109395980835
+        },
+        {
+          "adapter_seed": 1,
+          "epochs_run": 120,
+          "exact_accuracy": 0.78125,
+          "nll": 0.8278239965438843,
+          "verdict": "SUPPORTED",
+          "wall_s": 25.164096117019653
+        },
+        {
+          "adapter_seed": 2,
+          "epochs_run": 110,
+          "exact_accuracy": 0.6875,
+          "nll": 0.8642579317092896,
+          "verdict": "SUPPORTED",
+          "wall_s": 23.845834970474243
+        },
+        {
+          "adapter_seed": 3,
+          "epochs_run": 100,
+          "exact_accuracy": 0.5,
+          "nll": 1.9821515083312988,
+          "verdict": "SUPPORTED",
+          "wall_s": 21.179497957229614
+        },
+        {
+          "adapter_seed": 4,
+          "epochs_run": 130,
+          "exact_accuracy": 0.78125,
+          "nll": 0.7637377977371216,
+          "verdict": "SUPPORTED",
+          "wall_s": 27.9197199344635
+        }
+      ],
+      "supported_count": 5
+    }
+  },
+  "mechanism": "document_form_matrix",
+  "method": "Same fixed train/dev/test split, architecture, and tuned learning rate (1e-3) as lookup_natural_language_tuned_lr_seed_variance; only the per-name-per-row document template changes across five forms, each checked across the same five adapter-init seeds. 'equals' (f'{name}={id}') was tried and dropped: BPE merges '=' with certain digit patterns inconsistently, breaking the constant-token-length invariant build_kv_batch requires across the full id pool.",
+  "seeds": [
+    20260904,
+    1,
+    2,
+    3,
+    4
+  ],
+  "tuned_lr": 0.001
+}

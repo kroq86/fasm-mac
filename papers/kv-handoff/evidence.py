@@ -21,6 +21,13 @@ SOURCES = {
     'xor_repaired': ('phase1_kv_cache_compositionality_32token_repaired_result.json', ['seed', 'epochs_run', 'best_dev_acc_epoch', 'still_improving_at_cutoff', 'accuracy_above_chance', 'beats_half1_only', 'beats_half2_only', 'swap_above_chance', 'verdict', 'dev']),
     'template_family': ('phase1_kv_cache_minigunpoint_32token_template_family_result.json', ['trained_symbols', 'alternate_symbols', 'trained_template', 'alternate_template']),
     'lookup_replay': ('phase1_kv_cache_sql_lookup_binding_replay_result.json', ['seed', 'epochs_run', 'stopped_early', 'test', 'correct_beats_shuffled', 'correct_beats_wrong_binding', 'verdict']),
+    'lookup_natural_language': ('phase1_kv_cache_sql_lookup_binding_natural_language_result.json', ['seed', 'epochs_run', 'stopped_early', 'test', 'correct_beats_shuffled', 'correct_beats_wrong_binding', 'verdict']),
+    'lookup_natural_language_seed_variance': ('phase1_kv_cache_sql_lookup_binding_natural_language_seed_variance_result.json', ['method', 'seeds', 'runs', 'accuracy_mean', 'accuracy_min', 'accuracy_max', 'accuracy_range_in_32ths', 'verdicts']),
+    'lookup_seed_variance': ('phase1_kv_cache_sql_lookup_binding_seed_variance_result.json', ['method', 'seeds', 'runs', 'accuracy_mean', 'accuracy_min', 'accuracy_max', 'accuracy_range_in_32ths', 'verdicts']),
+    'lookup_natural_language_rank_sweep': ('phase1_kv_cache_sql_lookup_binding_natural_language_rank_sweep_result.json', ['mechanism', 'method', 'seeds_tested', 'ranks_tested', 'runs']),
+    'lookup_natural_language_lr_sweep': ('phase1_kv_cache_sql_lookup_binding_natural_language_lr_sweep_result.json', ['mechanism', 'method', 'seeds_tested', 'learning_rates_tested', 'runs']),
+    'lookup_natural_language_tuned_lr_seed_variance': ('phase1_kv_cache_sql_lookup_binding_natural_language_tuned_lr_seed_variance_result.json', ['method', 'tuned_lr', 'seeds', 'runs', 'accuracy_mean', 'accuracy_min', 'accuracy_max', 'accuracy_range_in_32ths', 'verdicts']),
+    'lookup_document_form_matrix': ('phase1_kv_cache_sql_lookup_binding_document_form_matrix_result.json', ['mechanism', 'method', 'tuned_lr', 'seeds', 'form_token_lengths', 'forms']),
     'seed_variance': ('phase1_kv_cache_minigunpoint_32token_seed_variance_result.json', ['method', 'seeds', 'runs', 'accuracy_mean', 'accuracy_min', 'accuracy_max', 'accuracy_range_in_32ths']),
     'length_variation': ('phase1_kv_cache_minigunpoint_32token_length_variation_result.json', ['method', 'lengths_tested', 'docs_per_length', 'trained_length_32', 'length_16', 'length_48']),
     'amortized_latency': ('phase1_kv_cache_minigunpoint_32token_amortized_latency_threads1_batch32_result.json', ['method', 'threads', 'batch_size', 'fixed_cost_sender_plus_adapter', 'marginal_cost_cache_query', 'marginal_cost_reprefill', 'breakeven_query_count', 'totals_by_query_count']),
@@ -33,6 +40,9 @@ NATIVE_LATENCY_FIELDS = ['host_environment', 'method', 'repeats', 'sequence', 'v
 NATIVE_LATENCY_PATH = 'scratchpad/kv_transfer_audit_20260913/native_kv_handoff_latency_result.json'
 NATIVE_LATENCY_FIXED_SHA256_PATH = 'scratchpad/kv_transfer_audit_20260913/native_kv_handoff_latency_fixed_sha256_result.json'
 NATIVE_LATENCY_ARM64_PATH = 'scratchpad/kv_transfer_audit_20260913/native_kv_handoff_latency_arm64_result.json'
+NATIVE_AMORTIZED_LATENCY_FIELDS = ['host_environment', 'method', 'warmup', 'repeats', 'fixed_cost_sender_plus_adapter', 'marginal_cost_cache_query']
+NATIVE_AMORTIZED_LATENCY_ARM64_PATH = 'scratchpad/kv_transfer_audit_20260913/native_amortized_latency_arm64_result.json'
+NATIVE_AMORTIZED_LATENCY_X86_64_PATH = 'scratchpad/kv_transfer_audit_20260913/native_amortized_latency_x86_64_result.json'
 
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -55,6 +65,16 @@ def ledger():
             'path': rel_path, 'sha256': sha(full_path),
             'values': {key: data[key] for key in NATIVE_LATENCY_FIELDS},
         }
+    for label, rel_path in (
+        ('native_amortized_latency_arm64', NATIVE_AMORTIZED_LATENCY_ARM64_PATH),
+        ('native_amortized_latency_x86_64', NATIVE_AMORTIZED_LATENCY_X86_64_PATH),
+    ):
+        full_path = ROOT / rel_path
+        data = json.loads(full_path.read_text())
+        result['sources'][label] = {
+            'path': rel_path, 'sha256': sha(full_path),
+            'values': {key: data[key] for key in NATIVE_AMORTIZED_LATENCY_FIELDS},
+        }
     extras = [
         PREFIX + 'phase1_kv_cache_minigunpoint_32token_bridge.pt',
         PREFIX + 'phase1_kv_cache_minigunpoint_32token.py',
@@ -68,6 +88,13 @@ def ledger():
         PREFIX + 'phase1_kv_cache_minigunpoint_32token_amortized_latency.py',
         PREFIX + 'phase1_kv_cache_sql_lookup_binding_multiquery_latency.py',
         PREFIX + 'phase1_kv_cache_sql_lookup_binding.py',
+        PREFIX + 'phase1_kv_cache_sql_lookup_binding_natural_language.py',
+        PREFIX + 'phase1_kv_cache_sql_lookup_binding_natural_language_seed_variance.py',
+        PREFIX + 'phase1_kv_cache_sql_lookup_binding_seed_variance.py',
+        PREFIX + 'phase1_kv_cache_sql_lookup_binding_natural_language_rank_sweep.py',
+        PREFIX + 'phase1_kv_cache_sql_lookup_binding_natural_language_lr_sweep.py',
+        PREFIX + 'phase1_kv_cache_sql_lookup_binding_natural_language_tuned_lr_seed_variance.py',
+        PREFIX + 'phase1_kv_cache_sql_lookup_binding_document_form_matrix.py',
         PREFIX + 'phase1_kv_cache_multifact_2key_batched.py',
         PREFIX + 'phase1_kv_cache_compositionality_32token.py',
         'fasm/spikes/tensor_gpt2_handoff.h',
@@ -80,6 +107,7 @@ def ledger():
         'scripts/bench_kv_handoff_native_latency.py',
         'papers/kv-handoff/tost_equivalence.py',
         'scratchpad/kv_transfer_audit_20260913/sha256_isolation_bench.c',
+        'scratchpad/kv_transfer_audit_20260913/native_amortized_latency.c',
         'scratchpad/kv_transfer_audit_20260913/native_gate.log',
     ]
     result['files'] = {path: sha(ROOT / path) for path in extras}

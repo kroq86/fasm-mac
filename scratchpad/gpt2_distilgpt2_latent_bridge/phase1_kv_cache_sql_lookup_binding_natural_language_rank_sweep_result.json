@@ -1,0 +1,112 @@
+{
+  "mechanism": "hyperparameter_sweep",
+  "method": "Two seeds (1, 2) known to collapse to 0/32 exact accuracy at the arrow-table recipe's original rank=8, LR=1e-2 on the natural-language document wording, LR held at 1e-2, adapter rank swept over {8, 16, 32, 64}. Same fixed train/dev/test split and natural-language wording as phase1_kv_cache_sql_lookup_binding_natural_language_seed_variance.py throughout.",
+  "ranks_tested": [
+    8,
+    16,
+    32,
+    64
+  ],
+  "runs": [
+    {
+      "adapter_seed": 1,
+      "correct_beats_shuffled": true,
+      "correct_beats_wrong_binding": false,
+      "epochs_run": 75,
+      "exact_accuracy": 0.0,
+      "nll": 6.0996809005737305,
+      "rank": 8,
+      "stopped_early": true,
+      "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+      "wall_seconds": 15.31550121307373
+    },
+    {
+      "adapter_seed": 1,
+      "correct_beats_shuffled": true,
+      "correct_beats_wrong_binding": false,
+      "epochs_run": 75,
+      "exact_accuracy": 0.0,
+      "nll": 6.3849873542785645,
+      "rank": 16,
+      "stopped_early": true,
+      "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+      "wall_seconds": 14.795906066894531
+    },
+    {
+      "adapter_seed": 1,
+      "correct_beats_shuffled": false,
+      "correct_beats_wrong_binding": true,
+      "epochs_run": 70,
+      "exact_accuracy": 0.0,
+      "nll": 6.595442771911621,
+      "rank": 32,
+      "stopped_early": true,
+      "verdict": "NO_USABLE_TRANSFER",
+      "wall_seconds": 13.880187273025513
+    },
+    {
+      "adapter_seed": 1,
+      "correct_beats_shuffled": false,
+      "correct_beats_wrong_binding": false,
+      "epochs_run": 80,
+      "exact_accuracy": 0.0,
+      "nll": 6.810089111328125,
+      "rank": 64,
+      "stopped_early": true,
+      "verdict": "NO_USABLE_TRANSFER",
+      "wall_seconds": 15.956783056259155
+    },
+    {
+      "adapter_seed": 2,
+      "correct_beats_shuffled": true,
+      "correct_beats_wrong_binding": false,
+      "epochs_run": 75,
+      "exact_accuracy": 0.0,
+      "nll": 6.32148551940918,
+      "rank": 8,
+      "stopped_early": true,
+      "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+      "wall_seconds": 15.054328918457031
+    },
+    {
+      "adapter_seed": 2,
+      "correct_beats_shuffled": true,
+      "correct_beats_wrong_binding": false,
+      "epochs_run": 70,
+      "exact_accuracy": 0.0,
+      "nll": 6.2397990226745605,
+      "rank": 16,
+      "stopped_early": true,
+      "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+      "wall_seconds": 13.81287670135498
+    },
+    {
+      "adapter_seed": 2,
+      "correct_beats_shuffled": true,
+      "correct_beats_wrong_binding": false,
+      "epochs_run": 80,
+      "exact_accuracy": 0.0,
+      "nll": 6.978161811828613,
+      "rank": 32,
+      "stopped_early": true,
+      "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+      "wall_seconds": 15.8162362575531
+    },
+    {
+      "adapter_seed": 2,
+      "correct_beats_shuffled": true,
+      "correct_beats_wrong_binding": false,
+      "epochs_run": 75,
+      "exact_accuracy": 0.0,
+      "nll": 6.742383003234863,
+      "rank": 64,
+      "stopped_early": true,
+      "verdict": "DOCUMENT_SPECIFIC_NO_BINDING",
+      "wall_seconds": 15.127383708953857
+    }
+  ],
+  "seeds_tested": [
+    1,
+    2
+  ]
+}
