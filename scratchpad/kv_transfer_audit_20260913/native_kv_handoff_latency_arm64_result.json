@@ -1,0 +1,35 @@
+{
+  "bundle_sizes_bytes": {
+    "bridge.safetensors": 591528,
+    "cases.txt": 1184,
+    "merges.txt": 456318,
+    "receiver.safetensors": 327656984,
+    "reference.safetensors": 89077672,
+    "sender.safetensors": 548105171,
+    "vocab.json": 1042301
+  },
+  "host_environment": {
+    "host_arch": "arm64",
+    "cpu": "Apple M1 Pro",
+    "macos_version": "15.7.2",
+    "binary_arch": "arm64",
+    "note": "First arm64-native build of tensor-kv-handoff, produced by scripts/build-kv-handoff-arm64.sh (parallel to the original scripts/build-kv-handoff.sh, which is unmodified and remains the x86_64/FASM build). fasm/spikes/tensor_transformer_executor_f32.asm -- the only file in this binary's dependency graph that is genuine x86-64 assembly -- is a 34-line function-pointer dispatch loop with no SIMD or other ISA-specific instructions; it is replaced for this build by the portable-C equivalent fasm/spikes/tensor_transformer_executor_f32_native.c, following the same pattern already used elsewhere in this project for arm64-native killer-workload spikes (tensor_killer_mnist_native.c). Every other source file, including the fixed fasm/spikes/tensor_sha256.h, compiles unchanged for arm64. No Rosetta 2 translation is involved in this run."
+  },
+  "mechanism": "native_cache_transfer_latency",
+  "method": "Wall-clock timing of repeated native tensor-kv-handoff invocations (cold process each call, no server/persistent state). 'via_checked_launcher' times the full checked Python launcher (scripts/kv_handoff.py), which SHA-256-hashes the entire external bundle on every call. 'via_direct_binary' times the native binary invoked directly with the manifest hashes as arguments, skipping the launcher's redundant re-hash but still subject to the binary's own internal fail-closed fingerprinting of sender/receiver/bridge. No native re-prefill counterpart exists to compare against.",
+  "repeats": 10,
+  "sequence": "AAAAAAAAAAAAAAAABBBBBBBBBBBBBBBB",
+  "via_checked_launcher": {
+    "max_ms": 1950.1482910709456,
+    "mean_ms": 1896.95915421471,
+    "median_ms": 1912.689125048928,
+    "min_ms": 1824.5847088983282
+  },
+  "via_direct_binary": {
+    "max_ms": 1568.459750036709,
+    "mean_ms": 1373.2420250191353,
+    "median_ms": 1361.0694999806583,
+    "min_ms": 1296.8641670886427
+  },
+  "warmup": 2
+}

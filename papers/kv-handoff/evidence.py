@@ -31,6 +31,8 @@ SOURCES = {
 }
 NATIVE_LATENCY_FIELDS = ['host_environment', 'method', 'repeats', 'sequence', 'via_checked_launcher', 'via_direct_binary']
 NATIVE_LATENCY_PATH = 'scratchpad/kv_transfer_audit_20260913/native_kv_handoff_latency_result.json'
+NATIVE_LATENCY_FIXED_SHA256_PATH = 'scratchpad/kv_transfer_audit_20260913/native_kv_handoff_latency_fixed_sha256_result.json'
+NATIVE_LATENCY_ARM64_PATH = 'scratchpad/kv_transfer_audit_20260913/native_kv_handoff_latency_arm64_result.json'
 
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -42,12 +44,17 @@ def ledger():
         path = ROOT / relative
         data = json.loads(path.read_text())
         result['sources'][label] = {'path': relative, 'sha256': sha(path), 'values': {key: data[key] for key in fields}}
-    native_latency_path = ROOT / NATIVE_LATENCY_PATH
-    native_latency_data = json.loads(native_latency_path.read_text())
-    result['sources']['native_latency'] = {
-        'path': NATIVE_LATENCY_PATH, 'sha256': sha(native_latency_path),
-        'values': {key: native_latency_data[key] for key in NATIVE_LATENCY_FIELDS},
-    }
+    for label, rel_path in (
+        ('native_latency', NATIVE_LATENCY_PATH),
+        ('native_latency_fixed_sha256', NATIVE_LATENCY_FIXED_SHA256_PATH),
+        ('native_latency_arm64', NATIVE_LATENCY_ARM64_PATH),
+    ):
+        full_path = ROOT / rel_path
+        data = json.loads(full_path.read_text())
+        result['sources'][label] = {
+            'path': rel_path, 'sha256': sha(full_path),
+            'values': {key: data[key] for key in NATIVE_LATENCY_FIELDS},
+        }
     extras = [
         PREFIX + 'phase1_kv_cache_minigunpoint_32token_bridge.pt',
         PREFIX + 'phase1_kv_cache_minigunpoint_32token.py',
@@ -65,10 +72,14 @@ def ledger():
         PREFIX + 'phase1_kv_cache_compositionality_32token.py',
         'fasm/spikes/tensor_gpt2_handoff.h',
         'fasm/spikes/tensor_kv_handoff.c',
+        'fasm/spikes/tensor_sha256.h',
+        'fasm/spikes/tensor_transformer_executor_f32_native.c',
         'scripts/prepare_kv_handoff.py',
         'scripts/check_kv_handoff.sh',
+        'scripts/build-kv-handoff-arm64.sh',
         'scripts/bench_kv_handoff_native_latency.py',
         'papers/kv-handoff/tost_equivalence.py',
+        'scratchpad/kv_transfer_audit_20260913/sha256_isolation_bench.c',
         'scratchpad/kv_transfer_audit_20260913/native_gate.log',
     ]
     result['files'] = {path: sha(ROOT / path) for path in extras}

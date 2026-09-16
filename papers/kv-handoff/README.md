@@ -76,13 +76,24 @@ See [native preparation and limitations](../../scratchpad/kv_transfer_audit_2026
 The large base-model/reference bundle is external, not committed. A later
 revision also timed the native executable directly
 (`scripts/bench_kv_handoff_native_latency.py`, result stored alongside
-`native_gate.log`): roughly 6.7-7.2 s per cold invocation on the arm64 host
-used for this repository, about 10x the PyTorch-reference-environment cache-
-transfer latency in Section 5.1, because the executable is x86-64-only
-(FASM assembly, not portable across ISAs) and runs under Rosetta 2 here,
-re-fingerprinting the ~900 MB external bundle from a cold process every
-call. No arm64 build exists or was attempted. The ordering adapter itself
-is already tracked. The separate lookup adapter is not saved;
+`native_gate.log`): an initial ~6.7-7.2 s per cold invocation on the arm64
+host used for this repository was traced mostly to `fasm/spikes/
+tensor_sha256.h` being a minimal self-written SHA-256 implementation with no
+hardware acceleration, re-fingerprinting the ~900 MB external bundle from a
+cold process every call, not primarily to Rosetta 2 translation of the
+x86-64-only binary as first suspected. It has been replaced with Apple's
+CommonCrypto (same public API, byte-identical output, verified against the
+existing differential gate), and a working arm64-native build now exists
+(`scripts/build-kv-handoff-arm64.sh`; the one x86-64-assembly file this
+executable depends on, `tensor_transformer_executor_f32.asm`, turned out to
+have no ISA-specific instructions in the function actually used, so a
+portable-C replacement was enough). With both fixes, cold-invocation latency
+is now roughly 4.3-5.0 s under x86_64/Rosetta and 1.3-1.6 s arm64-native,
+the latter about 2x the PyTorch-reference-environment cache-transfer latency
+in Section 5.1 rather than 10x. Three attempts to remove a further suspected
+redundancy (the bundle is read once to fingerprint, again to parse tensor
+values) showed no measured improvement and were not kept. The ordering
+adapter itself is already tracked. The separate lookup adapter is not saved;
 the article's primary lookup table comes from the tracked script/result. A
 later revision reran the unmodified lookup script from scratch (same seed) as
 a checkpoint-replay attempt: the qualitative verdict reproduced, the exact

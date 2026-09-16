@@ -1,0 +1,35 @@
+{
+  "bundle_sizes_bytes": {
+    "bridge.safetensors": 591528,
+    "cases.txt": 1184,
+    "merges.txt": 456318,
+    "receiver.safetensors": 327656984,
+    "reference.safetensors": 89077672,
+    "sender.safetensors": 548105171,
+    "vocab.json": 1042301
+  },
+  "host_environment": {
+    "host_arch": "arm64",
+    "cpu": "Apple M1 Pro",
+    "macos_version": "15.7.2",
+    "binary_arch": "x86_64",
+    "note": "Same host and same x86_64-only binary (still built by scripts/build-kv-handoff.sh, still fasm/spikes/tensor_transformer_executor_f32.asm under Rosetta 2) as native_kv_handoff_latency_result.json's historical run. The only change is fasm/spikes/tensor_sha256.h: the previous self-written, unaccelerated scalar SHA-256 implementation is replaced by Apple CommonCrypto (hardware-accelerated on both arm64 and x86_64), same public function signatures, byte-identical output (verified against tensor_sha256_differential_check.c's independent Python-hashlib oracle vectors). Isolated hashing of the same sender+receiver+bridge files (scratchpad/kv_transfer_audit_20260913/sha256_isolation_bench.c) dropped from 5456.6 ms to 3000.3 ms on this same x86_64-under-Rosetta path -- the previous scalar implementation, not Rosetta translation or safetensors parsing, was the dominant cost this historical result had attributed jointly to translation and parsing."
+  },
+  "mechanism": "native_cache_transfer_latency",
+  "method": "Wall-clock timing of repeated native tensor-kv-handoff invocations (cold process each call, no server/persistent state). 'via_checked_launcher' times the full checked Python launcher (scripts/kv_handoff.py), which SHA-256-hashes the entire external bundle on every call. 'via_direct_binary' times the native binary invoked directly with the manifest hashes as arguments, skipping the launcher's redundant re-hash but still subject to the binary's own internal fail-closed fingerprinting of sender/receiver/bridge. No native re-prefill counterpart exists to compare against.",
+  "repeats": 10,
+  "sequence": "AAAAAAAAAAAAAAAABBBBBBBBBBBBBBBB",
+  "via_checked_launcher": {
+    "max_ms": 5582.978583988734,
+    "mean_ms": 5257.750658504665,
+    "median_ms": 5436.526875011623,
+    "min_ms": 4801.552709075622
+  },
+  "via_direct_binary": {
+    "max_ms": 5045.925167039968,
+    "mean_ms": 4619.747787597589,
+    "median_ms": 4696.912291110493,
+    "min_ms": 4310.856458963826
+  },
+  "warmup": 2
+}

@@ -2,6 +2,8 @@
   "files": {
     "fasm/spikes/tensor_gpt2_handoff.h": "ecd4274342ae5863a2c90d50cb6b884af95ef5a3339d32a3215b20a53a890f89",
     "fasm/spikes/tensor_kv_handoff.c": "e473e288c20cd2efe5e3f75a818a7597fefb788c8bcae442334f5d5dbc7adee6",
+    "fasm/spikes/tensor_sha256.h": "ce2d04660fac64700e9f7ce7dd33b000fb0794ec969b38e8c59c960148dcee66",
+    "fasm/spikes/tensor_transformer_executor_f32_native.c": "daf0ef7c3c519ff602b60f47b5edb85cc428b1401ca206f2cf3d33da92573c29",
     "papers/kv-handoff/tost_equivalence.py": "6f7ee6abba7666ba8986dd755c2931670aaf9bb1cacc4d3a2cdca0e16d6b416d",
     "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_compositionality_32token.py": "41662bb5aedc9832808fadece9f763b8b6d37445c7fa02d4c9a361e95d06d05e",
     "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_minigunpoint_32token.py": "93b3f1524c5bb55128d11c7211bc58c96d7211d721e0bf2cae8f66e7c97e721d",
@@ -18,7 +20,9 @@
     "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_sql_lookup_binding.py": "4e5e2c34e557372ae1263865dc430fee6fa2f1936134a802d280842a52a17345",
     "scratchpad/gpt2_distilgpt2_latent_bridge/phase1_kv_cache_sql_lookup_binding_multiquery_latency.py": "19cb1bb98eda9eb8c3a44609cf1f6534092d64b29232a6c83db4a3717abd318d",
     "scratchpad/kv_transfer_audit_20260913/native_gate.log": "fe8b7bc5a8d809eb217042c91021654d211f0fee870d2bbce96ab8e3b5f7dbd1",
+    "scratchpad/kv_transfer_audit_20260913/sha256_isolation_bench.c": "60a1aa70ef19fcbfd086910ceba9c99d0310d6181b9b4b53aa2086b47728ae1a",
     "scripts/bench_kv_handoff_native_latency.py": "0cb76804b540b39b9f8460baa02544c50bc49dbf101bd9cf81776e1f1e59a9a2",
+    "scripts/build-kv-handoff-arm64.sh": "bafbf6ff8368bdbb3dad315a0620a205b094425741fdf9ca5315073eea066042",
     "scripts/check_kv_handoff.sh": "7af5ddae1cb91bb92b83b3ad602b6e311f3a718f172fd6a9132215789c6be0e2",
     "scripts/prepare_kv_handoff.py": "fa24b6a8f4477e8e2ab53bf4230e19cb5c320c2e2e0155b9c16cebf825d0ddec"
   },
@@ -753,6 +757,62 @@
           "mean_ms": 6801.437945920043,
           "median_ms": 6697.016917052679,
           "min_ms": 6628.808374982327
+        }
+      }
+    },
+    "native_latency_arm64": {
+      "path": "scratchpad/kv_transfer_audit_20260913/native_kv_handoff_latency_arm64_result.json",
+      "sha256": "d23a6ab54c382c40a34468fa2d2699fe93902cc936d92d99570b9cc40f752c2c",
+      "values": {
+        "host_environment": {
+          "binary_arch": "arm64",
+          "cpu": "Apple M1 Pro",
+          "host_arch": "arm64",
+          "macos_version": "15.7.2",
+          "note": "First arm64-native build of tensor-kv-handoff, produced by scripts/build-kv-handoff-arm64.sh (parallel to the original scripts/build-kv-handoff.sh, which is unmodified and remains the x86_64/FASM build). fasm/spikes/tensor_transformer_executor_f32.asm -- the only file in this binary's dependency graph that is genuine x86-64 assembly -- is a 34-line function-pointer dispatch loop with no SIMD or other ISA-specific instructions; it is replaced for this build by the portable-C equivalent fasm/spikes/tensor_transformer_executor_f32_native.c, following the same pattern already used elsewhere in this project for arm64-native killer-workload spikes (tensor_killer_mnist_native.c). Every other source file, including the fixed fasm/spikes/tensor_sha256.h, compiles unchanged for arm64. No Rosetta 2 translation is involved in this run."
+        },
+        "method": "Wall-clock timing of repeated native tensor-kv-handoff invocations (cold process each call, no server/persistent state). 'via_checked_launcher' times the full checked Python launcher (scripts/kv_handoff.py), which SHA-256-hashes the entire external bundle on every call. 'via_direct_binary' times the native binary invoked directly with the manifest hashes as arguments, skipping the launcher's redundant re-hash but still subject to the binary's own internal fail-closed fingerprinting of sender/receiver/bridge. No native re-prefill counterpart exists to compare against.",
+        "repeats": 10,
+        "sequence": "AAAAAAAAAAAAAAAABBBBBBBBBBBBBBBB",
+        "via_checked_launcher": {
+          "max_ms": 1950.1482910709456,
+          "mean_ms": 1896.95915421471,
+          "median_ms": 1912.689125048928,
+          "min_ms": 1824.5847088983282
+        },
+        "via_direct_binary": {
+          "max_ms": 1568.459750036709,
+          "mean_ms": 1373.2420250191353,
+          "median_ms": 1361.0694999806583,
+          "min_ms": 1296.8641670886427
+        }
+      }
+    },
+    "native_latency_fixed_sha256": {
+      "path": "scratchpad/kv_transfer_audit_20260913/native_kv_handoff_latency_fixed_sha256_result.json",
+      "sha256": "fb1231a4b5b401fbb49a83b296b3ab8674c61933a3caffaae7d0d3e6d13cce23",
+      "values": {
+        "host_environment": {
+          "binary_arch": "x86_64",
+          "cpu": "Apple M1 Pro",
+          "host_arch": "arm64",
+          "macos_version": "15.7.2",
+          "note": "Same host and same x86_64-only binary (still built by scripts/build-kv-handoff.sh, still fasm/spikes/tensor_transformer_executor_f32.asm under Rosetta 2) as native_kv_handoff_latency_result.json's historical run. The only change is fasm/spikes/tensor_sha256.h: the previous self-written, unaccelerated scalar SHA-256 implementation is replaced by Apple CommonCrypto (hardware-accelerated on both arm64 and x86_64), same public function signatures, byte-identical output (verified against tensor_sha256_differential_check.c's independent Python-hashlib oracle vectors). Isolated hashing of the same sender+receiver+bridge files (scratchpad/kv_transfer_audit_20260913/sha256_isolation_bench.c) dropped from 5456.6 ms to 3000.3 ms on this same x86_64-under-Rosetta path -- the previous scalar implementation, not Rosetta translation or safetensors parsing, was the dominant cost this historical result had attributed jointly to translation and parsing."
+        },
+        "method": "Wall-clock timing of repeated native tensor-kv-handoff invocations (cold process each call, no server/persistent state). 'via_checked_launcher' times the full checked Python launcher (scripts/kv_handoff.py), which SHA-256-hashes the entire external bundle on every call. 'via_direct_binary' times the native binary invoked directly with the manifest hashes as arguments, skipping the launcher's redundant re-hash but still subject to the binary's own internal fail-closed fingerprinting of sender/receiver/bridge. No native re-prefill counterpart exists to compare against.",
+        "repeats": 10,
+        "sequence": "AAAAAAAAAAAAAAAABBBBBBBBBBBBBBBB",
+        "via_checked_launcher": {
+          "max_ms": 5582.978583988734,
+          "mean_ms": 5257.750658504665,
+          "median_ms": 5436.526875011623,
+          "min_ms": 4801.552709075622
+        },
+        "via_direct_binary": {
+          "max_ms": 5045.925167039968,
+          "mean_ms": 4619.747787597589,
+          "median_ms": 4696.912291110493,
+          "min_ms": 4310.856458963826
         }
       }
     },
