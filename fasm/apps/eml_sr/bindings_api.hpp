@@ -14,6 +14,7 @@ struct FitConfig {
     bool profile{false};
     int adam_epochs{2000};
     double adam_lr{0.05};
+    std::size_t hall_of_fame_size{10};
 };
 
 inline SearchResult fit_api(const std::vector<DataPoint>& data, const FitConfig& config) {
@@ -24,6 +25,7 @@ inline SearchResult fit_api(const std::vector<DataPoint>& data, const FitConfig&
     opts.method = config.method;
     opts.adam_epochs = config.adam_epochs;
     opts.adam_lr = config.adam_lr;
+    opts.hall_of_fame_size = config.hall_of_fame_size;
     return search_best(data, config.max_depth, opts);
 }
 

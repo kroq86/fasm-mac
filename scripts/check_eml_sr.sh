@@ -21,6 +21,15 @@ if ! command -v clang++ >/dev/null 2>&1; then
     exit 1
 fi
 
+HOST_ARCH="$(uname -m)"
+case "$HOST_ARCH" in
+    arm64|x86_64) ;;
+    *)
+        echo "FAIL unsupported host arch: $HOST_ARCH" >&2
+        exit 1
+        ;;
+esac
+
 if [[ ! -x "$ROOT/bin/fasm" ]]; then
     echo 'FAIL bin/fasm is required for eml_core leaf check' >&2
     exit 1
@@ -36,11 +45,11 @@ clang++ -std=c++20 -O2 -arch x86_64 \
     -o "$EML_CORE_SMOKE"
 arch -x86_64 "$EML_CORE_SMOKE"
 
-clang++ -std=c++20 -O2 -arch x86_64 "$ROOT/fasm/apps/eml_sr/eml_sr.cpp" -o "$EML_SR"
-clang++ -std=c++20 -O2 -arch x86_64 "$ROOT/fasm/tests/eml_sr/derived_ops_smoke.cpp" -o "$DERIVED_SMOKE"
-clang++ -std=c++20 -O2 -arch x86_64 "$ROOT/fasm/tests/eml_sr/witness_verify_smoke.cpp" -o "$WITNESS_SMOKE"
-clang++ -std=c++20 -O2 -arch x86_64 "$ROOT/fasm/tests/eml_sr/eml_compiler_smoke.cpp" -o "$COMPILER_SMOKE"
-clang++ -std=c++20 -O2 -arch x86_64 "$ROOT/fasm/tests/eml_sr/expr_arena_smoke.cpp" -o "$ARENA_SMOKE"
+clang++ -std=c++20 -O2 -arch "$HOST_ARCH" "$ROOT/fasm/apps/eml_sr/eml_sr.cpp" -o "$EML_SR"
+clang++ -std=c++20 -O2 -arch "$HOST_ARCH" "$ROOT/fasm/tests/eml_sr/derived_ops_smoke.cpp" -o "$DERIVED_SMOKE"
+clang++ -std=c++20 -O2 -arch "$HOST_ARCH" "$ROOT/fasm/tests/eml_sr/witness_verify_smoke.cpp" -o "$WITNESS_SMOKE"
+clang++ -std=c++20 -O2 -arch "$HOST_ARCH" "$ROOT/fasm/tests/eml_sr/eml_compiler_smoke.cpp" -o "$COMPILER_SMOKE"
+clang++ -std=c++20 -O2 -arch "$HOST_ARCH" "$ROOT/fasm/tests/eml_sr/expr_arena_smoke.cpp" -o "$ARENA_SMOKE"
 "$DERIVED_SMOKE" >/dev/null
 "$WITNESS_SMOKE" >/dev/null
 "$COMPILER_SMOKE" >/dev/null

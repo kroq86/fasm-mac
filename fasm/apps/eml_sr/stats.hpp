@@ -16,6 +16,7 @@ struct SearchStats {
     std::uint64_t cache_hits{0};
     std::uint64_t cache_misses{0};
     std::uint64_t best_update_count{0};
+    std::uint64_t max_memo_entries{0};
 
     void merge(const SearchStats& other) {
         forms_seen += other.forms_seen;
@@ -27,6 +28,9 @@ struct SearchStats {
         cache_hits += other.cache_hits;
         cache_misses += other.cache_misses;
         best_update_count += other.best_update_count;
+        if (other.max_memo_entries > max_memo_entries) {
+            max_memo_entries = other.max_memo_entries;
+        }
     }
 
     [[nodiscard]] std::uint64_t pruned_total() const {

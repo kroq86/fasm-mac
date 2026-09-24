@@ -27,6 +27,7 @@ inline bool consider_candidate(
     EvalContext& ctx,
     const std::array<double, 4>& probe_x,
     std::unordered_map<std::uint64_t, double>& seen_sigs,
+    std::size_t hall_of_fame_size,
     std::vector<Tree>* pool_out = nullptr) {
     (void)probe_x;
     (void)seen_sigs;
@@ -35,6 +36,7 @@ inline bool consider_candidate(
 
     optimize_f_params_ctx(candidate, data, ctx, best.mse);
     const double mse = mse_for_tree_ctx(candidate, data, ctx, best.mse);
+    add_equation_record(best, make_equation_record(candidate, mse), hall_of_fame_size);
     try_update_best(best, candidate, mse);
     return std::isfinite(mse);
 }
@@ -76,8 +78,9 @@ inline SearchResult pool_search_best(
                 for (const Tree& right : right_pool) {
                     ++best.stats.forms_seen;
                     Tree candidate = eml_tree(left, right);
-                    consider_candidate(best, candidate, data, ctx, probe_x, seen_sigs, &depth_pool);
+                    consider_candidate(best, candidate, data, ctx, probe_x, seen_sigs, opts.hall_of_fame_size, &depth_pool);
                     if (goal_mse > 0.0 && best.mse <= goal_mse) {
+                        ensure_best_equation_record(best, opts.hall_of_fame_size);
                         return best;
                     }
                 }
@@ -121,7 +124,14 @@ inline SearchResult pool_search_best(
                             candidate.nodes[static_cast<std::size_t>(leaves[i])].leaf =
                                 (static_cast<std::uint32_t>(mask) >> i) & 1U ? LeafKind::One : LeafKind::X;
                         }
-                        consider_candidate(local_best, std::move(candidate), data, local_ctx, probe_x, local_seen);
+                        consider_candidate(
+                            local_best,
+                            std::move(candidate),
+                            data,
+                            local_ctx,
+                            probe_x,
+                            local_seen,
+                            opts.hall_of_fame_size);
                     }
 #pragma omp critical
                     {
@@ -142,7 +152,7 @@ inline SearchResult pool_search_best(
                         candidate.nodes[static_cast<std::size_t>(leaves[i])].leaf =
                             (mask >> i) & 1U ? LeafKind::One : LeafKind::X;
                     }
-                    consider_candidate(best, std::move(candidate), data, ctx, probe_x, seen_sigs);
+                    consider_candidate(best, std::move(candidate), data, ctx, probe_x, seen_sigs, opts.hall_of_fame_size);
                 }
             }
 
@@ -152,11 +162,12 @@ inline SearchResult pool_search_best(
                     continue;
                 }
                 Tree candidate = with_leaf_assignment(base, assignment);
-                consider_candidate(best, std::move(candidate), data, ctx, probe_x, seen_sigs);
+                consider_candidate(best, std::move(candidate), data, ctx, probe_x, seen_sigs, opts.hall_of_fame_size);
             }
         });
     }
 
+    ensure_best_equation_record(best, opts.hall_of_fame_size);
     return best;
 }
 
@@ -194,6 +205,7 @@ inline SearchResult search_best_legacy(
                 }
                 ++best.stats.candidates_evaled;
                 const double mse = mse_for_tree_ctx(candidate, data, ctx, best.mse);
+                add_equation_record(best, make_equation_record(candidate, mse), opts.hall_of_fame_size);
                 if (mse < best.mse) {
                     best.tree = candidate;
                     best.mse = mse;
@@ -211,6 +223,7 @@ inline SearchResult search_best_legacy(
                 optimize_f_params_ctx(candidate, data, ctx, best.mse);
                 ++best.stats.candidates_evaled;
                 const double mse = mse_for_tree_ctx(candidate, data, ctx, best.mse);
+                add_equation_record(best, make_equation_record(candidate, mse), opts.hall_of_fame_size);
                 if (mse < best.mse) {
                     best.tree = candidate;
                     best.mse = mse;
@@ -223,6 +236,7 @@ inline SearchResult search_best_legacy(
             break;
         }
     }
+    ensure_best_equation_record(best, opts.hall_of_fame_size);
     return best;
 }
 

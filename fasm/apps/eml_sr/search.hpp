@@ -4,6 +4,7 @@
 #include "stats.hpp"
 #include "tree.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <functional>
@@ -21,13 +22,28 @@ struct DataPoint {
 
 enum class SearchMethod { Enumerate, LegacyEnumerate, Adam };
 
+enum class MemoLifetime {
+    PerCandidate,
+    SearchGlobal,
+};
+
 struct SearchOptions {
     EvalDomain domain{EvalDomain::Complex};
     int jobs{1};
     bool profile{false};
     SearchMethod method{SearchMethod::Enumerate};
+    MemoLifetime memo_lifetime{MemoLifetime::PerCandidate};
     int adam_epochs{2000};
     double adam_lr{0.05};
+    std::size_t hall_of_fame_size{10};
+};
+
+struct EquationRecord {
+    Tree tree{};
+    double mse{std::numeric_limits<double>::infinity()};
+    int eml_nodes{0};
+    int complexity{0};
+    std::string rpn;
 };
 
 struct SearchResult {
@@ -35,7 +51,55 @@ struct SearchResult {
     double mse{std::numeric_limits<double>::infinity()};
     std::string rpn;
     SearchStats stats{};
+    std::vector<EquationRecord> equations;
 };
+
+inline bool equation_record_less(const EquationRecord& a, const EquationRecord& b) {
+    if (a.mse != b.mse) {
+        return a.mse < b.mse;
+    }
+    if (a.complexity != b.complexity) {
+        return a.complexity < b.complexity;
+    }
+    return a.rpn < b.rpn;
+}
+
+inline EquationRecord make_equation_record(const Tree& tree, double mse) {
+    const int eml_nodes = static_cast<int>(tree.eml_count());
+    return EquationRecord{tree, mse, eml_nodes, eml_nodes, to_rpn(tree)};
+}
+
+inline void add_equation_record(SearchResult& result, EquationRecord record, std::size_t limit) {
+    if (limit == 0 || !std::isfinite(record.mse) || record.rpn.empty()) {
+        return;
+    }
+    auto it = std::find_if(result.equations.begin(), result.equations.end(), [&](const EquationRecord& existing) {
+        return existing.rpn == record.rpn;
+    });
+    if (it != result.equations.end()) {
+        if (equation_record_less(record, *it)) {
+            *it = std::move(record);
+        }
+    } else {
+        result.equations.push_back(std::move(record));
+    }
+    std::sort(result.equations.begin(), result.equations.end(), equation_record_less);
+    if (result.equations.size() > limit) {
+        result.equations.resize(limit);
+    }
+}
+
+inline void ensure_best_equation_record(SearchResult& result, std::size_t limit) {
+    if (!result.tree.empty() && std::isfinite(result.mse)) {
+        add_equation_record(result, make_equation_record(result.tree, result.mse), limit);
+    }
+    if (!result.equations.empty()) {
+        const EquationRecord& best = result.equations.front();
+        result.tree = best.tree;
+        result.mse = best.mse;
+        result.rpn = best.rpn;
+    }
+}
 
 inline void collect_leaf_indices(const Tree& tree, int idx, std::vector<int>& out) {
     const Node& node = tree.nodes[static_cast<std::size_t>(idx)];

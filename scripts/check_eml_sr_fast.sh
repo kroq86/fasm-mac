@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Fast eml_sr smoke (~5s). Skips recover poly (depth 4 search ~30s).
+# Fast eml_sr smoke. Skips recover poly.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+HOST_ARCH="$(uname -m)"
 OUT_DIR="$(mktemp -d "${TMPDIR:-/tmp}/eml-sr-fast.XXXXXX")"
 trap 'rm -rf "$OUT_DIR"' EXIT
 
@@ -14,11 +15,11 @@ ARENA_SMOKE="$OUT_DIR/expr_arena_smoke"
 EXP_POINTS="$ROOT/fasm/tests/eml_sr/exp_points.txt"
 EXPECTED="$ROOT/fasm/tests/eml_sr/expected_verify.txt"
 
-clang++ -std=c++20 -O2 -arch x86_64 "$ROOT/fasm/apps/eml_sr/eml_sr.cpp" -o "$EML_SR"
-clang++ -std=c++20 -O2 -arch x86_64 "$ROOT/fasm/tests/eml_sr/derived_ops_smoke.cpp" -o "$DERIVED_SMOKE"
-clang++ -std=c++20 -O2 -arch x86_64 "$ROOT/fasm/tests/eml_sr/witness_verify_smoke.cpp" -o "$WITNESS_SMOKE"
-clang++ -std=c++20 -O2 -arch x86_64 "$ROOT/fasm/tests/eml_sr/eml_compiler_smoke.cpp" -o "$COMPILER_SMOKE"
-clang++ -std=c++20 -O2 -arch x86_64 "$ROOT/fasm/tests/eml_sr/expr_arena_smoke.cpp" -o "$ARENA_SMOKE"
+clang++ -std=c++20 -O2 -arch "$HOST_ARCH" "$ROOT/fasm/apps/eml_sr/eml_sr.cpp" -o "$EML_SR"
+clang++ -std=c++20 -O2 -arch "$HOST_ARCH" "$ROOT/fasm/tests/eml_sr/derived_ops_smoke.cpp" -o "$DERIVED_SMOKE"
+clang++ -std=c++20 -O2 -arch "$HOST_ARCH" "$ROOT/fasm/tests/eml_sr/witness_verify_smoke.cpp" -o "$WITNESS_SMOKE"
+clang++ -std=c++20 -O2 -arch "$HOST_ARCH" "$ROOT/fasm/tests/eml_sr/eml_compiler_smoke.cpp" -o "$COMPILER_SMOKE"
+clang++ -std=c++20 -O2 -arch "$HOST_ARCH" "$ROOT/fasm/tests/eml_sr/expr_arena_smoke.cpp" -o "$ARENA_SMOKE"
 "$DERIVED_SMOKE" >/dev/null
 "$WITNESS_SMOKE" >/dev/null
 "$COMPILER_SMOKE" >/dev/null

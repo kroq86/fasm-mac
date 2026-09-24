@@ -73,6 +73,11 @@ inline std::uint64_t f_value_key(double value) {
 
 class ExprArena {
 public:
+    struct Checkpoint {
+        std::size_t node_count{};
+        std::size_t key_count{};
+    };
+
     ExprId intern_leaf(LeafKind leaf, double f_value = 1.0) {
         ExprKey key{ExprKind::Leaf, leaf, f_value_key(f_value), kInvalidExprId, kInvalidExprId};
         if (auto it = ids_.find(key); it != ids_.end()) {
@@ -128,26 +133,79 @@ public:
         return n.rpn_cache;
     }
 
+    [[nodiscard]] Checkpoint checkpoint() const {
+        return Checkpoint{nodes_.size(), keys_.size()};
+    }
+
+    void rollback(Checkpoint checkpoint) {
+        for (std::size_t i = keys_.size(); i > checkpoint.key_count; --i) {
+            ids_.erase(keys_[i - 1]);
+        }
+        keys_.resize(checkpoint.key_count);
+        nodes_.resize(checkpoint.node_count);
+    }
+
 private:
     ExprId push_node(const ExprKey& key, const ExprNode& node) {
         const ExprId id = static_cast<ExprId>(nodes_.size());
         nodes_.push_back(node);
         ids_.emplace(key, id);
+        keys_.push_back(key);
         return id;
     }
 
     std::vector<ExprNode> nodes_;
+    std::vector<ExprKey> keys_;
     std::unordered_map<ExprKey, ExprId, ExprKeyHash> ids_;
 };
 
+class ExprArenaScope {
+public:
+    explicit ExprArenaScope(ExprArena& arena) : arena_(&arena), checkpoint_(arena.checkpoint()) {}
+
+    ExprArenaScope(const ExprArenaScope&) = delete;
+    ExprArenaScope& operator=(const ExprArenaScope&) = delete;
+
+    ExprArenaScope(ExprArenaScope&& other) noexcept
+        : arena_(std::exchange(other.arena_, nullptr)), checkpoint_(other.checkpoint_) {}
+
+    ExprArenaScope& operator=(ExprArenaScope&& other) noexcept {
+        if (this != &other) {
+            rollback();
+            arena_ = std::exchange(other.arena_, nullptr);
+            checkpoint_ = other.checkpoint_;
+        }
+        return *this;
+    }
+
+    ~ExprArenaScope() {
+        rollback();
+    }
+
+    void commit() {
+        arena_ = nullptr;
+    }
+
+private:
+    void rollback() {
+        if (arena_ != nullptr) {
+            arena_->rollback(checkpoint_);
+            arena_ = nullptr;
+        }
+    }
+
+    ExprArena* arena_{nullptr};
+    ExprArena::Checkpoint checkpoint_{};
+};
+
 struct ArenaEvalKey {
-    ExprId id{kInvalidExprId};
+    std::uint64_t expr_hash{0};
     std::uint64_t x_bits{0};
     EvalDomain domain{EvalDomain::Complex};
     bool numeric_prune{true};
 
     bool operator==(const ArenaEvalKey& other) const {
-        return id == other.id && x_bits == other.x_bits && domain == other.domain &&
+        return expr_hash == other.expr_hash && x_bits == other.x_bits && domain == other.domain &&
                numeric_prune == other.numeric_prune;
     }
 };
@@ -155,7 +213,7 @@ struct ArenaEvalKey {
 struct ArenaEvalKeyHash {
     std::size_t operator()(const ArenaEvalKey& key) const {
         std::uint64_t h = 14695981039346656037ULL;
-        h = stable_mix(h, key.id);
+        h = stable_mix(h, key.expr_hash);
         h = stable_mix(h, key.x_bits);
         h = stable_mix(h, static_cast<std::uint64_t>(key.domain));
         h = stable_mix(h, key.numeric_prune ? 1U : 0U);
@@ -173,7 +231,8 @@ inline std::complex<double> eval_expr(
     std::complex<double> x,
     EvalContext& ctx,
     ArenaEvalMemo& memo) {
-    const ArenaEvalKey key{id, std::bit_cast<std::uint64_t>(x.real()), ctx.domain, ctx.numeric_prune};
+    const ExprNode& n = arena.node(id);
+    const ArenaEvalKey key{n.hash, std::bit_cast<std::uint64_t>(x.real()), ctx.domain, ctx.numeric_prune};
     if (x.imag() == 0.0) {
         if (auto it = memo.cache.find(key); it != memo.cache.end()) {
             if (ctx.stats) {
@@ -186,7 +245,6 @@ inline std::complex<double> eval_expr(
         }
     }
 
-    const ExprNode& n = arena.node(id);
     std::complex<double> out{};
     if (n.kind == ExprKind::Leaf) {
         if (n.leaf == LeafKind::One) {

@@ -220,6 +220,7 @@ inline SearchResult adam_search_best(
         trial.rpn = to_rpn(snapped);
         ++trial.stats.forms_seen;
         ++trial.stats.candidates_evaled;
+        add_equation_record(trial, make_equation_record(snapped, mse), opts.hall_of_fame_size);
 
         if (trial.mse < merged.mse) {
             merged = std::move(trial);
@@ -228,6 +229,7 @@ inline SearchResult adam_search_best(
             break;
         }
     }
+    ensure_best_equation_record(merged, opts.hall_of_fame_size);
     return merged;
 }
 

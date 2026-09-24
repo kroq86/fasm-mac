@@ -37,7 +37,7 @@ void usage() {
         << "    stdin: optional x y rows and/or bench_perf lines (count layer ms)\n"
         << "\n"
         << "  exp = minimal tree (1 eml node).  ln = paper depth-3 tree (3 eml nodes).\n"
-        << "  poly = search result (~90s at depth 4).  Use show --preset ln for full demo.\n";
+        << "  poly = depth-4 search.  Use show --preset ln for full demo.\n";
 }
 
 std::string trim_copy(std::string s) {

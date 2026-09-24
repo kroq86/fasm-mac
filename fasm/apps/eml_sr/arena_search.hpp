@@ -39,7 +39,8 @@ inline ExprId instantiate_leaf_assignment(
     ExprId shape,
     std::uint32_t assignment,
     std::uint32_t& leaf_index) {
-    const ExprNode& n = arena.node(shape);
+    // intern_* can reallocate nodes_ before the sibling id is read.
+    const ExprNode n = arena.node(shape);
     if (n.kind == ExprKind::Leaf) {
         const std::uint32_t kind = (assignment / arena_pow_u32(3U, leaf_index)) % 3U;
         ++leaf_index;
@@ -76,7 +77,8 @@ inline ExprId with_arena_f_values(
     ExprId id,
     const std::vector<double>& values,
     std::size_t& value_index) {
-    const ExprNode& n = arena.node(id);
+    // intern_* can reallocate nodes_ before the sibling id is read.
+    const ExprNode n = arena.node(id);
     if (n.kind == ExprKind::Leaf) {
         if (n.leaf == LeafKind::F) {
             const double value = values[value_index++];
@@ -127,6 +129,13 @@ inline double mse_for_expr_ctx(
         }
     }
     return sum * inv_n;
+}
+
+inline EquationRecord make_arena_equation_record(const ExprArena& arena, ExprId id, double mse) {
+    const ExprNode& node = arena.node(id);
+    Tree tree = expr_to_tree(arena, id);
+    const int eml_nodes = static_cast<int>(node.eml_count);
+    return EquationRecord{std::move(tree), mse, eml_nodes, eml_nodes, arena.to_rpn(id)};
 }
 
 inline ExprId optimize_f_params_expr(
@@ -191,7 +200,7 @@ inline SearchResult arena_search_best(
 
     SearchResult best{};
     ctx.stats = opts.profile ? &best.stats : nullptr;
-    ArenaEvalMemo memo{};
+    ArenaEvalMemo search_memo{};
 
     for (int eml_nodes = 1; eml_nodes <= max_eml_nodes; ++eml_nodes) {
         gen_arena_shapes(arena, eml_nodes, [&](ExprId shape) {
@@ -206,11 +215,18 @@ inline SearchResult arena_search_best(
 
             const std::uint32_t limit = arena_pow_u32(3U, shape_node.leaf_count);
             for (std::uint32_t assignment = 0; assignment < limit; ++assignment) {
+                ExprArenaScope candidate_scope(arena);
+                ArenaEvalMemo candidate_memo{};
+                ArenaEvalMemo& memo = opts.memo_lifetime == MemoLifetime::SearchGlobal ? search_memo : candidate_memo;
                 std::uint32_t leaf_index = 0;
                 ExprId candidate = instantiate_leaf_assignment(arena, shape, assignment, leaf_index);
                 candidate = optimize_f_params_expr(arena, candidate, data, ctx, memo, best.mse);
                 ++best.stats.candidates_evaled;
                 const double mse = mse_for_expr_ctx(arena, candidate, data, ctx, memo, best.mse);
+                if (memo.cache.size() > best.stats.max_memo_entries) {
+                    best.stats.max_memo_entries = memo.cache.size();
+                }
+                add_equation_record(best, make_arena_equation_record(arena, candidate, mse), opts.hall_of_fame_size);
                 if (mse < best.mse) {
                     best.mse = mse;
                     best.rpn = arena.to_rpn(candidate);
@@ -226,6 +242,7 @@ inline SearchResult arena_search_best(
             break;
         }
     }
+    ensure_best_equation_record(best, opts.hall_of_fame_size);
     return best;
 }
 
