@@ -1,6 +1,12 @@
 # KV-handoff manuscript
 
 Read [paper.md](paper.md). English research draft, not submitted to arXiv.
+
+**Extension (not a second paper):** [extension-latent-routing.md](extension-latent-routing.md) —
+training-free residual / final-layer routing between two frozen GPT-2 copies;
+positive Step 5 = foreign hidden state as functional operand under causal-site
+patching; Step 6 (new transferable \(f(X)\)) REFUTED. Fold into the parent
+manuscript as a late section/appendix when ready.
 No new training was run for the originally reported experiments (ordering,
 lookup, two-key, XOR). A later revision added, for the ordering task only, six
 new inference-only checks against the same frozen checkpoint (moment-matched
