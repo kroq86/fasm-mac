@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Агенты без текста</title>
+<style>
+:root{
+  --bg:#fbfaf7; --fg:#161616; --muted:#6f6d66; --line:#e2dfd6; --card:#f2f0ea;
+  --a:#2f5d8a; --a-soft:#d8e4f0; --good:#2e7d4f; --bad:#c0472f; --warn:#a8741a; --gray:#c9c6bd;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121417; --fg:#f0efea; --muted:#a09d95; --line:#2c3036; --card:#1b1e22;
+    --a:#86b6e6; --a-soft:#24384d; --good:#71c693; --bad:#ec8a72; --warn:#e0b25c; --gray:#4a4e55;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121417; --fg:#f0efea; --muted:#a09d95; --line:#2c3036; --card:#1b1e22;
+  --a:#86b6e6; --a-soft:#24384d; --good:#71c693; --bad:#ec8a72; --warn:#e0b25c; --gray:#4a4e55;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);
+  font:20px/1.42 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+.slide{position:fixed;inset:0;display:none;flex-direction:column;justify-content:center;
+  padding:5vh 6vw 8vh;gap:3vh}
+.slide.active{display:flex}
+.kicker{color:var(--a);font-weight:650;font-size:15px;text-transform:uppercase;letter-spacing:.09em}
+h1{font-size:clamp(34px,5vw,68px);line-height:1.08;margin:0;letter-spacing:-.025em;font-weight:750}
+h2{font-size:clamp(24px,2.8vw,40px);line-height:1.15;margin:0;letter-spacing:-.02em;font-weight:720;max-width:34ch}
+.sub{color:var(--muted);font-size:clamp(17px,1.5vw,23px);margin:0;max-width:56ch}
+.body{display:grid;grid-template-columns:1.65fr 1fr;gap:3.5vw;align-items:center}
+.deep{background:var(--card);border-radius:14px;padding:20px 22px;font-size:clamp(15px,1.12vw,18px);line-height:1.45}
+.deep h4{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.09em;color:var(--a)}
+.deep p{margin:0 0 10px} .deep p:last-child{margin:0}
+.num{font-variant-numeric:tabular-nums;font-weight:700}
+svg{width:100%;height:auto;display:block}
+svg text{font-family:inherit}
+svg text:not([fill]):not(.t-muted){fill:var(--fg)}
+svg text.t-muted{fill:var(--muted)}
+.hl{color:var(--a)} .good{color:var(--good)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+.score{display:grid;grid-template-columns:repeat(3,1fr);gap:2.4vw}
+.score div{background:var(--card);border-radius:14px;padding:18px 20px;font-size:clamp(15px,1.15vw,18px);color:var(--muted)}
+.score b{display:block;color:var(--fg);font-size:clamp(19px,1.6vw,25px);margin-bottom:6px}
+.score .mark{font-size:clamp(26px,2.4vw,38px);font-weight:800;display:block;margin-bottom:4px}
+.next{font-size:clamp(16px,1.25vw,20px);margin:0}
+.notes{display:none}
+#notes{position:fixed;left:0;right:0;bottom:0;max-height:34vh;overflow:auto;display:none;
+  background:var(--card);border-top:1px solid var(--line);padding:14px 6vw 40px;font-size:17px;line-height:1.5;z-index:5}
+#notes.on{display:block}
+.foot{position:fixed;right:22px;bottom:14px;color:var(--muted);font-size:14px;z-index:6}
+.bar{position:fixed;left:0;bottom:0;height:3px;background:var(--a);transition:width .25s;z-index:6}
+@media (max-width:860px){
+  .slide{padding:4vh 16px 10vh;justify-content:flex-start;overflow:auto}
+  .body,.score{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- 1 -->
+<section class="slide">
+  <div class="kicker">Доклад · ~25 минут</div>
+  <h1>Агенты, которые общаются<br><span class="hl">памятью, а не текстом</span></h1>
+  <p class="sub">Новое направление — латентная коммуникация — позволяет агентам обмениваться внутренними представлениями напрямую: скрытыми состояниями или KV-кешами (Liu, 2026). Что для этого нужно и что уже работает</p>
+  <p class="sub" style="font-size:17px">Кирилл Остапенко</p>
+  <aside class="notes">Сегодня поговорим о том, как могут общаться ИИ-агенты в ближайшем будущем. Сейчас всё общение между моделями идёт через текст — по сути через человеческий язык. Это удобно, но дорого и с потерями. Есть идея: пусть модели передают друг другу внутреннее состояние напрямую. Я расскажу, что для этого нужно, и покажу собственные эксперименты: что уже работает, что нет и где очень легко себя обмануть.</aside>
+</section>
+
+<!-- 2 -->
+<section class="slide">
+  <div class="kicker">Как сейчас</div>
+  <h2>Сегодня агенты общаются текстом: это медленно и с потерями</h2>
+  <p class="sub">Каждое сообщение заставляет отправителя сгенерировать текст, а получателя — заново его прочитать (Liu, 2026).</p>
+  <div class="body">
+    <svg viewBox="0 0 760 320" role="img" aria-label="Главный агент читает документ и пишет текст трём помощникам, каждый из которых перечитывает контекст">
+      <rect x="0" y="110" width="170" height="100" rx="14" fill="var(--a-soft)"/>
+      <text x="85" y="152" text-anchor="middle" font-size="20" font-weight="700">Главный</text>
+      <text x="85" y="178" text-anchor="middle" font-size="20" font-weight="700">агент</text>
+      <text x="85" y="235" text-anchor="middle" font-size="15" class="t-muted">прочитал 100 стр.</text>
+      <g font-size="17">
+        <path d="M170 140 L 430 50" stroke="var(--gray)" stroke-width="3"/>
+        <path d="M170 160 L 430 160" stroke="var(--gray)" stroke-width="3"/>
+        <path d="M170 180 L 430 270" stroke="var(--gray)" stroke-width="3"/>
+        <text x="300" y="80" text-anchor="middle" class="t-muted">текст</text>
+        <text x="300" y="150" text-anchor="middle" class="t-muted">текст</text>
+        <text x="300" y="250" text-anchor="middle" class="t-muted">текст</text>
+      </g>
+      <g font-size="17">
+        <rect x="430" y="22" width="140" height="56" rx="10" fill="var(--card)"/><text x="500" y="56" text-anchor="middle">помощник 1</text>
+        <rect x="430" y="132" width="140" height="56" rx="10" fill="var(--card)"/><text x="500" y="166" text-anchor="middle">помощник 2</text>
+        <rect x="430" y="242" width="140" height="56" rx="10" fill="var(--card)"/><text x="500" y="276" text-anchor="middle">помощник 3</text>
+      </g>
+      <g font-size="16" fill="var(--bad)" font-weight="700">
+        <text x="590" y="56" fill="var(--bad)">перечитывает</text>
+        <text x="590" y="166" fill="var(--bad)">перечитывает</text>
+        <text x="590" y="276" fill="var(--bad)">перечитывает</text>
+      </g>
+    </svg>
+    <div class="deep">
+      <h4>Цена перечитывания</h4>
+      <p>Claude API: обычный ввод <b class="num">$2–4</b> / млн токенов, чтение из кеша <b class="num">$0.20</b> — в 10–20 раз дешевле.</p>
+      <p>Кеширование снижает эту цену только внутри одной модели (Heo et al., 2026).</p>
+      <h4 style="margin-top:14px">Текст — канал с низкой пропускной способностью</h4>
+      <p>Внутренние представления сжимают в строку токенов, а получатель распаковывает её обратно (Fu et al., 2025). Медленно — получатель ждёт, пока отправитель допишет; с потерями — состояние сжато в слова (Rossi et al., 2026).</p>
+    </div>
+  </div>
+  <aside class="notes">Типичная схема сегодня: главный агент изучил документ, кодовую базу или результаты поиска и раздаёт задачи помощникам. Как он с ними общается? Текстом. Либо пересылает исходник целиком — и каждый помощник заново его «читает», а это самая дорогая часть работы модели. Либо пишет пересказ — и теряет детали. Насколько дорого перечитывание, видно по ценам: провайдеры уже кешируют прочитанное и берут за повторное чтение в 10–20 раз меньше. Но этот механизм работает только внутри одной модели и для одинакового начала запроса. Передать «прочитанное» другой модели так нельзя.</aside>
+</section>
+
+<!-- 3 -->
+<section class="slide">
+  <div class="kicker">Основы · где лежит кеш</div>
+  <h2>KV-кеш — это ключи и значения, которые каждый слой внимания вычисляет для каждого прочитанного слова</h2>
+  <div class="body">
+    <svg viewBox="0 0 760 380" role="img" aria-label="Схема трансформера: текст, эмбеддинги, блоки с вниманием и MLP, логиты; ключи и значения внимания сохраняются в KV-кеш">
+      <rect x="0" y="0" width="330" height="40" rx="10" fill="var(--card)"/>
+      <text x="165" y="26" text-anchor="middle" font-size="17">текст: «A dog is a type of»</text>
+      <path d="M165 40 L 165 56" stroke="var(--muted)" stroke-width="2"/>
+      <rect x="0" y="56" width="330" height="40" rx="10" fill="var(--card)"/>
+      <text x="165" y="82" text-anchor="middle" font-size="17">эмбеддинги — вход первого блока</text>
+      <path d="M165 96 L 165 112" stroke="var(--muted)" stroke-width="2"/>
+      <rect x="0" y="112" width="330" height="128" rx="12" fill="none" stroke="var(--fg)" stroke-width="2"/>
+      <text x="16" y="136" font-size="15" font-weight="700">блок трансформера × 12</text>
+      <rect x="16" y="148" width="190" height="80" rx="10" fill="var(--a-soft)"/>
+      <text x="111" y="172" text-anchor="middle" font-size="16" font-weight="700">внимание</text>
+      <rect x="30" y="184" width="44" height="32" rx="6" fill="var(--card)"/><text x="52" y="206" text-anchor="middle" font-size="17" font-weight="700">Q</text>
+      <rect x="89" y="184" width="44" height="32" rx="6" fill="var(--a)"/><text x="111" y="206" text-anchor="middle" font-size="17" font-weight="700" fill="var(--bg)">K</text>
+      <rect x="148" y="184" width="44" height="32" rx="6" fill="var(--a)"/><text x="170" y="206" text-anchor="middle" font-size="17" font-weight="700" fill="var(--bg)">V</text>
+      <rect x="220" y="148" width="96" height="80" rx="10" fill="var(--card)"/>
+      <text x="268" y="194" text-anchor="middle" font-size="16" font-weight="700">MLP</text>
+      <path d="M165 240 L 165 274" stroke="var(--muted)" stroke-width="2"/>
+      <text x="178" y="258" font-size="14" class="t-muted">скрытое состояние между блоками</text>
+      <rect x="0" y="274" width="330" height="44" rx="10" fill="var(--card)"/>
+      <text x="165" y="295" text-anchor="middle" font-size="16">логиты — оценка для каждого</text>
+      <text x="165" y="312" text-anchor="middle" font-size="16">из 50 257 слов словаря</text>
+      <path d="M165 318 L 165 336" stroke="var(--muted)" stroke-width="2"/>
+      <text x="165" y="360" text-anchor="middle" font-size="18" font-weight="700" fill="var(--good)">следующее слово: «animal»</text>
+      <path d="M111 216 L 111 234 M170 216 L 170 234 M111 234 L 350 234 L 350 120 L 430 120" stroke="var(--a)" stroke-width="3" fill="none"/>
+      <path d="M418 112 L 432 120 L 418 128" stroke="var(--a)" stroke-width="3" fill="none"/>
+      <rect x="432" y="40" width="300" height="190" rx="12" fill="none" stroke="var(--a)" stroke-width="3"/>
+      <text x="582" y="70" text-anchor="middle" font-size="19" font-weight="700" fill="var(--a)">KV-кеш</text>
+      <g font-size="14" class="t-muted">
+        <rect x="452" y="84" width="260" height="22" rx="4" fill="var(--a-soft)"/><text x="462" y="100" class="t-muted">слой 1: K, V для «A», «dog», «is» …</text>
+        <rect x="452" y="112" width="260" height="22" rx="4" fill="var(--a-soft)"/><text x="462" y="128" class="t-muted">слой 2: K, V для «A», «dog», «is» …</text>
+        <text x="582" y="154" text-anchor="middle" class="t-muted">…</text>
+        <rect x="452" y="164" width="260" height="22" rx="4" fill="var(--a-soft)"/><text x="462" y="180" class="t-muted">слой 12: K, V для «A», «dog», «is» …</text>
+      </g>
+      <text x="582" y="214" text-anchor="middle" font-size="14" class="t-muted">запрос Q не хранится — пересчитывается</text>
+      <text x="432" y="268" font-size="16" font-weight="700" fill="var(--a)">Эксперимент 1 передаёт KV-кеш</text>
+      <text x="432" y="292" font-size="15" class="t-muted">слайды 5–7</text>
+      <text x="432" y="326" font-size="16" font-weight="700">Эксперимент 2 — скрытое состояние</text>
+      <text x="432" y="350" font-size="15" class="t-muted">слайды 8–9</text>
+    </svg>
+    <div class="deep">
+      <h4>Чтение и генерация</h4>
+      <p>Чтение текста (prefill) заполняет кеш. Генерация (decode) добавляет по одному слову и обращается к уже сохранённым ключам и значениям (Fu et al., 2025).</p>
+      <h4 style="margin-top:14px">Размер в GPT-2</h4>
+      <p>12 слоёв × (K + V) × 768 чисел = <b class="num">18 432</b> числа на слово. Текст в 1000 слов — около <b class="num">37 МБ</b> (16 бит на число).</p>
+      <h4 style="margin-top:14px">Модели</h4>
+      <p>GPT-2 (12 слоёв), DistilGPT2 (6 слоёв, дистиллят GPT-2), Pythia-160m (другое семейство). У всех векторы по 768 чисел.</p>
+    </div>
+  </div>
+  <aside class="notes">Чтобы было понятно, о чём речь, — где этот кеш физически лежит. Текст режется на слова, каждое слово превращается в эмбеддинг — это вход первого блока. Дальше двенадцать одинаковых блоков. В каждом блоке есть механизм внимания: для каждого слова он вычисляет три вектора — запрос Q, ключ K и значение V. Ключи и значения всех уже прочитанных слов модель сохраняет — это и есть KV-кеш: по паре векторов на каждое слово в каждом слое. Запрос не хранится, он пересчитывается. Между блоками течёт скрытое состояние. На выходе последнего блока получаются логиты — оценка для каждого из пятидесяти тысяч слов словаря, и из них выбирается следующее слово. Чтение текста заполняет кеш, а генерация идёт по одному слову и обращается к кешу. В GPT-2 это примерно восемнадцать тысяч чисел на слово, для тысячи слов — около тридцати семи мегабайт. Важно для дальнейшего: в первом эксперименте я передаю именно KV-кеш, во втором — скрытое состояние одного слова.</aside>
+</section>
+
+<!-- 4 -->
+<section class="slide">
+  <div class="kicker">Видение</div>
+  <h2>Завтра: получатель переиспользует кеш отправителя и не читает текст заново. Больше вызовов за те же деньги</h2>
+  <p class="sub">Кеш богаче текста и передаётся сразу целиком, без медленной пословной генерации (Fu et al., 2025).</p>
+  <div class="body">
+    <svg viewBox="0 0 760 330" role="img" aria-label="Главный агент читает один раз и передаёт кеш помощникам; три условия: понимание, экономия, совместимость">
+      <rect x="0" y="40" width="170" height="90" rx="14" fill="var(--a-soft)"/>
+      <text x="85" y="80" text-anchor="middle" font-size="20" font-weight="700">Главный</text>
+      <text x="85" y="106" text-anchor="middle" font-size="16" class="t-muted">читает 1 раз</text>
+      <path d="M170 70 L 420 30 M170 85 L 420 85 M170 100 L 420 140" stroke="var(--a)" stroke-width="4"/>
+      <text x="295" y="38" text-anchor="middle" font-size="16" font-weight="700" fill="var(--a)">KV-кеш</text>
+      <g font-size="17">
+        <rect x="420" y="8" width="150" height="44" rx="10" fill="var(--card)"/><text x="495" y="36" text-anchor="middle">помощник 1</text>
+        <rect x="420" y="63" width="150" height="44" rx="10" fill="var(--card)"/><text x="495" y="91" text-anchor="middle">помощник 2</text>
+        <rect x="420" y="118" width="150" height="44" rx="10" fill="var(--card)"/><text x="495" y="146" text-anchor="middle">помощник 3</text>
+      </g>
+      <text x="590" y="91" font-size="16" font-weight="700" fill="var(--good)">не перечитывают</text>
+      <text x="0" y="212" font-size="19" font-weight="700">Чтобы это сбылось, нужны три условия — по ним и пойдём:</text>
+      <g font-size="18">
+        <rect x="0" y="232" width="240" height="84" rx="12" fill="var(--card)"/>
+        <text x="16" y="264" font-weight="700">1 · Понимание</text><text x="16" y="292" class="t-muted" font-size="16">использует смысл</text>
+        <rect x="260" y="232" width="240" height="84" rx="12" fill="var(--card)"/>
+        <text x="276" y="264" font-weight="700">2 · Экономия</text><text x="276" y="292" class="t-muted" font-size="16">дешевле перечитывания</text>
+        <rect x="520" y="232" width="240" height="84" rx="12" fill="var(--card)"/>
+        <text x="536" y="264" font-weight="700">3 · Совместимость</text><text x="536" y="292" class="t-muted" font-size="16">между разными моделями</text>
+      </g>
+    </svg>
+    <div class="deep">
+      <h4>Что уже показано</h4>
+      <p><b>Cache-to-Cache</b> (Fu et al., 2025): передача кеша вместо текста — +3–5% точности и в 2,5× быстрее.</p>
+      <p><b>Heo et al.</b> (2026): перенос кеша внутри семейства Qwen — в 2,7–25× быстрее перечитывания.</p>
+      <p><b>Cheng et al.</b> (2026): прирост на бенчмарке сам по себе не доказывает, что передано содержание.</p>
+    </div>
+  </div>
+  <aside class="notes">Вот видение. Главный агент читает материал один раз и раздаёт помощникам не текст, а свою память. Помощники ничего не перечитывают, а значит за те же деньги можно сделать больше вызовов: больше помощников, больше попыток, больше проверок. Это не только моя фантазия, направление активно исследуют, я назвал несколько работ. Но чтобы это сбылось, нужны три условия. Первое — понимание: получатель должен действительно использовать смысл переданного. Второе — экономия: передача должна быть дешевле перечитывания. Третье — совместимость: это должно работать между разными моделями, ведь агенты в реальной системе разные. Дальше пройдёмся по каждому условию, и я покажу, что у меня получилось.</aside>
+</section>
+
+<!-- 5 -->
+<section class="slide">
+  <div class="kicker">Условие 1 · понимание</div>
+  <h2>Чтобы проверить, что получатель использует содержание, подмените память на чужую</h2>
+  <p class="sub">Систему не трогаем, подаём такую же корректную память, но от другого примера (по Cheng et al., 2026). Здесь: GPT-2 читает задачу, память идёт в DistilGPT2 через маленький обученный адаптер.</p>
+  <div class="body">
+    <svg viewBox="0 0 760 320" role="img" aria-label="Своя память даёт правильный ответ; чужая память должна дать неправильный">
+      <rect x="0" y="60" width="230" height="70" rx="12" fill="var(--a-soft)"/>
+      <text x="115" y="102" text-anchor="middle" font-size="20" font-weight="700">своя память</text>
+      <path d="M230 95 L 420 95" stroke="var(--fg)" stroke-width="3"/>
+      <path d="M408 85 L 424 95 L 408 105" stroke="var(--fg)" stroke-width="3" fill="none"/>
+      <text x="440" y="103" font-size="22" font-weight="700" fill="var(--good)">правильный ответ</text>
+      <rect x="0" y="180" width="230" height="70" rx="12" fill="var(--gray)" opacity=".55"/>
+      <text x="115" y="214" text-anchor="middle" font-size="20" font-weight="700">чужая память</text>
+      <text x="115" y="238" text-anchor="middle" font-size="14" class="t-muted">от другого примера</text>
+      <path d="M230 215 L 420 215" stroke="var(--fg)" stroke-width="3"/>
+      <path d="M408 205 L 424 215 L 408 225" stroke="var(--fg)" stroke-width="3" fill="none"/>
+      <text x="440" y="223" font-size="22" font-weight="700" fill="var(--bad)">неправильный ответ</text>
+      <text x="0" y="300" font-size="18">Ответ меняется вместе с памятью → модель использует её содержимое.</text>
+    </svg>
+    <div class="deep">
+      <h4>Почему не хватает вероятностей</h4>
+      <p>Один и тот же прирост совместим и с использованием содержания, и с общим эффектом, который просто сдвигает получателя (Cheng et al., 2026).</p>
+      <p>Задача «два ключа»: вероятность правильного ответа выросла, а правильных ответов <b class="bad num">0 из 32</b>.</p>
+      <p><b>→ Считать нужно правильные ответы, а не вероятности.</b></p>
+      <p>У Cache-to-Cache при такой проверке передача, привязанная к конкретному примеру, не обнаружена (Cheng et al., 2026).</p>
+    </div>
+  </div>
+  <aside class="notes">Первое условие — понимание. Как проверить, что модель действительно поняла переданную память? Очень просто: подменить её. GPT-2 читает задачу и передаёт память DistilGPT2, которая сам текст не видит. Между ними маленький обучаемый адаптер — около одной десятой процента параметров, сами модели заморожены. Если дать свою память — ответ должен быть правильным. Если подсунуть память от другого примера — ответ должен стать неправильным. Если ответ меняется вместе с памятью, значит модель использует именно содержимое. Почему нельзя просто смотреть на вероятности? В задаче с двумя ключами вероятность правильного ответа выросла, а правильных ответов — ноль из тридцати двух. Поэтому я считаю правильные ответы.</aside>
+</section>
+
+<!-- 6 -->
+<section class="slide">
+  <div class="kicker">Условие 1 · результат</div>
+  <h2>Своя память — 31 правильный ответ из 32, чужая — 1: ответ зависит от того, чья это память</h2>
+  <div class="body">
+    <svg viewBox="0 0 760 330" role="img" aria-label="Порядок: 31 из 32 против 1 из 32. Таблица: 20 из 32 против 1 из 32. Два ключа: 0">
+      <text x="0" y="24" font-size="16" class="t-muted">правильных ответов из 32</text>
+      <text x="0" y="66" font-size="19" font-weight="700">Порядок</text>
+      <text x="150" y="66" font-size="16" class="t-muted">своя</text>
+      <rect x="210" y="48" width="465" height="26" rx="5" fill="var(--good)"/><text x="685" y="68" font-size="19" font-weight="700">31</text>
+      <text x="150" y="104" font-size="16" class="t-muted">чужая</text>
+      <rect x="210" y="86" width="15" height="26" rx="5" fill="var(--bad)"/><text x="235" y="106" font-size="19" font-weight="700">1</text>
+      <text x="0" y="166" font-size="19" font-weight="700">Имя → ID</text>
+      <text x="150" y="166" font-size="16" class="t-muted">своя</text>
+      <rect x="210" y="148" width="300" height="26" rx="5" fill="var(--good)"/><text x="520" y="168" font-size="19" font-weight="700">20</text>
+      <text x="150" y="204" font-size="16" class="t-muted">чужая</text>
+      <rect x="210" y="186" width="15" height="26" rx="5" fill="var(--bad)"/><text x="235" y="206" font-size="19" font-weight="700">1</text>
+      <text x="0" y="266" font-size="19" font-weight="700">Два ключа</text>
+      <text x="150" y="266" font-size="16" class="t-muted">своя</text>
+      <rect x="210" y="248" width="4" height="26" rx="2" fill="var(--bad)"/><text x="224" y="268" font-size="19" font-weight="700">0</text>
+      <text x="0" y="316" font-size="16" class="t-muted">Имя → ID: таблица из 5 строк, отложенные примеры, которых адаптер не видел</text>
+    </svg>
+    <div class="deep">
+      <h4>Что это значит для агентов</h4>
+      <p>Связать имя с его ID в переданной таблице — <b class="good">работает</b>: 5 из 5 запусков, <b class="num">20–27 / 32</b> (в среднем 74%). Чужая память — 1/32, перепутанные связи — 1/32, без памяти — 0/32.</p>
+      <p>Работает и в форме предложения «Bob is 12345» — 5 из 5, 70%.</p>
+      <p>Ответить по сочетанию двух ключей сразу — <b class="bad">нет</b>: 0 из 32.</p>
+      <p><b>→ Одну связь из памяти получатель достаёт; две сразу — пока нет.</b></p>
+    </div>
+  </div>
+  <aside class="notes">Результаты по первому условию. Задача на порядок символов: со своей памятью 31 правильный ответ из 32, с чужой — один. Таблица «имя → ID», по сути SQL-подобный поиск: 20 из 32 на примерах, которых адаптер не видел, и снова один при подмене; на пяти запусках с подобранным шагом обучения — от 20 до 27 из 32. Если спросят про формат: «Bob → 12345», «Bob: 12345» и даже предложение «Bob is 12345» работают на всех пяти запусках (68–74%); ломается только длинная формулировка «Bob has ID 12345» — дело в расстоянии в токенах между ключом и значением, а не в естественном языке. Ответ ломается вместе с памятью — значит, получатель действительно читает её содержимое. Но есть граница: когда ответ определяется сочетанием двух ключей сразу, правильных ответов ноль. Если спросят про задачу на объединение двух половин: после исправления выборки она даёт 29 из 32, но почти столько же, 27, даёт одна вторая половина — так что объединение не доказано. Для агентов: одну связь из переданной памяти получатель достаёт, две сразу — пока нет.</aside>
+</section>
+
+<!-- 7 -->
+<section class="slide">
+  <div class="kicker">Условие 2 · экономия</div>
+  <h2>Если главный агент уже прочитал текст, отдать память помощнику дешевле, чем дать ему перечитать</h2>
+  <div class="body">
+    <svg viewBox="0 0 760 330" role="img" aria-label="Один помощник: перечитывание 25 мс, готовая память 18 мс. 32 помощника: 215 мс против 30 мс">
+      <text x="0" y="22" font-size="16" class="t-muted">время работы помощника, мс</text>
+      <text x="0" y="72" font-size="20" font-weight="700">Один помощник</text>
+      <text x="0" y="112" font-size="17">перечитывает текст</text>
+      <rect x="230" y="94" width="400" height="26" rx="5" fill="var(--bad)"/><text x="640" y="114" font-size="18" font-weight="700">25</text>
+      <text x="0" y="150" font-size="17">получает память</text>
+      <rect x="230" y="132" width="286" height="26" rx="5" fill="var(--good)"/><text x="526" y="152" font-size="18" font-weight="700">18</text>
+      <text x="690" y="134" font-size="19" font-weight="700" fill="var(--good)">1,4×</text>
+      <text x="0" y="212" font-size="20" font-weight="700">32 помощника пачкой</text>
+      <text x="0" y="252" font-size="17">перечитывают текст</text>
+      <rect x="230" y="234" width="400" height="26" rx="5" fill="var(--bad)"/><text x="640" y="254" font-size="18" font-weight="700">215</text>
+      <text x="0" y="290" font-size="17">получают память</text>
+      <rect x="230" y="272" width="56" height="26" rx="5" fill="var(--good)"/><text x="296" y="292" font-size="18" font-weight="700">30</text>
+      <text x="690" y="274" font-size="19" font-weight="700" fill="var(--good)">7×</text>
+    </svg>
+    <div class="deep">
+      <h4>Условие выигрыша</h4>
+      <p>Главный агент читал текст для своей задачи — эта работа уже сделана и в счёт не входит.</p>
+      <h4 style="margin-top:14px">Оговорка</h4>
+      <p>Если читать текст только ради передачи, она окупается начиная примерно с <b>7 помощников</b> на одну память.</p>
+      <p class="muted" style="color:var(--muted)">Замер: последовательность из 32 символов, CPU, PyTorch.</p>
+      <h4 style="margin-top:14px">На больших моделях</h4>
+      <p>Heo et al. (2026), Qwen3 14B→32B: перенос кеша в 2,7–25× быстрее перечитывания. Условие безубыточности объясняет, почему протокол ускоряет длинные контексты и проигрывает на коротких (Liu, 2026).</p>
+    </div>
+  </div>
+  <aside class="notes">Второе условие — экономия. Сценарий агентов: главный агент уже прочитал материал для своей задачи, это сделано в любом случае. Вопрос только в том, что дешевле для помощника: перечитать текст самому или получить готовую память. В моём замере готовая память дешевле: в 1,4 раза для одного помощника и в 7 раз, когда помощников много и они работают пачкой. Оговорка: если главный агент читает текст только ради передачи, это лишняя работа, и тогда выгода появляется, начиная примерно с семи помощников на одну память. Масштаб маленький — короткий текст и процессор; на длинных документах выигрыш, скорее всего, больше, но это ещё надо измерить.</aside>
+</section>
+
+<!-- 8 -->
+<section class="slide">
+  <div class="kicker">Условие 3 · совместимость</div>
+  <h2>Можно ли совсем без обучения? Между копиями одной модели — да</h2>
+  <p class="sub">Вместо целого кеша — самый простой вид памяти: вектор одного слова. Без адаптера.</p>
+  <div class="body">
+    <svg viewBox="0 0 760 340" role="img" aria-label="Вектор слова dog вставляется вместо thing; эффект 0.53 против 0.08 у случайного вектора">
+      <rect x="0" y="10" width="190" height="70" rx="12" fill="var(--a-soft)"/>
+      <text x="95" y="40" text-anchor="middle" font-size="16">модель 1 читает</text>
+      <text x="95" y="66" text-anchor="middle" font-size="22" font-weight="700">«dog»</text>
+      <path d="M190 45 L 360 45 L 360 110" stroke="var(--a)" stroke-width="4" fill="none"/>
+      <path d="M348 98 L 360 116 L 372 98" stroke="var(--a)" stroke-width="4" fill="none"/>
+      <text x="210" y="34" font-size="14" class="t-muted">её вектор слова</text>
+      <text x="250" y="150" font-size="24">A</text>
+      <rect x="290" y="120" width="140" height="42" rx="8" fill="var(--a)" opacity=".18" stroke="var(--a)" stroke-width="2"/>
+      <text x="360" y="150" text-anchor="middle" font-size="24" fill="var(--a)">thing</text>
+      <text x="445" y="150" font-size="24">is a type of …</text>
+      <text x="640" y="150" font-size="24" font-weight="700" fill="var(--good)">animal?</text>
+      <text x="0" y="205" font-size="15" class="t-muted">насколько правильная категория выросла сильнее остальных:</text>
+      <text x="0" y="244" font-size="18">настоящий вектор</text>
+      <rect x="200" y="224" width="440" height="28" rx="5" fill="var(--good)"/><text x="652" y="245" font-size="18" font-weight="700">0.53</text>
+      <text x="0" y="288" font-size="18">случайный вектор</text>
+      <rect x="200" y="268" width="66" height="28" rx="5" fill="var(--gray)"/><text x="278" y="289" font-size="18" font-weight="700">0.08</text>
+      <text x="0" y="332" font-size="15" class="t-muted">две копии GPT-2 · 35 из 36 слов · 5 категорий · без обучения</text>
+    </svg>
+    <div class="deep">
+      <h4>Контроли</h4>
+      <p>Корреляция эффекта с длиной вектора: <b class="num">0,002</b>.<br>Перемешанные метки: <b class="num">0 из 200</b> достигли реального эффекта.</p>
+      <p>Второе отношение («снег → холодный»): <b class="num">8 / 9</b>.</p>
+      <h4 style="margin-top:14px">Не работает</h4>
+      <p>Слабая добавка во все слова фразы. Передача результата модели 2 дальше по цепочке.</p>
+      <p><b>→ Эффект даёт содержимое вектора, а не сила сигнала.</b></p>
+    </div>
+  </div>
+  <aside class="notes">Третье условие — совместимость, и сначала самый смелый вопрос: можно ли вообще без обучения, без адаптера? Берём две копии GPT-2. Первая читает слово «dog», берём её вектор. Вторая читает нейтральную фразу «A thing is a type of» — «вещь — это разновидность…». На место слова «thing» подставляем вектор собаки. Продолжение сдвигается к «animal» в 35 случаях из 36. Я старался это сломать: дело не в силе сигнала, случайный вектор той же длины не работает, перемешивание меток ни разу не дало такого результата. Работает и на другом отношении — снег и холод. Но есть стены: если подмешивать слабый сигнал во все слова, не работает, а цепочку «модель 1 → 2 → 3» построить не удалось.</aside>
+</section>
+
+<!-- 9 -->
+<section class="slide">
+  <div class="kicker">Условие 3 · поворот</div>
+  <h2>Без переводчика эффект слабый: 9% у копии той же модели и почти ноль у модели другого семейства</h2>
+  <div class="body">
+    <svg viewBox="0 -40 760 370" role="img" aria-label="Доля эффекта: без переводчика 9, 11 и 0.7 процента; с линейным переводчиком 100, 98 и 89 процентов">
+      <text x="0" y="-14" font-size="16" class="t-muted">доля эффекта по сравнению с настоящим словом (= 100%)</text>
+      <rect x="0" y="10" width="20" height="20" rx="4" fill="var(--a)" opacity=".35"/><text x="28" y="27" font-size="17">без переводчика</text>
+      <rect x="190" y="10" width="20" height="20" rx="4" fill="var(--a)"/><text x="218" y="27" font-size="17">простой линейный переводчик</text>
+      <text x="0" y="92" font-size="19">GPT-2 → GPT-2</text>
+      <rect x="230" y="66" width="44" height="20" rx="4" fill="var(--a)" opacity=".35"/><text x="282" y="82" font-size="16">9%</text>
+      <rect x="230" y="90" width="470" height="20" rx="4" fill="var(--a)"/><text x="708" y="106" font-size="16">100%</text>
+      <text x="0" y="182" font-size="19">→ DistilGPT2</text>
+      <text x="0" y="206" font-size="15" class="t-muted">дистиллят GPT-2</text>
+      <rect x="230" y="156" width="52" height="20" rx="4" fill="var(--a)" opacity=".35"/><text x="290" y="172" font-size="16">11%</text>
+      <rect x="230" y="180" width="461" height="20" rx="4" fill="var(--a)"/><text x="699" y="196" font-size="16">98%</text>
+      <text x="0" y="272" font-size="19">→ Pythia</text>
+      <text x="0" y="296" font-size="15" class="t-muted">другое семейство</text>
+      <rect x="230" y="246" width="4" height="20" rx="2" fill="var(--bad)"/><text x="242" y="262" font-size="16" font-weight="700" fill="var(--bad)">0.7%</text>
+      <rect x="230" y="270" width="418" height="20" rx="4" fill="var(--a)"/><text x="656" y="286" font-size="16">89%</text>
+    </svg>
+    <div class="deep">
+      <h4>Объяснение</h4>
+      <p>Модели обучены читать на входе эмбеддинги слов, а скрытые состояния лежат в другой области пространства представлений (Peng et al., 2026). У независимо обученных моделей эти пространства ещё и не совпадают; у DistilGPT2 оно унаследовано от GPT-2.</p>
+      <h4 style="margin-top:14px">Переводчик</h4>
+      <p>Линейное отображение, обучено на 2000 слов, не входящих в тест: <b>89–100%</b> эффекта.</p>
+            <p>Согласуется с Heo et al. (2026): линейный перенос кеша внутри семейства — 73–98% качества на 4 из 6 пар. Для разных семейств C2C, LCF и XKV обучают переводчик.</p>
+      <p><b>→ Агентам на разных моделях нужен слой-переводчик или общий формат.</b></p>
+    </div>
+  </div>
+  <aside class="notes">Самый важный результат, я получил его недавно, критерии были записаны заранее. Работает ли трюк между разными моделями? Сначала важная деталь: даже у копии той же модели вектор без переводчика даёт только 9% эффекта настоящего слова — направление верное, но сигнал слабый. С DistilGPT2, дистиллятом GPT-2, — эффект как у копии. С Pythia, моделью другого семейства, — практически нет: семь десятых процента. А простой линейный переводчик, обученный на двух тысячах других слов, восстанавливает почти весь эффект у всех трёх. Почему так: модели обучены читать на входе эмбеддинги слов, а скрытые состояния лежат в другой области пространства представлений, и у независимо обученных моделей эти пространства ещё и не совпадают. У родственников пространство общее, у чужих — своё, и его надо переводить. Для будущего агентов это ключевой вывод: в системе из разных моделей понадобится слой-переводчик или общий стандарт представлений, примерно как общий сетевой протокол. Честная оговорка: на этой задаче переводчик по сути узнаёт слово, так что текст здесь был бы не хуже. Нового метода тут нет — это известный подход, и я считаю это полноценным результатом.</aside>
+</section>
+
+<!-- 10 -->
+<section class="slide">
+  <div class="kicker">Итог</div>
+  <h2>Агенты, обменивающиеся памятью, возможны — но пока только при трёх оговорках</h2>
+  <div class="score">
+    <div><span class="mark good">✓</span><b>Понимание</b>Связь «имя → ID» из переданной памяти: 5 из 5 запусков, 20–27 из 32; с чужой памятью — 1 из 32. Ответ по двум ключам сразу — пока нет.</div>
+    <div><span class="mark warn">≈</span><b>Экономия</b>Дешевле перечитывания, когда главный агент уже прочитал текст для себя: 1,4–7×. Иначе — от ~7 помощников на одну память.</div>
+    <div><span class="mark warn">≈</span><b>Совместимость</b>Без обучения — только между «родственниками». Разным моделям нужен переводчик или общий стандарт.</div>
+  </div>
+  <p class="sub" style="font-size:18px;max-width:none"><b style="color:var(--fg)">Статья:</b> <a href="https://github.com/kroq86/fasm-mac/blob/main/papers/kv-handoff/paper.md" style="color:var(--a)" onclick="event.stopPropagation()">github.com/kroq86/fasm-mac/blob/main/papers/kv-handoff/paper.md</a></p>
+  <p class="sub" style="font-size:14px;max-width:none">Литература: Fu et al. 2025 (arXiv:2510.03215) · Rossi et al. 2026 (2605.22863) · Heo et al. 2026 (2608.03893) · Cheng et al. 2026 (2608.04893) · Liu et al. 2026, XKV (2608.20617) · Liu 2026, обзор (2606.05711) · Peng et al. 2026, StateBridge (2608.13317)</p>
+  <aside class="notes">Подведу итог по трём условиям. Понимание — да, с оговоркой: связь «имя → ID» достаётся из переданной памяти на всех пяти запусках, от 20 до 27 из 32, а подмена роняет до одного; ответ по двум ключам сразу пока не получается. Экономия — частично: если главный агент уже прочитал текст для себя, готовая память дешевле перечитывания в 1,4–7 раз; если читать только ради передачи — выгодно начиная примерно с семи помощников. Совместимость — частично: без обучения только между родственными моделями, разным нужен переводчик. Спасибо, буду рад вопросам.</aside>
+</section>
+
+<div id="notes"></div>
+<div class="bar" id="bar"></div>
+<div class="foot" id="count"></div>
+<script>
+(function(){
+  var s = Array.prototype.slice.call(document.querySelectorAll('.slide')), i = 0;
+  var notes = document.getElementById('notes');
+  var h = parseInt((location.hash || '').slice(1), 10);
+  if (h >= 1 && h <= s.length) i = h - 1;
+  function show(n){
+    i = Math.max(0, Math.min(s.length - 1, n));
+    s.forEach(function(x, k){ x.classList.toggle('active', k === i); });
+    var a = s[i].querySelector('.notes');
+    notes.textContent = a ? a.textContent : '';
+    document.getElementById('count').textContent = (i + 1) + ' / ' + s.length + '  ·  N — заметки';
+    document.getElementById('bar').style.width = ((i + 1) / s.length * 100) + '%';
+    history.replaceState(null, '', '#' + (i + 1));
+  }
+  document.addEventListener('keydown', function(e){
+    if (['ArrowRight', ' ', 'PageDown', 'Enter'].indexOf(e.key) >= 0) { e.preventDefault(); show(i + 1); }
+    else if (['ArrowLeft', 'PageUp', 'Backspace'].indexOf(e.key) >= 0) { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(s.length - 1);
+    else if (e.key === 'n' || e.key === 'N' || e.key === 'т' || e.key === 'Т') notes.classList.toggle('on');
+    else if (e.key === 't' || e.key === 'T' || e.key === 'е' || e.key === 'Е') {
+      var r = document.documentElement, c = r.getAttribute('data-theme');
+      var dark = c ? c === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+      r.setAttribute('data-theme', dark ? 'light' : 'dark');
+    }
+  });
+  document.addEventListener('click', function(e){
+    if (notes.contains(e.target)) return;
+    show(i + (e.clientX > innerWidth / 3 ? 1 : -1));
+  });
+  var x0 = null;
+  document.addEventListener('touchstart', function(e){ x0 = e.touches[0].clientX; }, {passive: true});
+  document.addEventListener('touchend', function(e){
+    if (x0 === null) return; var d = e.changedTouches[0].clientX - x0;
+    if (Math.abs(d) > 50) show(i + (d < 0 ? 1 : -1)); x0 = null;
+  }, {passive: true});
+  if (/[?&]notes/.test(location.search)) notes.classList.add('on');
+  show(i);
+})();
+</script>
+</body>
+</html>
