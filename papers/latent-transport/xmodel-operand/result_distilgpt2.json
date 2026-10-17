@@ -1,0 +1,204 @@
+{
+ "receiver": "distilgpt2",
+ "words": [
+  "dog",
+  "cat",
+  "horse",
+  "cow",
+  "pig",
+  "sheep",
+  "lion",
+  "tiger",
+  "wolf",
+  "bear",
+  "rabbit",
+  "fox",
+  "rose",
+  "oak",
+  "tree",
+  "grass",
+  "moss",
+  "pine",
+  "weed",
+  "vine",
+  "hammer",
+  "wrench",
+  "drill",
+  "shovel",
+  "axe",
+  "knife",
+  "rake",
+  "file",
+  "car",
+  "truck",
+  "bus",
+  "bike",
+  "bicycle",
+  "van",
+  "train",
+  "boat",
+  "tractor",
+  "motorcycle",
+  "taxi",
+  "tank",
+  "sofa",
+  "bed",
+  "couch",
+  "shelf",
+  "wardrobe"
+ ],
+ "per_category": {
+  "animal": 12,
+  "plant": 8,
+  "tool": 8,
+  "vehicle": 12,
+  "furniture": 5
+ },
+ "rejected": [
+  [
+   "fern",
+   "multi-token"
+  ],
+  [
+   "tulip",
+   "multi-token"
+  ],
+  [
+   "lily",
+   "multi-token"
+  ],
+  [
+   "shrub",
+   "multi-token"
+  ],
+  [
+   "saw",
+   "margin -1.42"
+  ],
+  [
+   "screwdriver",
+   "multi-token"
+  ],
+  [
+   "chisel",
+   "multi-token"
+  ],
+  [
+   "pliers",
+   "multi-token"
+  ],
+  [
+   "chair",
+   "margin +0.77"
+  ],
+  [
+   "table",
+   "margin -1.70"
+  ],
+  [
+   "desk",
+   "margin -0.34"
+  ],
+  [
+   "stool",
+   "margin -3.68"
+  ],
+  [
+   "bench",
+   "margin +0.33"
+  ],
+  [
+   "cabinet",
+   "margin +0.11"
+  ],
+  [
+   "dresser",
+   "multi-token"
+  ]
+ ],
+ "align_train_n": 2000,
+ "native": {
+  "pos": 45,
+  "n": 45,
+  "mean": 5.6627,
+  "std": 1.0165,
+  "t": 37.37
+ },
+ "raw": {
+  "pos": 45,
+  "n": 45,
+  "mean": 0.5994,
+  "std": 0.1933,
+  "t": 20.8
+ },
+ "aligned": {
+  "pos": 45,
+  "n": 45,
+  "mean": 5.5325,
+  "std": 1.1269,
+  "t": 32.93
+ },
+ "random_vs_real": {
+  "pos": 22,
+  "n": 45,
+  "mean": -0.239,
+  "std": 1.6624,
+  "t": -0.96
+ },
+ "corr_S_norm": -0.174,
+ "perm": {
+  "mean": 0.0077,
+  "ge_real": 0
+ },
+ "raw_per_word": {
+  "dog": 0.645,
+  "cat": 0.853,
+  "horse": 0.604,
+  "cow": 0.721,
+  "pig": 0.743,
+  "sheep": 0.639,
+  "lion": 0.864,
+  "tiger": 0.829,
+  "wolf": 0.709,
+  "bear": 0.581,
+  "rabbit": 0.742,
+  "fox": 0.818,
+  "rose": 0.208,
+  "oak": 0.419,
+  "tree": 0.313,
+  "grass": 0.6,
+  "moss": 0.754,
+  "pine": 0.713,
+  "weed": 0.507,
+  "vine": 0.667,
+  "hammer": 0.297,
+  "wrench": 0.662,
+  "drill": 0.533,
+  "shovel": 0.489,
+  "axe": 0.389,
+  "knife": 0.33,
+  "rake": 0.616,
+  "file": 0.774,
+  "car": 0.898,
+  "truck": 0.613,
+  "bus": 0.718,
+  "bike": 0.627,
+  "bicycle": 0.617,
+  "van": 0.473,
+  "train": 0.389,
+  "boat": 0.262,
+  "tractor": 0.726,
+  "motorcycle": 0.876,
+  "taxi": 0.994,
+  "tank": 0.411,
+  "sofa": 0.703,
+  "bed": 0.361,
+  "couch": 0.382,
+  "shelf": 0.256,
+  "wardrobe": 0.651
+ },
+ "norms": {
+  "raw_mean": 374.1,
+  "native_mean": 6.2
+ }
+}

@@ -6,6 +6,20 @@ This file is the single current map of the project.  Historical scratchpads and
 spikes preserve evidence, but they do not define the active roadmap.  When a
 result changes a verdict or the next gate, update this file in the same change.
 
+## Cross-model operand check — 2026-10-17
+
+Preregistered inference-only spike on the paper's Section 8 Step 5 protocol
+(`papers/latent-transport/xmodel-operand/PREREG.md`, `RESULT.md`). A PyTorch
+re-implementation reproduces GPT-2→GPT-2 on a new frozen set (+0.522, t=14.97 vs
+the paper's +0.531, t=15.53). Translator-free operand use is SUPPORTED for
+GPT-2→DistilGPT2 (shared lineage, 45/45, t=20.8) and INCONCLUSIVE for
+GPT-2→Pythia-160m (different family, effect 0.7% of native, t=2.04). A ridge
+map fit on 2000 disjoint words recovers 89–100% of the native effect on every
+receiver, so "no translator" is NOT SUPPORTED as an advantage. Verdict: Section 8
+holds only for same-lineage models; it is not a new cross-model method. The
+original Section 8 logs under `/tmp/step5_*` are lost; ledger links to them in
+`papers/latent-transport/evidence.md` no longer resolve.
+
 ## Native ordering KV handoff — 2026-09-13
 
 The existing frozen rank-8 ordering checkpoint now runs in a standalone native
