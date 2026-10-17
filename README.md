@@ -1,20 +1,22 @@
 # fasm-mac
 
-**ragbox is the flagship tool here:** local-first codebase memory for AI
-agents. Build a searchable semantic snapshot of your repo, query it from the
-terminal, and keep it local. Ollama-compatible, single binary, no vector DB
-server.
+A personal research lab for low-level systems and language-model experiments
+on macOS. Most of the code shares one reusable x86-64 FASM runtime
+(`fasm/core`); the research is tracked claim by claim, with controls,
+preregistered criteria, and negative or invalid results kept rather than
+deleted. The current map of directions and verdicts is [`STATUS.md`](STATUS.md).
 
-This repository is the engineering monorepo behind ragbox and a small set of
-macOS developer tools built on a reusable FASM runtime.
+## What lives here
 
-| Tool | Promise |
-|------|---------|
-| [`ragbox`](docs/ragbox.md) | Local codebase memory for Codex, Claude, Gemini, and other AI agents |
-| `machodoctor` | Explain why a macOS binary does not run |
-| `fasm-mac` | Assembly/runtime foundation for x86_64 FASM tools on macOS |
+| Area | What it is | Start here |
+|------|------------|------------|
+| Models talking without text | Can one language model hand its KV-cache or hidden state to another and have it used as content? GPT-2 → DistilGPT2 case study, native reproduction, and a preregistered cross-model check | [paper](papers/kv-handoff/paper.md) · [talk slides](https://kroq86.github.io/fasm-mac/talks/agents-memory/) · [evidence ledger](papers/latent-transport/evidence.md) |
+| Native GPT-2 runtime | Inspectable decoder runtime: real GPT-2 124M weights, self-written tokenizer, generation and KV cache checked against reference logits | [`STATUS.md` — decoder runtime](STATUS.md#current-decoder-runtime-progress) |
+| tensorctl | Graph-planned tensor training engine built on the same runtime | [tensorctl](#tensorctl--graph-planned-tensor-training-engine) |
+| fasm-mac foundation | Bridge for flat assembler 1.73 on macOS plus a small standard library | [fasm-mac foundation](#fasm-mac-foundation) |
+| Tools | `ragbox` (local codebase memory for AI agents), `machodoctor`, `logknife`, `macdbg` and more, installable with Homebrew | [ragbox](#ragbox-quick-start) · [tool list](#mini-redis-repl) |
 
-Product page: <https://kroq86.github.io/fasm-mac/>
+Site: <https://kroq86.github.io/fasm-mac/>
 
 ## ragbox quick start
 
