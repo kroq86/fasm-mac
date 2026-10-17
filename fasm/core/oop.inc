@@ -32,6 +32,7 @@ playlist_vtable:
 
 ; rdi = Heap*
 ; rax = Playlist*
+; clobbers: rbx, rcx, rsi, rdi, plus heap_alloc clobbers
 playlist_new:
 	push	r12
 	mov	r12, rdi

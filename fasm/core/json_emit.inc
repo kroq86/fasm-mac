@@ -4,6 +4,11 @@
 ;   json_out_ptr dq ?
 ;   json_out_len dq ?
 ;   json_out_cap dq ?
+;   json_one_byte db 0            (writable scratch byte)
+;   json_esc_quote db 92, 34
+;   json_esc_slash db 92, 92
+;   json_esc_nl db 92, 'n'
+;   json_esc_tab db 92, 't'
 
 ; rdi = bytes, rsi = len
 json_append:

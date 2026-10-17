@@ -3,6 +3,12 @@
 ; C ABI: float in xmm0, int32 status in eax.
 ;
 ; CPU flags (lb_vec_cpu_flags): 0 = uninitialized, 1 = scalar, 2 = avx2
+;
+; The including program must define (writable data):
+;   lb_vec_cpu_flags dd 0
+;   lb_vec_one_f32 dd 1.0
+;   lb_vec_one_m_eps dd 0.998
+;   lb_vec_one_p_eps dd 1.002
 
 VEC_F32_MAX_TOPK equ 256
 VEC_F32_SAVED_REGS equ 40

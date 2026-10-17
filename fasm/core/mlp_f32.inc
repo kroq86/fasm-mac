@@ -11,7 +11,7 @@
 ;     rdi=input, rsi=weights, rdx=bias (nullable), rcx=output
 ;     r8=input_count, r9=output_count
 ;     eax = 0 on success, -1 for null required pointers or zero dimensions
-;     preserves rbx, r12-r15; clobbers rax, rdx, r10-r11, xmm0-xmm1
+;     preserves rbx, r12-r15; clobbers rax, rcx, rdx, r9-r11, xmm0-xmm1
 ;
 ;   int mlp_relu_f32_inplace(float *values, uint64_t count)
 ;     rdi=values, rsi=count

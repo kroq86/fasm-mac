@@ -48,6 +48,7 @@ print_value:
 	ret
 
 ; rbx = VecHeader*, r13 = depth
+; clobbers: rbx (left = element count), plus print_char/vec_get/print_value clobbers
 print_vec:
 	push	r12
 	push	r13
