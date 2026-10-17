@@ -1,0 +1,64 @@
+{
+  "after_core_sha256": "89073d9414cf7ec00d5f775c7d512c602530ccd65915d9d355639cc45c128991",
+  "fixture_sha256": "762f206a8c163f9a4113cbe65c4a16383058563e0ea7186c3b16cd17482b0a70",
+  "runs": [
+    {
+      "label": "build_regression",
+      "command": [
+        "fasm",
+        "--emit=macho",
+        "/Users/kirill_ostapenko/fasm-mac/fasm/tests/macos-smoke/hashmap_str_update.asm",
+        "/private/tmp/hashmap-fix-evmi9ydl/after"
+      ],
+      "rc": 0,
+      "stdout": "flat assembler  version 1.73.35  (16384 kilobytes memory, x64)\n4 passes, 3547 bytes.\n",
+      "stderr": ""
+    },
+    {
+      "label": "regression_after",
+      "command": [
+        "arch",
+        "-x86_64",
+        "/private/tmp/hashmap-fix-evmi9ydl/after"
+      ],
+      "rc": 0,
+      "stdout": "hashmap_str update checks passed\n",
+      "stderr": ""
+    },
+    {
+      "label": "build_original_probe",
+      "command": [
+        "fasm",
+        "--emit=macho",
+        "/Users/kirill_ostapenko/fasm-mac/scratchpad/component_audit_20261018/hashmap_update_probe.asm",
+        "/private/tmp/hashmap-fix-evmi9ydl/original_probe_after"
+      ],
+      "rc": 0,
+      "stdout": "flat assembler  version 1.73.35  (16384 kilobytes memory, x64)\n3 passes, 2914 bytes.\n",
+      "stderr": ""
+    },
+    {
+      "label": "original_control_after",
+      "command": [
+        "arch",
+        "-x86_64",
+        "/private/tmp/hashmap-fix-evmi9ydl/original_probe_after"
+      ],
+      "rc": 0,
+      "stdout": "CONTROL_OK\n",
+      "stderr": ""
+    },
+    {
+      "label": "original_update_after",
+      "command": [
+        "arch",
+        "-x86_64",
+        "/private/tmp/hashmap-fix-evmi9ydl/original_probe_after",
+        "update"
+      ],
+      "rc": 0,
+      "stdout": "CONTROL_OK\nTARGET_UPDATE_BEGIN\nTARGET_UPDATE_OK\n",
+      "stderr": ""
+    }
+  ]
+}

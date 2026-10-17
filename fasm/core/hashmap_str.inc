@@ -225,8 +225,11 @@ hashmap_str_put_entry:
 	jz	.hspe_new
 	mov	rdi, [rax + HASH_ENTRY_STR_KEY_OFF]
 	mov	rsi, r14
+	; str_eq returns a Boolean in rax; retain the entry for either branch.
+	push	rax
 	call	str_eq
 	test	rax, rax
+	pop	rax		; POP preserves the comparison flags.
 	jnz	.hspe_update
 	mov	rax, [rax + HASH_ENTRY_STR_NEXT_OFF]
 	jmp	.hspe_loop

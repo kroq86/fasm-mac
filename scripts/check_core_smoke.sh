@@ -59,4 +59,54 @@ if [[ "$actual" != "$expected" ]]; then
   exit 1
 fi
 
+hashmap_bin="$OUT_DIR/hashmap_str"
+fasm "$ROOT/fasm/tests/macos-smoke/hashmap_str.asm" "$hashmap_bin" >/dev/null
+actual="$(arch -x86_64 "$hashmap_bin")"
+if [[ "$actual" != "42 hello 1" ]]; then
+  printf 'FAIL hashmap_str\nexpected: %q\nactual:   %q\n' "42 hello 1" "$actual" >&2
+  exit 1
+fi
+
+hashmap_update_bin="$OUT_DIR/hashmap_str_update"
+fasm "$ROOT/fasm/tests/macos-smoke/hashmap_str_update.asm" "$hashmap_update_bin" >/dev/null
+actual="$(arch -x86_64 "$hashmap_update_bin")"
+if [[ "$actual" != "hashmap_str update checks passed" ]]; then
+  printf 'FAIL hashmap_str_update\nactual: %q\n' "$actual" >&2
+  exit 1
+fi
+
+miniredis_script_bin="$OUT_DIR/miniredis_script"
+fasm "$ROOT/fasm/tests/macos-smoke/miniredis_script.asm" "$miniredis_script_bin" >/dev/null
+actual="$(arch -x86_64 "$miniredis_script_bin")"
+expected=$'42\nhello\n2'
+if [[ "$actual" != "$expected" ]]; then
+  printf 'FAIL miniredis_script\nexpected: %q\nactual: %q\n' "$expected" "$actual" >&2
+  exit 1
+fi
+
+miniredis_bin="$OUT_DIR/miniredis"
+fasm "$ROOT/fasm/apps/miniredis.asm" "$miniredis_bin" >/dev/null
+actual="$(arch -x86_64 "$miniredis_bin" <<'INPUT'
+SET foo 42
+SET foo 84
+GET foo
+SET bff chain
+GET foo
+SET foo hello
+GET foo
+SET foo 9
+GET foo
+INCR foo
+DECR foo
+GET bff
+DBSIZE
+QUIT
+INPUT
+)"
+expected=$'miniredis> OK\nminiredis> OK\nminiredis> 84\nminiredis> OK\nminiredis> 84\nminiredis> OK\nminiredis> hello\nminiredis> OK\nminiredis> 9\nminiredis> 10\nminiredis> 9\nminiredis> chain\nminiredis> 2\nminiredis> '
+if [[ "$actual" != "$expected" ]]; then
+  printf 'FAIL miniredis replacement\nexpected: %q\nactual: %q\n' "$expected" "$actual" >&2
+  exit 1
+fi
+
 echo "core smoke checks passed"

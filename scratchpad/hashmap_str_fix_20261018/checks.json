@@ -1,0 +1,68 @@
+{
+  "record_kind": "summary transcribed from completed tool executions, not full raw logs",
+  "checks": [
+    {
+      "command": [
+        "bash",
+        "scripts/check_core_smoke.sh"
+      ],
+      "returncode": 0,
+      "stdout_final_marker": "core smoke checks passed"
+    },
+    {
+      "command": [
+        "bash",
+        "scripts/check_core_contracts.sh"
+      ],
+      "returncode": 0,
+      "stdout_final_marker": "core contract checks passed"
+    },
+    {
+      "command": [
+        "bash",
+        "scripts/check_machodoctor.sh"
+      ],
+      "returncode": 0,
+      "stdout_final_marker": "machodoctor checks passed"
+    },
+    {
+      "command": [
+        "bash",
+        "scripts/check_logknife.sh"
+      ],
+      "returncode": 0,
+      "stdout_final_marker": "logknife checks passed"
+    },
+    {
+      "command": [
+        "bash",
+        "scripts/check_fscan.sh"
+      ],
+      "returncode": 0,
+      "stdout_final_marker": "fscan checks passed"
+    },
+    {
+      "command": [
+        "bash",
+        "scripts/check_leetcode_examples.sh"
+      ],
+      "returncode": 0,
+      "stdout_final_marker": "all LeetCode examples passed"
+    },
+    {
+      "command": [
+        "bash",
+        "scripts/check_miniredis_server.sh"
+      ],
+      "returncode": 0,
+      "stdout_final_marker": "miniredis_server checks passed"
+    }
+  ],
+  "server_sandbox_note": "initial sandbox bind denied; approved local-network execution passed",
+  "source_sha256": {
+    "fasm/core/hashmap_str.inc": "89073d9414cf7ec00d5f775c7d512c602530ccd65915d9d355639cc45c128991",
+    "fasm/tests/macos-smoke/hashmap_str_update.asm": "762f206a8c163f9a4113cbe65c4a16383058563e0ea7186c3b16cd17482b0a70",
+    "scripts/check_core_smoke.sh": "fbe097864cf70f51dcf2efd8f4308910b00b15ff57ae9a4dabf733b1d638f6bc",
+    "scripts/check_miniredis_server.sh": "f735152729d61c9d83e6d061f81f4c52cc5ce9dc04c7e7a3e1d91227ebe21b09"
+  }
+}

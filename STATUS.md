@@ -1,10 +1,31 @@
 # Project status — canonical direction
 
-Updated: 2026-09-02
+Updated: 2026-10-18
 
 This file is the single current map of the project.  Historical scratchpads and
 spikes preserve evidence, but they do not define the active roadmap.  When a
 result changes a verdict or the next gate, update this file in the same change.
+
+## String-map replacement fix — 2026-10-18
+
+The reproduced `hashmap_str` replacement failure is fixed: put_entry retains
+the entry pointer across str_eq, whose Boolean result overwrites rax. The same
+pointer is now available for replacement and collision-chain traversal. No
+public arguments, layouts, return contract or allocation behavior changed.
+
+The new regression crashes before the patch and passes after it. It covers
+same-key replacement, genuinely colliding keys, head/tail updates, int/string
+type changes, neighboring values and unchanged map size. It is wired into
+core smoke alongside the old map/script fixtures and a full MiniRedis REPL
+sequence. The server gate now checks repeated SET, type changes, a colliding
+key and latest-value replay after restart.
+
+Machodoctor, logknife, fscan, LeetCode, core smoke, core contract and MiniRedis
+server checks passed. The original audit probe also passes in both modes when
+rebuilt against the patch. This is a scoped regression fix, not a general
+container-safety guarantee: resize, GC/OOM and compiler acceptance boundaries
+remain separate. No change to the active runtime roadmap or agent verdict.
+Evidence and reproduction: `scratchpad/hashmap_str_fix_20261018/RESULT.md`.
 
 ## Cross-model operand check — 2026-10-17
 

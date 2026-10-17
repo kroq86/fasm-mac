@@ -80,12 +80,23 @@ request(
     b"+OK\r\n",
 )
 request(client, b"*2\r\n$3\r\nGET\r\n$3\r\nfoo\r\n", b"$3\r\nbar\r\n")
+request(client, b"*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\nbaz\r\n", b"+OK\r\n")
+request(client, b"*2\r\n$3\r\nGET\r\n$3\r\nfoo\r\n", b"$3\r\nbaz\r\n")
+# foo and bff collide: exercise chain insertion, traversal and replacement.
+request(client, b"*3\r\n$3\r\nSET\r\n$3\r\nbff\r\n$5\r\nchain\r\n", b"+OK\r\n")
+request(client, b"*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$1\r\n9\r\n", b"+OK\r\n")
+request(client, b"*2\r\n$3\r\nGET\r\n$3\r\nfoo\r\n", b":9\r\n")
+request(client, b"*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\nbaz\r\n", b"+OK\r\n")
+request(client, b"*2\r\n$3\r\nGET\r\n$3\r\nfoo\r\n", b"$3\r\nbaz\r\n")
+request(client, b"*2\r\n$3\r\nGET\r\n$3\r\nbff\r\n", b"$5\r\nchain\r\n")
 request(
     client,
     b"*3\r\n$3\r\nSET\r\n$5\r\ncount\r\n$2\r\n42\r\n",
     b"+OK\r\n",
 )
 request(client, b"*2\r\n$3\r\nGET\r\n$5\r\ncount\r\n", b":42\r\n")
+request(client, b"*3\r\n$3\r\nSET\r\n$5\r\ncount\r\n$2\r\n84\r\n", b"+OK\r\n")
+request(client, b"*2\r\n$3\r\nGET\r\n$5\r\ncount\r\n", b":84\r\n")
 request(
     client,
     b"*3\r\n$3\r\nSET\r\n$3\r\nneg\r\n$2\r\n-7\r\n",
@@ -130,8 +141,9 @@ def request(sock, payload, expected):
         raise AssertionError(f"expected {expected!r}, got {got!r}")
 
 client = connect_retry()
-request(client, b"*2\r\n$3\r\nGET\r\n$3\r\nfoo\r\n", b"$3\r\nbar\r\n")
-request(client, b"*2\r\n$3\r\nGET\r\n$5\r\ncount\r\n", b":42\r\n")
+request(client, b"*2\r\n$3\r\nGET\r\n$3\r\nfoo\r\n", b"$3\r\nbaz\r\n")
+request(client, b"*2\r\n$3\r\nGET\r\n$3\r\nbff\r\n", b"$5\r\nchain\r\n")
+request(client, b"*2\r\n$3\r\nGET\r\n$5\r\ncount\r\n", b":84\r\n")
 request(client, b"*2\r\n$3\r\nGET\r\n$3\r\nneg\r\n", b":-7\r\n")
 request(client, b"*1\r\n$4\r\nPING\r\n", b"+PONG\r\n")
 client.close()
