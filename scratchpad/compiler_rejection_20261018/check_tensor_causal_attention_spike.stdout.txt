@@ -1,0 +1,3 @@
+causal_attention differential check passed: T=7 forward=match causal_isolation=exact-zero row_sums=1 backward=finite-diff-match
+causal_attention differential check passed: T=8 forward=match causal_isolation=exact-zero row_sums=1 backward=finite-diff-match
+causal_attention differential check passed: T=9 forward=match causal_isolation=exact-zero row_sums=1 backward=finite-diff-match

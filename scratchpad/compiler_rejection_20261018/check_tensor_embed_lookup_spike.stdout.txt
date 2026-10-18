@@ -1,0 +1,4 @@
+seq7_plain: seq=7 forward=match backward_scatter_add=match finite=yes
+seq8_tails: seq=8 forward=match backward_scatter_add=match finite=yes
+seq9_duplicates: seq=9 forward=match backward_scatter_add=match finite=yes
+embed_lookup differential check passed: reference<->canonical<->executor agree on seq=7/8/9, forward exact, backward scatter-add exact, all finite

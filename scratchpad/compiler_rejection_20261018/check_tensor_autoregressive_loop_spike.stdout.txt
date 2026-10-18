@@ -1,0 +1,15 @@
+kv-cache vs full recompute: probability distributions agree exactly at every generation step, n=1..7
+anchor: full toy-decoder pipeline (embed+pos+attn+ffn+softmax) matches canonical graph+executor exactly at T=7, all 91 probabilities
+replay: identical seed reproduces an identical 7-token generated sequence
+prefix stability: a 6-token generation is an exact prefix of the 7-token generation from the same seed
+autoregressive_loop differential check passed: full toy-decoder pipeline anchored to canonical graph+executor, kv-cache matches full recompute at every step, replay deterministic, shorter generation is an exact prefix of the longer one
+kv-cache vs full recompute: probability distributions agree exactly at every generation step, n=1..8
+anchor: full toy-decoder pipeline (embed+pos+attn+ffn+softmax) matches canonical graph+executor exactly at T=8, all 104 probabilities
+replay: identical seed reproduces an identical 8-token generated sequence
+prefix stability: a 7-token generation is an exact prefix of the 8-token generation from the same seed
+autoregressive_loop differential check passed: full toy-decoder pipeline anchored to canonical graph+executor, kv-cache matches full recompute at every step, replay deterministic, shorter generation is an exact prefix of the longer one
+kv-cache vs full recompute: probability distributions agree exactly at every generation step, n=1..9
+anchor: full toy-decoder pipeline (embed+pos+attn+ffn+softmax) matches canonical graph+executor exactly at T=9, all 117 probabilities
+replay: identical seed reproduces an identical 9-token generated sequence
+prefix stability: a 8-token generation is an exact prefix of the 9-token generation from the same seed
+autoregressive_loop differential check passed: full toy-decoder pipeline anchored to canonical graph+executor, kv-cache matches full recompute at every step, replay deterministic, shorter generation is an exact prefix of the longer one

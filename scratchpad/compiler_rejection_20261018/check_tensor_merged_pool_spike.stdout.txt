@@ -1,0 +1,1 @@
+merged compiler check (pool) passed: new_op=pool (2x2 max, non-overlapping, 4x4x2->2x2x2) nodes=11 steps=23 (forward=6 zero=8 backward=6 optimizer=3, all compile()-derived, no forward_nodes[]/zeroable[] in this file, no changes to compile()/validate() for any pre-existing op) gradient_check=finite-difference(conv_weight-through-pool,fc_weight) epochs=4000 loss=1.007043->0.000000

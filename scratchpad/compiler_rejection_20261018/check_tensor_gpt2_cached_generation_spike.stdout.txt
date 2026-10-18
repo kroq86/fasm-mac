@@ -1,0 +1,5 @@
+case 0: 7 cached-decode steps, worst logits max_abs=0 (bound 1e-3), identical greedy tokens, prompt_len=4
+case 1: 7 cached-decode steps, worst logits max_abs=0 (bound 1e-3), identical greedy tokens, prompt_len=4
+case 2: 7 cached-decode steps, worst logits max_abs=0 (bound 1e-3), identical greedy tokens, prompt_len=5
+PyTorch cross-check: canonical-cached decode path's tokens exactly match the real PyTorch greedy sequence (12 tokens, prompt_len=4)
+gpt2_cached_generation differential check passed: CAUSAL_ATTENTION_CACHED (real canonical compile()+executor calls, real Tensor state) drives real GPT-2 124M decode, matching full recomputation at every generated step and matching real PyTorch greedy generation

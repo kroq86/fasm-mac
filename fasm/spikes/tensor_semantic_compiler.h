@@ -314,10 +314,9 @@ static void k_softmax_rows_bwd(Node *self, Node *a, Node *b, uint32_t mask) {
  *   (output projection) directly, same as CAUSAL_ATTENTION -> CONTIGUOUS
  *   would for a full-T graph.
  *
- * No backward: this op is for inference-time generation only. Leaving
- * BWD[CAUSAL_ATTENTION_CACHED] unset is safe as long as no leaf feeding
- * it carries RETAIN_GRAD/PARAM-needing-grad flags -- compile() then never
- * emits a BACKWARD step for it (see compile()'s needs[] derivation). */
+ * No backward: this op is for inference-time generation only. compile()
+ * rejects a graph if its derived needs[] would require this op's missing
+ * backward handler, including RETAIN_GRAD on the cached output itself. */
 static void k_causal_attention_cached_fwd(Node *self, Node *a, Node *b) {
     const float *qkv = a->tensor.data;
     Tensor *cache = &b->tensor;
@@ -659,6 +658,7 @@ static int action(void *opaque) {
  * built with; RESIDUAL/LAYERNORM check same-shape like RELU already did. --- */
 static int validate(const Node *g, uint32_t n) {
     for (uint32_t i = 0; i < n; i++) {
+        if (g[i].op >= OP_COUNT || (g[i].op != LEAF && !FWD[g[i].op])) return -1;
         if (!g[i].tensor.data || !g[i].tensor.grad || !g[i].tensor.rows || !g[i].tensor.cols) return -1;
         if (g[i].op == LEAF) {
             if ((g[i].flags & PARAM) && g[i].tensor.aux) {
@@ -700,9 +700,11 @@ static int validate(const Node *g, uint32_t n) {
     return 0;
 }
 
-/* --- the one entry point: given ANY validated graph, derive needs-grad
- * automatically, and emit the complete forward+zero+backward+optimizer
- * schedule. No forward_nodes[]/zeroable[] — a model is exactly `g`. --- */
+/* --- the one entry point: derive needs-grad for a validated graph, reject
+ * unsupported backward requirements, then emit forward/zero/backward/optimizer.
+ * Validation or unsupported-dispatch failures return -1 before schedule writes;
+ * capacity failure returns -2 and may leave partial writes.
+ * No forward_nodes[]/zeroable[] — a model is exactly `g`. --- */
 static int compile(Node *g, uint32_t n, float lr, ExecStep *s, Context *c, uint32_t cap, uint32_t *out) {
     if (validate(g, n) || n > MAX_NODES) return -1;
     uint8_t needs[MAX_NODES] = {0};
@@ -710,6 +712,8 @@ static int compile(Node *g, uint32_t n, float lr, ExecStep *s, Context *c, uint3
         needs[i] = g[i].op == LEAF ? ((g[i].flags & (PARAM | RETAIN_GRAD)) != 0)
                                    : ((g[i].flags & RETAIN_GRAD) || needs[g[i].lhs] ||
                                       (g[i].rhs != NONE && needs[g[i].rhs]));
+    for (uint32_t i = 0; i < n; i++)
+        if (g[i].op != LEAF && needs[i] && !BWD[g[i].op]) return -1;
     uint32_t at = 0;
     for (uint32_t i = 0; i < n; i++) if (g[i].op != LEAF) {
         if (at == cap) return -2;

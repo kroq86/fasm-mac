@@ -1,0 +1,135 @@
+{
+  "model": "/Users/kirill_ostapenko/.cache/huggingface/hub/models--gpt2/blobs/248dfc3911869ec493c76e65bf2fcf7f615828b0254c12b473182f0f81d3a707",
+  "results": [
+    {
+      "command": [
+        "scripts/check_tensor_merged_mlp_spike.sh"
+      ],
+      "start_utc": "2026-10-18T09:00:47.474806+00:00",
+      "returncode": 0,
+      "skipped": false
+    },
+    {
+      "command": [
+        "scripts/check_tensor_merged_transformer_spike.sh"
+      ],
+      "start_utc": "2026-10-18T09:00:49.085543+00:00",
+      "returncode": 0,
+      "skipped": false
+    },
+    {
+      "command": [
+        "scripts/check_tensor_merged_fusion_spike.sh"
+      ],
+      "start_utc": "2026-10-18T09:00:49.980582+00:00",
+      "returncode": 0,
+      "skipped": false
+    },
+    {
+      "command": [
+        "scripts/check_tensor_merged_cnn_spike.sh"
+      ],
+      "start_utc": "2026-10-18T09:00:51.036207+00:00",
+      "returncode": 0,
+      "skipped": false
+    },
+    {
+      "command": [
+        "scripts/check_tensor_merged_pool_spike.sh"
+      ],
+      "start_utc": "2026-10-18T09:00:52.042742+00:00",
+      "returncode": 0,
+      "skipped": false
+    },
+    {
+      "command": [
+        "scripts/check_tensor_embed_lookup_spike.sh"
+      ],
+      "start_utc": "2026-10-18T09:00:53.124209+00:00",
+      "returncode": 0,
+      "skipped": false
+    },
+    {
+      "command": [
+        "scripts/check_tensor_positional_embed_spike.sh"
+      ],
+      "start_utc": "2026-10-18T09:00:54.160372+00:00",
+      "returncode": 0,
+      "skipped": false
+    },
+    {
+      "command": [
+        "scripts/check_tensor_causal_attention_spike.sh"
+      ],
+      "start_utc": "2026-10-18T09:00:55.267468+00:00",
+      "returncode": 0,
+      "skipped": false
+    },
+    {
+      "command": [
+        "scripts/check_tensor_gelu_spike.sh"
+      ],
+      "start_utc": "2026-10-18T09:00:57.939001+00:00",
+      "returncode": 0,
+      "skipped": false
+    },
+    {
+      "command": [
+        "scripts/check_tensor_softmax_rows_spike.sh"
+      ],
+      "start_utc": "2026-10-18T09:00:59.007069+00:00",
+      "returncode": 0,
+      "skipped": false
+    },
+    {
+      "command": [
+        "scripts/check_tensor_causal_attention_cached_spike.sh"
+      ],
+      "start_utc": "2026-10-18T09:01:00.115250+00:00",
+      "returncode": 0,
+      "skipped": false
+    },
+    {
+      "command": [
+        "scripts/check_tensor_kv_cache_spike.sh"
+      ],
+      "start_utc": "2026-10-18T09:01:02.783897+00:00",
+      "returncode": 0,
+      "skipped": false
+    },
+    {
+      "command": [
+        "scripts/check_tensor_autoregressive_loop_spike.sh"
+      ],
+      "start_utc": "2026-10-18T09:01:05.544894+00:00",
+      "returncode": 0,
+      "skipped": false
+    },
+    {
+      "command": [
+        "scripts/check_tensorctl_gpt2.sh"
+      ],
+      "start_utc": "2026-10-18T09:01:10.267386+00:00",
+      "returncode": 0,
+      "skipped": false
+    },
+    {
+      "command": [
+        "scripts/check_tensor_gpt2_cached_generation_spike.sh",
+        "--required"
+      ],
+      "start_utc": "2026-10-18T09:01:30.355112+00:00",
+      "returncode": 0,
+      "skipped": false
+    },
+    {
+      "command": [
+        "scripts/check_tensor_gpt2_full_spike.sh",
+        "--required"
+      ],
+      "start_utc": "2026-10-18T09:02:00.119198+00:00",
+      "returncode": 0,
+      "skipped": false
+    }
+  ]
+}

@@ -1,0 +1,610 @@
+[
+  {
+    "source": "fasm/spikes/tensor_merged_mnist_check.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_merged_mnist_check.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/0.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_compiler_rejection_check.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_compiler_rejection_check.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/1.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_embed_lookup_differential_check.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_embed_lookup_differential_check.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/2.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_merged_transformer_check.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_merged_transformer_check.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/3.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_gelu_differential_check.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_gelu_differential_check.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/4.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_merged_cnn_mnist_check.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_merged_cnn_mnist_check.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/5.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_merged_mnist_resource_gate.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_merged_mnist_resource_gate.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/6.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_kv_cache_differential_check.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_kv_cache_differential_check.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/7.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_gpt2_full_differential_check.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_gpt2_full_differential_check.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/8.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_causal_attention_cached_differential_check.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_causal_attention_cached_differential_check.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/9.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_killer_cnn_native.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_killer_cnn_native.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/10.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_causal_attention_differential_check.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_causal_attention_differential_check.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/11.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_merged_cnn_pool_mnist_check.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_merged_cnn_pool_mnist_check.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/12.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_positional_embed_differential_check.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_positional_embed_differential_check.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/13.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_autoregressive_loop_differential_check.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_autoregressive_loop_differential_check.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/14.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_differential_mnist_check.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_differential_mnist_check.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/15.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_killer_tabular_native.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_killer_tabular_native.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/16.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/examples/tensorctl_gpt2.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/examples/tensorctl_gpt2.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/17.o"
+    ],
+    "returncode": 1,
+    "stdout": "",
+    "stderr": "fasm/examples/tensorctl_gpt2.c:12:2: error: \"tensorctl_gpt2.c requires the real GPT-2 124M shape macros\"\n   12 | #error \"tensorctl_gpt2.c requires the real GPT-2 124M shape macros\"\n      |  ^\n1 error generated.\n"
+  },
+  {
+    "source": "fasm/spikes/tensor_transformer_executor_f32_native.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_transformer_executor_f32_native.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/18.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/gunpoint_semantic_train.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/gunpoint_semantic_train.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/19.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_softmax_rows_differential_check.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_softmax_rows_differential_check.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/20.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_killer_autoencoder_native.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_killer_autoencoder_native.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/21.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_merged_cnn_check.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_merged_cnn_check.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/22.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_merged_mlp_check.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_merged_mlp_check.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/23.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_gpt2_block0_differential_check.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_gpt2_block0_differential_check.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/24.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_differential_transformer_check.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_differential_transformer_check.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/25.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_gpt2_cached_generation_differential_check.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_gpt2_cached_generation_differential_check.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/26.o"
+    ],
+    "returncode": 1,
+    "stdout": "",
+    "stderr": "fasm/spikes/tensor_gpt2_cached_generation_differential_check.c:60:2: error: \"requires -DM=768 -DH=12 -DD=64 -DQW=2304 -DMAXCACHE>=32\"\n   60 | #error \"requires -DM=768 -DH=12 -DD=64 -DQW=2304 -DMAXCACHE>=32\"\n      |  ^\n1 error generated.\n"
+  },
+  {
+    "source": "fasm/spikes/tensor_merged_pool_check.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_merged_pool_check.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/27.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_killer_scaling_native.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_killer_scaling_native.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/28.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_killer_mnist_native.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_killer_mnist_native.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/29.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_merged_fusion_check.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_merged_fusion_check.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/30.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "source": "fasm/spikes/tensor_differential_mlp_check.c",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-std=c11",
+      "-O2",
+      "-I",
+      "fasm/spikes",
+      "-c",
+      "fasm/spikes/tensor_differential_mlp_check.c",
+      "-o",
+      "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-m98oh0qi/31.o"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  }
+]

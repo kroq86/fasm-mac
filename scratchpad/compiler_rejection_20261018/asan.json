@@ -1,0 +1,23 @@
+{
+  "host": "macOS-15.7.2-arm64-arm-64bit-Mach-O",
+  "machine": "arm64",
+  "compiler": "Apple clang version 17.0.0 (clang-1700.0.13.5)\nTarget: arm64-apple-darwin24.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin\n",
+  "build": [
+    "clang",
+    "-std=c11",
+    "-O1",
+    "-g",
+    "-fsanitize=address,undefined",
+    "-fno-omit-frame-pointer",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-Wno-unused-function",
+    "fasm/spikes/tensor_compiler_rejection_check.c",
+    "fasm/spikes/tensor_transformer_executor_f32_native.c",
+    "-o",
+    "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-rejection-asan-e7u8tpzd/check"
+  ],
+  "build_rc": 0,
+  "run_rc": 0
+}

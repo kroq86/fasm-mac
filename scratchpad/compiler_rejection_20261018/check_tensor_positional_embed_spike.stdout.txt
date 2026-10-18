@@ -1,0 +1,4 @@
+seq7_plain: seq=7 forward=match dwte_through_diamond=match dwpe_through_diamond=match finite=yes
+seq8_tails: seq=8 forward=match dwte_through_diamond=match dwpe_through_diamond=match finite=yes
+seq9_full_position_range: seq=9 forward=match dwte_through_diamond=match dwpe_through_diamond=match finite=yes
+positional_embed differential check passed: reference<->canonical<->executor agree on seq=7/8/9, forward exact, dual-table diamond backward exact, all finite

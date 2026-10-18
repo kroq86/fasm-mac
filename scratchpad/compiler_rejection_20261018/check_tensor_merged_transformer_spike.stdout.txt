@@ -1,0 +1,2 @@
+fusion cross-check: same generic pass as the MLP graph, applied unmodified -> groups=12 all_plain=yes
+merged compiler check (transformer) passed: nodes=18 steps=43 (forward=12 zero=15 backward=12 optimizer=4, all compile()-derived, no forward_nodes[]/zeroable[] in this file) ops=matmul,attention,contiguous,residual,layernorm,relu,mse aux_used_by=attention,layernorm (generic saved-state, no transformer-special Node fields) gradient_check=finite-difference(wq,wo,w1,w2) epochs=12000 loss=2.178741->0.000000

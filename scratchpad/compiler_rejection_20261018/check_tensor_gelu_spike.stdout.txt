@@ -1,0 +1,4 @@
+n7_with_zero: n=7 forward=match backward=match finite=yes
+n8_saturation_tails: n=8 forward=match backward=match finite=yes
+n9_wide_range: n=9 forward=match backward=match finite=yes
+gelu differential check passed: reference<->canonical<->executor agree on n=7/8/9, forward exact, backward exact, saturation tails and zero all finite

@@ -1,0 +1,15 @@
+CAUSAL_ATTENTION_CACHED: agrees with the full-recompute reference AND the toy incremental spike at every step, n=1..7; cache.aux_count advances correctly
+non-retroactivity: outputs for positions 0..4 identical whether 5 or 7 total tokens are eventually appended
+persistent-graph pattern (compile once, execute many, no external position copy): matches the full-recompute reference exactly at every step, n=1..7 -- the actual pattern used by the real GPT-2 integration
+fail-closed: a cache already at MAXCACHE capacity is correctly rejected by validate()
+causal_attention_cached differential check passed: canonical CAUSAL_ATTENTION_CACHED matches the full-recompute reference and the toy incremental spike exactly at every step, cache-state side effect correct, non-retroactivity confirmed, capacity-exceeded fails closed
+CAUSAL_ATTENTION_CACHED: agrees with the full-recompute reference AND the toy incremental spike at every step, n=1..8; cache.aux_count advances correctly
+non-retroactivity: outputs for positions 0..5 identical whether 6 or 8 total tokens are eventually appended
+persistent-graph pattern (compile once, execute many, no external position copy): matches the full-recompute reference exactly at every step, n=1..8 -- the actual pattern used by the real GPT-2 integration
+fail-closed: a cache already at MAXCACHE capacity is correctly rejected by validate()
+causal_attention_cached differential check passed: canonical CAUSAL_ATTENTION_CACHED matches the full-recompute reference and the toy incremental spike exactly at every step, cache-state side effect correct, non-retroactivity confirmed, capacity-exceeded fails closed
+CAUSAL_ATTENTION_CACHED: agrees with the full-recompute reference AND the toy incremental spike at every step, n=1..9; cache.aux_count advances correctly
+non-retroactivity: outputs for positions 0..6 identical whether 7 or 9 total tokens are eventually appended
+persistent-graph pattern (compile once, execute many, no external position copy): matches the full-recompute reference exactly at every step, n=1..9 -- the actual pattern used by the real GPT-2 integration
+fail-closed: a cache already at MAXCACHE capacity is correctly rejected by validate()
+causal_attention_cached differential check passed: canonical CAUSAL_ATTENTION_CACHED matches the full-recompute reference and the toy incremental spike exactly at every step, cache-state side effect correct, non-retroactivity confirmed, capacity-exceeded fails closed

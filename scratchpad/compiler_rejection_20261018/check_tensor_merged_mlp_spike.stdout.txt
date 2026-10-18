@@ -1,0 +1,1 @@
+merged compiler check (mlp) passed: nodes=12 steps=25 (forward=6 zero=9 backward=6 optimizer=4, all compile()-derived, no forward_nodes[]/zeroable[] in this file) gradient_check=finite-difference task=xor epochs=4000 predictions=0.000,1.000,1.000,0.000 expected=0,1,1,0 correct=4/4

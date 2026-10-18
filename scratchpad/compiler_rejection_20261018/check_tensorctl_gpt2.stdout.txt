@@ -1,0 +1,1 @@
+tensorctl gpt2 check passed: real GPT-2 output exact, empty/invalid/Unicode/missing-model inputs fail closed

@@ -1,0 +1,1 @@
+merged compiler check (cnn) passed: new_op=conv (valid 3x3 conv, 6x6x1->4x4x2) nodes=10 steps=20 (forward=5 zero=7 backward=5 optimizer=3, all compile()-derived, no forward_nodes[]/zeroable[] in this file, no changes to compile()/validate() for any pre-existing op) gradient_check=finite-difference(conv_weight,fc_weight) epochs=4000 loss=1.001362->0.000000

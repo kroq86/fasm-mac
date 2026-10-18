@@ -1,0 +1,6 @@
+{
+  "command": [
+    "scripts/check_tensor_compiler_rejection.sh"
+  ],
+  "returncode": 0
+}

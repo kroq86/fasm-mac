@@ -1,0 +1,10 @@
+gpt2_full: artifact fingerprint verified (sha256=248dfc3911869ec493c76e65bf2fcf7f615828b0254c12b473182f0f81d3a707)
+gpt2_full: all 12 blocks + wte/wpe/ln_f loaded directly from model.safetensors
+gpt2_full: wte transposed [50257,768] -> [768,50257] for the tied LM head matmul (layout conversion, no value edit)
+boundary layer5           elements=6144     max_abs=0.000732422 max_rel=0.00173305 nonfinite=0 fails=0
+boundary layer11_final    elements=6144     max_abs=0.000671387 max_rel=0.101866 nonfinite=0 fails=0
+boundary ln_f             elements=6144     max_abs=5.34058e-05 max_rel=0.00396101 nonfinite=0 fails=0
+boundary logits           elements=402056   max_abs=0.000289917 max_rel=3.33592e-06 nonfinite=0 fails=0
+last-position top5 token ids: [471,717,968,1708,1578] logits: [-64.5787,-64.7665,-64.8301,-64.8751,-65.0124]
+gpt2_full differential check passed: all 12 real gpt2-124M blocks + ln_f + tied LM head, fingerprint-verified checkpoint read directly by this project's own safetensors loader, canonical graph+executor matches the PyTorch reference at layer5/layer11/ln_f/logits within preregistered tolerance
+gpt2_full: reran, byte-identical native output confirmed (determinism)

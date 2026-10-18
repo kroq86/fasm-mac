@@ -1,0 +1,1 @@
+merged compiler check (fusion) passed: unfused_forward_actions=6 fused_forward_actions=3 groups=MBR,MB,PLAIN matches_tensor_compiler_planner_check=yes zero_grad_and_optimizer_still_from_compile()=yes predictions=0.000,1.000,1.000,0.000 expected=0,1,1,0 correct=4/4

@@ -1,0 +1,22 @@
+PASS valid_matmul_executes
+PASS bad_shape_control
+PASS bad_shape_rejected_before_emission
+PASS op_count_validate
+PASS op_count_compile
+PASS uint_max_validate
+PASS uint_max_compile
+PASS cached_inference_executes
+PASS unrelated_param_preserves_cached_inference
+PASS gradient_target_shape_control
+PASS qkv_param
+PASS gradient_target_shape_control
+PASS qkv_retain_grad
+PASS gradient_target_shape_control
+PASS cache_retain_grad
+PASS gradient_target_shape_control
+PASS cache_param
+PASS gradient_target_shape_control
+PASS cached_output_retain_grad
+PASS transitive_param_shape_control
+PASS transitive_param_rejected
+compiler rejection check: checks=21 failures=0

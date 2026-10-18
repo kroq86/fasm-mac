@@ -1,0 +1,34 @@
+{
+  "diff_check": {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "shell_syntax": {
+    "command": [
+      "bash",
+      "-n",
+      "scripts/check_tensor_compiler_rejection.sh",
+      "scripts/check_tensor_runtime_spikes.sh"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "staged_empty": {
+    "command": [
+      "git",
+      "diff",
+      "--cached",
+      "--quiet"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  }
+}

@@ -13,6 +13,7 @@ checks=(
   check_tensor_plan_spike.sh
   check_tensor_fusion_spike.sh
   check_tensor_compiler_planner_spike.sh
+  check_tensor_compiler_rejection.sh
   check_tensor_grad_prune_spike.sh
   check_tensor_liveness_spike.sh
   check_tensor_sgd_spike.sh

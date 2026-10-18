@@ -1,0 +1,56 @@
+{
+  "reason": "Original generic sweep omitted the explicit real-model macros required by two #error preconditions. Existing product gates had already compiled and run both with these macros. No source repair or behavior threshold changed.",
+  "results": [
+    {
+      "source": "fasm/examples/tensorctl_gpt2.c",
+      "command": [
+        "clang",
+        "-arch",
+        "x86_64",
+        "-std=c11",
+        "-O2",
+        "-I",
+        "fasm/spikes",
+        "-DM=768",
+        "-DH=12",
+        "-DD=64",
+        "-DQW=2304",
+        "-DF=3072",
+        "-DMAXCACHE=64",
+        "-DGPT2_MAXT=64",
+        "-c",
+        "fasm/examples/tensorctl_gpt2.c",
+        "-o",
+        "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-shape-3bwwdfqt/0.o"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "source": "fasm/spikes/tensor_gpt2_cached_generation_differential_check.c",
+      "command": [
+        "clang",
+        "-arch",
+        "x86_64",
+        "-std=c11",
+        "-O2",
+        "-I",
+        "fasm/spikes",
+        "-DM=768",
+        "-DH=12",
+        "-DD=64",
+        "-DQW=2304",
+        "-DF=3072",
+        "-DMAXCACHE=64",
+        "-c",
+        "fasm/spikes/tensor_gpt2_cached_generation_differential_check.c",
+        "-o",
+        "/var/folders/kk/2k9g51h55h51j59z6vjm9dzr0000gn/T/compiler-consumers-shape-3bwwdfqt/1.o"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ]
+}

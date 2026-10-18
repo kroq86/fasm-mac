@@ -1,0 +1,12 @@
+anchor: hand-rolled runtime-T full-recompute reference matches canonical CAUSAL_ATTENTION exactly at T=7, all 42 values
+kv-cache vs full recompute: agree exactly at every context length n=1..7
+non-retroactivity: outputs for positions 0..4 identical whether 5 or 7 total tokens are eventually appended
+kv_cache differential check passed: runtime-T reference anchored to canonical CAUSAL_ATTENTION, incremental cache matches full recompute at every context length, non-retroactivity confirmed, numerical tail finite
+anchor: hand-rolled runtime-T full-recompute reference matches canonical CAUSAL_ATTENTION exactly at T=8, all 48 values
+kv-cache vs full recompute: agree exactly at every context length n=1..8
+non-retroactivity: outputs for positions 0..5 identical whether 6 or 8 total tokens are eventually appended
+kv_cache differential check passed: runtime-T reference anchored to canonical CAUSAL_ATTENTION, incremental cache matches full recompute at every context length, non-retroactivity confirmed, numerical tail finite
+anchor: hand-rolled runtime-T full-recompute reference matches canonical CAUSAL_ATTENTION exactly at T=9, all 54 values
+kv-cache vs full recompute: agree exactly at every context length n=1..9
+non-retroactivity: outputs for positions 0..6 identical whether 7 or 9 total tokens are eventually appended
+kv_cache differential check passed: runtime-T reference anchored to canonical CAUSAL_ATTENTION, incremental cache matches full recompute at every context length, non-retroactivity confirmed, numerical tail finite

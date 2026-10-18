@@ -1,0 +1,4 @@
+cols7_plain: cols=7 forward=match row_sums=1 backward=match finite_diff_spot_check=match finite=yes
+cols8_overflow_tail: cols=8 forward=match row_sums=1 backward=match finite_diff_spot_check=match finite=yes
+cols9_underflow_tail: cols=9 forward=match row_sums=1 backward=match finite_diff_spot_check=match finite=yes
+softmax_rows differential check passed: reference<->canonical<->executor agree on cols=7/8/9, forward exact, row sums=1, backward exact, overflow/underflow tails handled, all finite

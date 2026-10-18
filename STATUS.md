@@ -6,6 +6,32 @@ This file is the single current map of the project.  Historical scratchpads and
 spikes preserve evidence, but they do not define the active roadmap.  When a
 result changes a verdict or the next gate, update this file in the same change.
 
+## Compiler dispatch rejection repair — 2026-10-18
+
+Two previously reproduced acceptance holes are now repaired locally:
+validate rejects unknown/missing-forward opcodes before dispatch indexing;
+compile rejects a nonleaf with derived gradient needs and no backward handler
+before schedule writes. Cached attention remains inference-only. LEAF handling,
+supported math, executor ABI and existing -1/-2 return behavior are preserved.
+
+The same new regression changes from 21 checks / 10 failures before the patch
+to 21 / 0 after it. Targets cover OP_COUNT/UINT32_MAX, direct/transitive PARAM
+and RETAIN_GRAD paths, including retained cached output. Valid inference and
+an unrelated PARAM branch still execute. Native-C ASan/UBSan and 16 relevant
+existing gates pass with no skips: supported training/gradients, cached attention,
+actual GPT-2 CLI, cached-generation and full 12-block reference differentials.
+All 32 direct C consumers compile, using required real-model macros for two
+GPT-2 callers; original missing-macro sweep failures are preserved separately.
+
+Verdict: **SUPPORTED local engineering repair**, not a universal graph validator,
+model-capability result or performance improvement. Independent critic feedback
+was checked against actual artifacts; supported-training coverage passed. General
+operand/storage validation and postcompile metadata mutation remain separate.
+The new check is wired into the existing runtime gate. Native decoder runtime
+remains the active direction.
+Protocol, raw before/after results, review, limits and reproduction:
+`scratchpad/compiler_rejection_20261018/RESULT.md`.
+
 ## String-map replacement fix — 2026-10-18
 
 The reproduced `hashmap_str` replacement failure is fixed: put_entry retains
